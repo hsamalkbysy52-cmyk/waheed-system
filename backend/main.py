@@ -22,8 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-create_tables()
-create_users()
+try:
+    create_tables()
+    create_users()
+except Exception as e:
+    print(f"DB init warning: {e}")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
