@@ -15,7 +15,7 @@ export default function CashierPage() {
   const [newItem, setNewItem] = useState({ name: "", price: "", category: "وجبات" });
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu")
+    fetch("https://waheed-system-production.up.railway.app/menu")
       .then((res) => res.json())
       .then((data) => setMenu(data.menu));
   }, []);
@@ -35,7 +35,7 @@ export default function CashierPage() {
       alert("الطلب فاضي!");
       return;
     }
-    const response = await fetch("http://127.0.0.1:8000/orders/create", {
+    const response = await fetch("https://waheed-system-production.up.railway.app/orders/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items: order, table_number: 1 }),
@@ -51,10 +51,10 @@ export default function CashierPage() {
       return;
     }
     await fetch(
-      `http://127.0.0.1:8000/menu/add?name=${newItem.name}&price=${newItem.price}&category=${newItem.category}`,
+      `https://waheed-system-production.up.railway.app/menu/add?name=${newItem.name}&price=${newItem.price}&category=${newItem.category}`,
       { method: "POST" }
     );
-    fetch("http://127.0.0.1:8000/menu")
+    fetch("https://waheed-system-production.up.railway.app/menu")
       .then((res) => res.json())
       .then((data) => setMenu(data.menu));
     setNewItem({ name: "", price: "", category: "وجبات" });

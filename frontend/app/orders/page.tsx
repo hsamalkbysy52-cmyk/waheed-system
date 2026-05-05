@@ -14,7 +14,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   const fetchOrders = () => {
-    fetch("http://127.0.0.1:8000/orders")
+    fetch("https://waheed-system-production.up.railway.app/orders")
       .then((res) => res.json())
       .then((data) => setOrders(data.orders));
   };
@@ -27,7 +27,7 @@ export default function OrdersPage() {
   }, []);
 
   const completeOrder = async (id: number) => {
-    await fetch(`http://127.0.0.1:8000/orders/${id}/done`, {
+    await fetch(`https://waheed-system-production.up.railway.app/orders/${id}/done`, {
       method: "PUT",
     });
     fetchOrders();

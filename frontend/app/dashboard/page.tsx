@@ -19,7 +19,7 @@ export default function Dashboard() {
 
     // سيبقى الرابط كما هو لأننا غيرنا الإعدادات في الباك-إند لاستقبال مفتاح OpenAI
     const response = await fetch(
-      `http://127.0.0.1:8000/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`,
+      `https://waheed-system-production.up.railway.app/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`,
       { method: "POST" }
     );
 
