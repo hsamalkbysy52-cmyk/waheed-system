@@ -9,4 +9,3 @@ python-jose
 python-multipart
 openai
 twilio
-aiosqlite
