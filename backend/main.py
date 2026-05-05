@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
@@ -144,13 +144,13 @@ def ask_report_agent(question: str, api_key: str):
         return {"error": str(e)}
 
 
-@app.post("/whatsapp", response_class=PlainTextResponse)
+@app.post("/whatsapp")
 async def whatsapp_webhook(request: Request):
     from agents.whatsapp_agent import process_whatsapp_message
     from twilio.twiml.messaging_response import MessagingResponse
     form = await request.form()
     message = form.get("Body", "")
     reply = process_whatsapp_message(message, OPENAI_KEY)
-    response = MessagingResponse()
-    response.message(reply)
-    return str(response)
+    twiml = MessagingResponse()
+    twiml.message(reply)
+    return Response(content=str(twiml), media_type="application/xml")
