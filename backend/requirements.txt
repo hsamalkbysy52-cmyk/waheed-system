@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+passlib
+bcrypt==4.0.1
+python-jose
+python-multipart
+openai
+twilio
+aiosqlite
