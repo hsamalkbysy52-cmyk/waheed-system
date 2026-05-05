@@ -12,7 +12,7 @@ export default function TablePage({ params }: { params: { id: string } }) {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [order, setOrder] = useState<MenuItem[]>([]);
   const [sent, setSent] = useState(false);
-  const API = process.env.NEXT_PUBLIC_API_URL;
+  const API = "https://waheed-system-production.up.railway.app";
   useEffect(() => {
     fetch(`${API}/menu`)
       .then((res) => res.json())
