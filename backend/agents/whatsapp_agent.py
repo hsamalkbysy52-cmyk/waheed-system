@@ -36,9 +36,10 @@ def create_order_from_items(item_names: list, table_number: int = 0):
         )
         db.add(new_order)
         db.commit()
+        items_data = [{"name": item.name, "price": item.price} for item in found_items]
         db.close()
-        return found_items, total
-    
+        return items_data, total
+
     db.close()
     return [], 0
 
@@ -89,7 +90,7 @@ def process_whatsapp_message(message: str, api_key: str) -> str:
                 found_items, total = create_order_from_items(item_names)
                 
                 if found_items:
-                    items_list = "\n".join([f"• {i.name} - {i.price} د.ع" for i in found_items])
+                    items_list = "\n".join([f"• {i['name']} - {i['price']} د.ع" for i in found_items])
                     reply = f"✅ تم استلام طلبك!\n\n{items_list}\n\nالمجموع: {total} د.ع\n\nسيصلك طلبك قريباً 🍔"
     
     return reply
