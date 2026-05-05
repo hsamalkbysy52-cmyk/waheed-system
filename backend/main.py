@@ -8,7 +8,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, MenuItem, Order
+from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -25,6 +25,7 @@ app.add_middleware(
 try:
     create_tables()
     create_users()
+    seed_menu()
 except Exception as e:
     print(f"DB init warning: {e}")
 

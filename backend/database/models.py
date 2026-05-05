@@ -39,3 +39,20 @@ class Order(Base):
 def create_tables():
     Base.metadata.create_all(engine)
     print("DB tables ready")
+
+
+def seed_menu():
+    db = SessionLocal()
+    if db.query(MenuItem).count() == 0:
+        items = [
+            MenuItem(name="برجر",  price=5000, category="وجبات"),
+            MenuItem(name="بيتزا", price=8000, category="وجبات"),
+            MenuItem(name="باستا", price=6000, category="وجبات"),
+            MenuItem(name="كولا",  price=1500, category="مشروبات"),
+            MenuItem(name="عصير",  price=2000, category="مشروبات"),
+            MenuItem(name="شاي",   price=1000, category="مشروبات"),
+        ]
+        db.add_all(items)
+        db.commit()
+        print("Menu seeded with default items")
+    db.close()
