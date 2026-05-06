@@ -8,7 +8,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order
+from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -111,6 +111,25 @@ def complete_order(order_id: int, db: Session = Depends(get_db)):
     order.status = "done"
     db.commit()
     return {"message": "تم إنجاز الطلب!"}
+
+
+@app.post("/orders/{order_id}/cancel")
+def cancel_order(order_id: int, cashier: str, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب مو موجود"}
+    if order.status == "cancelled":
+        return {"error": "الطلب ملغي مسبقاً"}
+    order.status = "cancelled"
+    db.commit()
+
+    from agents.fraud_agent import run_fraud_check
+    fraud_detected = run_fraud_check(order_id, cashier, db)
+
+    result = {"message": "تم إلغاء الطلب!", "order_id": order_id}
+    if fraud_detected:
+        result["fraud_alert"] = f"⚠️ {cashier} ألغى 3 طلبات أو أكثر خلال ساعة — تم إبلاغ المالك."
+    return result
 
 
 @app.post("/login")

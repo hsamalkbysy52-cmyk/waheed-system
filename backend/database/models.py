@@ -36,6 +36,15 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.now)
 
 
+class CancellationLog(Base):
+    __tablename__ = "cancellation_logs"
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer)
+    cashier = Column(String)
+    cancelled_at = Column(DateTime, default=datetime.now)
+
+
 def create_tables():
     Base.metadata.create_all(engine)
     print("DB tables ready")
