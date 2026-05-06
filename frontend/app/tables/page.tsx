@@ -6,7 +6,7 @@ export default function TablesPage() {
   const [tables] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   const [selected, setSelected] = useState<number | null>(null);
 
-  const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://waheed-frontend.vercel.app"}/table`;
+  const baseUrl = "https://waheed-frontend.vercel.app/table";
 
   return (
     <div style={{ padding: "20px", direction: "rtl" }}>
