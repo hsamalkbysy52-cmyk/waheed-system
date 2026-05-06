@@ -29,8 +29,14 @@ export default function OrdersPage() {
   }, []);
 
   const completeOrder = async (id: number) => {
-    await fetch(`${API}/orders/${id}/done`, {
-      method: "PUT",
+    await fetch(`${API}/orders/${id}/done`, { method: "PUT" });
+    fetchOrders();
+  };
+
+  const cancelOrder = async (id: number) => {
+    const cashier = localStorage.getItem("username") || "unknown";
+    await fetch(`${API}/orders/${id}/cancel?cashier=${encodeURIComponent(cashier)}`, {
+      method: "POST",
     });
     fetchOrders();
   };
@@ -69,6 +75,12 @@ export default function OrdersPage() {
               style={{ marginTop: "10px", width: "100%", padding: "10px", background: "#27ae60", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "15px" }}
             >
               ✅ تم الإنجاز
+            </button>
+            <button
+              onClick={() => cancelOrder(order.id)}
+              style={{ marginTop: "8px", width: "100%", padding: "10px", background: "#e74c3c", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "15px" }}
+            >
+              ❌ إلغاء الطلب
             </button>
           </div>
         ))}
