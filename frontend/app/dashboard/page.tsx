@@ -17,9 +17,9 @@ export default function Dashboard() {
     setLoading(true);
     setAnswer("");
 
-    // سيبقى الرابط كما هو لأننا غيرنا الإعدادات في الباك-إند لاستقبال مفتاح OpenAI
+    const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
     const response = await fetch(
-      `https://waheed-system-production.up.railway.app/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`,
+      `${API}/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`,
       { method: "POST" }
     );
 

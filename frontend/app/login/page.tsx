@@ -14,8 +14,9 @@ export default function LoginPage() {
       return;
     }
 
+    const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
     const response = await fetch(
-      `http://127.0.0.1:8000/login?username=${username}&password=${password}`,
+      `${API}/login?username=${username}&password=${password}`,
       { method: "POST" }
     );
 

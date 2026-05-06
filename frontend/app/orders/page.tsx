@@ -10,11 +10,13 @@ type Order = {
   created_at: string;
 };
 
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   const fetchOrders = () => {
-    fetch("https://waheed-system-production.up.railway.app/orders")
+    fetch(`${API}/orders`)
       .then((res) => res.json())
       .then((data) => setOrders(data.orders));
   };
@@ -27,7 +29,7 @@ export default function OrdersPage() {
   }, []);
 
   const completeOrder = async (id: number) => {
-    await fetch(`https://waheed-system-production.up.railway.app/orders/${id}/done`, {
+    await fetch(`${API}/orders/${id}/done`, {
       method: "PUT",
     });
     fetchOrders();
