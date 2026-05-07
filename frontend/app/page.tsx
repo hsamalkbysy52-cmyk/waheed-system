@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 type MenuItem = { id: number; name: string; price: number; category: string; };
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+const API = "https://waheed-system-production.up.railway.app";
 
 const ICONS: Record<string, string> = { "وجبات": "🍔", "مشروبات": "🥤", "حلويات": "🍰", "الكل": "🍽️" };
 
@@ -21,8 +21,11 @@ export default function CashierPage() {
   const [newItem, setNewItem]         = useState({ name: "", price: "", category: "وجبات" });
   const [hovered, setHovered]         = useState<number | null>(null);
 
-  const fetchMenu = () =>
-    fetch(`${API}/menu`).then(r => r.json()).then(d => setMenu(d.menu));
+  const fetchMenu = async () => {
+    const r = await fetch(`${API}/menu`);
+    const d = await r.json();
+    setMenu(d.menu);
+  };
 
   useEffect(() => { fetchMenu(); }, []);
 
@@ -46,13 +49,19 @@ export default function CashierPage() {
 
   const saveItem = async () => {
     if (!newItem.name || !newItem.price) { alert("أكمل البيانات!"); return; }
-    await fetch(
-      `${API}/menu/add?name=${encodeURIComponent(newItem.name)}&price=${newItem.price}&category=${encodeURIComponent(newItem.category)}`,
-      { method: "POST" }
-    );
-    fetchMenu();
-    setNewItem({ name: "", price: "", category: "وجبات" });
-    setShowForm(false);
+    try {
+      const res = await fetch(
+        `${API}/menu/add?name=${encodeURIComponent(newItem.name)}&price=${newItem.price}&category=${encodeURIComponent(newItem.category)}`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      await fetchMenu();
+      setNewItem({ name: "", price: "", category: "وجبات" });
+      setShowForm(false);
+      alert(`✅ ${data.message || "تم إضافة الصنف!"}`);
+    } catch {
+      alert("❌ فشل الاتصال بالسيرفر");
+    }
   };
 
   const inp: React.CSSProperties = {
