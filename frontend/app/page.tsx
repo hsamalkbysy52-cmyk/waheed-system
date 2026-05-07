@@ -8,7 +8,7 @@ type MenuItem = {
   category: string;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL || "${API}";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 export default function CashierPage() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
