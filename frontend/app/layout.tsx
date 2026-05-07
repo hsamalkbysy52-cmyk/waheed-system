@@ -2,101 +2,113 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import "./globals.css";
+import ChatBot from "@/components/ChatBot";
+
+const NAV = [
+  { href: "/kanban",    icon: "📋", label: "لوحة الطلبات" },
+  { href: "/kitchen",   icon: "🍳", label: "المطبخ"       },
+  { href: "/tables",    icon: "🪑", label: "الطاولات"     },
+  { href: "/menu",      icon: "🍽️", label: "المنيو"       },
+  { href: "/payments",  icon: "💳", label: "المدفوعات"    },
+  { href: "/",          icon: "🏠", label: "الكاشير"      },
+  { href: "/dashboard", icon: "🤖", label: "المساعد AI"   },
+];
+
+const HIDDEN_PATHS = ["/login", "/table"];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [username, setUsername] = useState("");
-  const hidden = pathname === "/login" || pathname.startsWith("/table");
+  const router   = useRouter();
+  const [user, setUser] = useState("");
+
+  const hidden = HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
 
   useEffect(() => {
-    setUsername(localStorage.getItem("username") || "");
+    setUser(localStorage.getItem("username") || "");
   }, [pathname]);
-
-  const nav = [
-    { href: "/",          icon: "🏠", label: "الكاشير"  },
-    { href: "/tables",    icon: "🪑", label: "الطاولات" },
-    { href: "/orders",    icon: "📋", label: "الطلبات"  },
-    { href: "/dashboard", icon: "🤖", label: "المساعد"  },
-  ];
 
   return (
     <html lang="ar" dir="rtl">
-      <body style={{ margin: 0, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#0a0a1a" }}>
+      <body style={{ margin: 0, display: "flex", minHeight: "100vh", background: "#0a0a0f" }}>
 
+        {/* ── Sidebar ── */}
         {!hidden && (
-          <nav style={{
-            background: "#13132a",
-            borderBottom: "1px solid #2a2a4a",
-            padding: "0 28px",
-            height: "64px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            position: "sticky",
-            top: 0,
-            zIndex: 100,
-            boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+          <aside style={{
+            width: "220px", flexShrink: 0,
+            background: "#111118",
+            borderLeft: "1px solid #252535",
+            display: "flex", flexDirection: "column",
+            position: "fixed", right: 0, top: 0, bottom: 0,
+            zIndex: 50,
           }}>
-
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "30px" }}>🍔</span>
-              <div>
-                <div style={{ color: "#f39c12", fontWeight: "800", fontSize: "18px", lineHeight: 1 }}>Waheed</div>
-                <div style={{ color: "#8892b0", fontSize: "10px", letterSpacing: "1px" }}>RESTAURANT OS</div>
+            <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid #252535" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "32px" }}>🍔</span>
+                <div>
+                  <div style={{ color: "#f59e0b", fontWeight: "800", fontSize: "18px", lineHeight: 1 }}>Waheed</div>
+                  <div style={{ color: "#64748b", fontSize: "10px", letterSpacing: "1px", marginTop: "2px" }}>RESTAURANT OS</div>
+                </div>
               </div>
             </div>
 
-            {/* Nav links */}
-            <div style={{ display: "flex", gap: "4px" }}>
-              {nav.map(({ href, icon, label }) => {
-                const active = pathname === href;
+            {/* Nav */}
+            <nav style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
+              {NAV.map(({ href, icon, label }) => {
+                const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
                   <button key={href} onClick={() => router.push(href)} style={{
-                    padding: "9px 20px",
-                    background: active ? "rgba(243,156,18,0.12)" : "transparent",
-                    color: active ? "#f39c12" : "#8892b0",
-                    border: `1px solid ${active ? "rgba(243,156,18,0.35)" : "transparent"}`,
-                    borderRadius: "12px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: active ? "700" : "400",
-                    display: "flex", alignItems: "center", gap: "6px",
+                    width: "100%", display: "flex", alignItems: "center", gap: "12px",
+                    padding: "11px 14px", marginBottom: "4px", borderRadius: "12px",
+                    background: active ? "rgba(245,158,11,0.12)" : "transparent",
+                    color: active ? "#f59e0b" : "#64748b",
+                    border: `1px solid ${active ? "rgba(245,158,11,0.25)" : "transparent"}`,
+                    cursor: "pointer", fontSize: "14px", fontWeight: active ? "700" : "400",
+                    textAlign: "right",
                   }}>
-                    <span>{icon}</span><span>{label}</span>
+                    <span style={{ fontSize: "18px", flexShrink: 0 }}>{icon}</span>
+                    <span>{label}</span>
+                    {active && <span style={{ marginRight: "auto", width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />}
                   </button>
                 );
               })}
-            </div>
+            </nav>
 
-            {/* User + logout */}
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              {username && (
-                <div style={{ color: "#8892b0", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "30px", height: "30px", borderRadius: "50%", background: "rgba(243,156,18,0.15)", border: "1px solid rgba(243,156,18,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>👤</span>
-                  {username}
+            {/* User + Logout */}
+            <div style={{ padding: "14px 10px", borderTop: "1px solid #252535" }}>
+              {user && (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", marginBottom: "8px" }}>
+                  <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", flexShrink: 0 }}>👤</span>
+                  <span style={{ color: "#94a3b8", fontSize: "13px" }}>{user}</span>
                 </div>
               )}
               <button onClick={() => { localStorage.clear(); router.push("/login"); }} style={{
-                padding: "9px 18px",
-                background: "rgba(231,76,60,0.12)",
-                color: "#e74c3c",
-                border: "1px solid rgba(231,76,60,0.3)",
-                borderRadius: "12px",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "600",
+                width: "100%", padding: "10px 14px", borderRadius: "12px",
+                background: "rgba(239,68,68,0.1)", color: "#ef4444",
+                border: "1px solid rgba(239,68,68,0.25)",
+                cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                display: "flex", alignItems: "center", gap: "8px",
               }}>
-                خروج 🚪
+                <span>🚪</span><span>تسجيل الخروج</span>
               </button>
             </div>
-          </nav>
+          </aside>
         )}
 
-        <div style={{ minHeight: hidden ? "100vh" : "calc(100vh - 64px)" }}>
+        {/* ── Main content ── */}
+        <main style={{
+          flex: 1,
+          marginLeft: 0,
+          marginRight: hidden ? 0 : "220px",
+          minHeight: "100vh",
+          direction: "rtl",
+          overflow: "hidden",
+        }}>
           {children}
-        </div>
+        </main>
+
+        {/* ── Floating Chatbot ── */}
+        {!hidden && <ChatBot />}
       </body>
     </html>
   );
