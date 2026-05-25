@@ -24,6 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hidden = HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
 
   useEffect(() => {
+    fetch("/api/warmup").catch(() => {});
+  }, []);
+
+  useEffect(() => {
     setUser(localStorage.getItem("username") || "");
   }, [pathname]);
 

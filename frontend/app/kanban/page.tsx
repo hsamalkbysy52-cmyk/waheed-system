@@ -6,6 +6,17 @@ import NewOrderDrawer from "@/components/NewOrderDrawer";
 
 const API = "https://waheed-system-production.up.railway.app";
 
+async function fetchWithRetry(url: string, retries = 4, delayMs = 3000): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r;
+    } catch {}
+    if (i < retries - 1) await new Promise(res => setTimeout(res, delayMs));
+  }
+  return fetch(url);
+}
+
 type Order = { id: number; table_number: number; total_price: number; status: string; created_at: string; };
 type Stage = "new" | "preparing" | "ready" | "served";
 
@@ -143,11 +154,20 @@ export default function KanbanPage() {
   const [stageMap, setStageMap] = useState<Record<number, Stage>>({});
   const [now, setNow]         = useState(Date.now());
   const [loading, setLoading] = useState(true);
+  const [waking, setWaking]   = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/orders`);
+      let r: Response;
+      try {
+        r = await fetch(`${API}/orders`);
+        if (!r.ok) throw new Error("not ok");
+      } catch {
+        setWaking(true);
+        r = await fetchWithRetry(`${API}/orders`);
+        setWaking(false);
+      }
       const d = await r.json();
       const list: Order[] = (d.orders || []).filter((o: Order) => o.status !== "cancelled");
       setOrders(list);
@@ -159,7 +179,7 @@ export default function KanbanPage() {
         });
         return next;
       });
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setWaking(false); }
   }, []);
 
   useEffect(() => {
@@ -199,7 +219,7 @@ export default function KanbanPage() {
         <div>
           <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>📋 لوحة الطلبات</h1>
           <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
-            {loading ? "جاري التحميل..." : `${active} طلب نشط • يتحدث كل 30 ثانية`}
+            {waking ? "الخادم يستيقظ، لحظة..." : loading ? "جاري التحميل..." : `${active} طلب نشط • يتحدث كل 30 ثانية`}
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
