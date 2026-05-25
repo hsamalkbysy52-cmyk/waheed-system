@@ -15,12 +15,19 @@ function elapsed(created_at: string) {
 }
 
 export default function TablesPage() {
-  const [orders, setOrders]   = useState<Order[]>([]);
+  const [orders, setOrders]     = useState<Order[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
-  const [loading, setLoad]    = useState(true);
-  /* Resolved after mount so it reflects the actual browser origin —
-     works for http://localhost:3000, http://192.168.x.x:3000, and production. */
-  const [baseUrl, setBaseUrl] = useState("");
+  const [loading, setLoad]      = useState(true);
+  const [qrBase, setQrBase]     = useState<string>("");
+
+  /* Fetch the correct public base URL from the server once on mount.
+     The API route auto-detects: Vercel URL in prod, LAN IP in dev. */
+  useEffect(() => {
+    fetch("/api/site-url")
+      .then((r) => r.json())
+      .then((d) => setQrBase(d.url as string))
+      .catch(() => setQrBase("https://waheed-frontend.vercel.app"));
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -28,10 +35,6 @@ export default function TablesPage() {
       const d = await r.json();
       setOrders((d.orders || []).filter((o: Order) => o.status === "pending"));
     } finally { setLoad(false); }
-  }, []);
-
-  useEffect(() => {
-    setBaseUrl(window.location.origin);
   }, []);
 
   useEffect(() => {
@@ -155,53 +158,37 @@ export default function TablesPage() {
               </div>
             ) : (
               /* Free: show QR */
-              (() => {
-                const qrUrl = baseUrl ? `${baseUrl}/table/${selected}` : "";
-                const isLocalhost = baseUrl.includes("localhost");
-                return (
-                  <div style={{ background: "#111118", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "18px", padding: "24px", textAlign: "center", borderTop: "4px solid #22c55e" }}>
-                    <div style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700", marginBottom: "4px" }}>QR Code</div>
-                    <div style={{ color: "#f1f5f9", fontSize: "18px", fontWeight: "800", marginBottom: "16px" }}>طاولة {selected}</div>
+              <div style={{ background: "#111118", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "18px", padding: "24px", textAlign: "center", borderTop: "4px solid #22c55e" }}>
+                <div style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700", marginBottom: "4px" }}>QR Code</div>
+                <div style={{ color: "#f1f5f9", fontSize: "18px", fontWeight: "800", marginBottom: "16px" }}>طاولة {selected}</div>
 
-                    {/* localhost warning */}
-                    {isLocalhost && (
-                      <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", padding: "8px 12px", marginBottom: "14px", textAlign: "right" }}>
-                        <div style={{ color: "#f59e0b", fontSize: "11px", fontWeight: "700", marginBottom: "3px" }}>⚠️ وضع التطوير</div>
-                        <div style={{ color: "#94a3b8", fontSize: "10px", lineHeight: "1.5" }}>
-                          الكود يشير إلى localhost — لن يعمل على الجوال.
-                          افتح الداشبورد عبر:
-                          <br />
-                          <span style={{ color: "#f59e0b", fontWeight: "700" }}>http://192.168.1.102:3000</span>
-                          <br />
-                          ثم افتح هذه الصفحة مرة أخرى.
-                        </div>
-                      </div>
-                    )}
+                {qrBase ? (
+                  <>
+                    <div style={{ background: "white", padding: "14px", borderRadius: "14px", display: "inline-block", marginBottom: "12px", boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
+                      <QRCode value={`${qrBase}/table/${selected}`} size={160} />
+                    </div>
 
-                    {/* QR */}
-                    {qrUrl ? (
-                      <div style={{ background: "white", padding: "14px", borderRadius: "14px", display: "inline-block", marginBottom: "12px", boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
-                        <QRCode value={qrUrl} size={160} />
-                      </div>
-                    ) : (
-                      <div style={{ height: "188px", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>⏳</div>
-                    )}
-
-                    {/* live URL display */}
-                    <div style={{ background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", padding: "8px 10px", marginBottom: "12px", cursor: "pointer" }}
-                      onClick={() => qrUrl && navigator.clipboard.writeText(qrUrl).catch(() => {})}
+                    <div
+                      style={{ background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", padding: "8px 10px", marginBottom: "12px", cursor: "pointer" }}
+                      onClick={() => navigator.clipboard.writeText(`${qrBase}/table/${selected}`).catch(() => {})}
                       title="اضغط للنسخ"
                     >
                       <div style={{ color: "#64748b", fontSize: "9px", marginBottom: "3px", textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
-                      <div style={{ color: "#94a3b8", fontSize: "10px", wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{qrUrl || "..."}</div>
+                      <div style={{ color: "#94a3b8", fontSize: "10px", wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>
+                        {`${qrBase}/table/${selected}`}
+                      </div>
                     </div>
-
-                    <button onClick={() => window.print()} style={{ width: "100%", padding: "11px", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "700" }}>
-                      🖨️ طباعة
-                    </button>
+                  </>
+                ) : (
+                  <div style={{ height: "210px", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: "13px" }}>
+                    ⏳ جاري تحديد الرابط...
                   </div>
-                );
-              })()
+                )}
+
+                <button onClick={() => window.print()} style={{ width: "100%", padding: "11px", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "700" }}>
+                  🖨️ طباعة
+                </button>
+              </div>
             )
           ) : (
             <div style={{ background: "#111118", border: "1px dashed #252535", borderRadius: "18px", padding: "48px 20px", textAlign: "center" }}>

@@ -1,7 +1,8 @@
 "use client";
 import { use, useState, useEffect, useCallback } from "react";
 
-const API = "https://waheed-system-production.up.railway.app";
+const RAILWAY = "https://waheed-system-production.up.railway.app";
+const MENU_API = "/api/menu";
 
 type RawItem = {
   id: number;
@@ -197,20 +198,38 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [success, setSuccess]     = useState(false);
   const [orderTotal, setOrderTotal] = useState(0);
 
-  /* fetch menu */
+  /* fetch menu — direct Railway call with CORS mode + cache-bust */
   const loadMenu = useCallback(() => {
     setLoading(true);
     setFetchErr("");
-    fetch(`${API}/menu`)
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const url = `${MENU_API}?t=${Date.now()}`;
+
+    fetch(url, {
+      signal: controller.signal,
+      headers: { "Accept": "application/json" },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${url}`);
+        return r.json();
+      })
       .then((d) => {
-        const items: MenuItem[] = (d.menu || [])
-          .map((i: RawItem) => ({ ...i, available: i.available ?? i.is_available ?? true }))
-          .filter((i: MenuItem) => i.available !== false);
+        const raw: RawItem[] = d.menu || [];
+        if (raw.length === 0) throw new Error(`API returned 0 items — check Railway /menu`);
+        const items: MenuItem[] = raw
+          .map((i) => ({ ...i, available: i.available ?? i.is_available ?? true }))
+          .filter((i) => i.available !== false);
         setMenuItems(items);
       })
-      .catch((e) => setFetchErr(String(e)))
-      .finally(() => setLoading(false));
+      .catch((e: Error) => {
+        const msg = e.name === "AbortError"
+          ? `TIMEOUT (12s) — لا يوجد رد من الخادم\n${url}`
+          : `${e.message}`;
+        setFetchErr(msg);
+      })
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
   }, []);
 
   useEffect(() => { loadMenu(); }, [loadMenu]);
@@ -247,8 +266,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
       const expandedItems = cart.flatMap((c) =>
         Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price }))
       );
-      const r = await fetch(`${API}/orders/create`, {
+      const r = await fetch(`${RAILWAY}/orders/create`, {
         method: "POST",
+        mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems }),
       });
@@ -309,14 +329,45 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
 
-        {/* error */}
+        {/* error — always visible, full details for debugging */}
         {!loading && fetchErr && (
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: "40px", marginBottom: "14px" }}>⚠️</div>
-            <div style={{ color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>{fetchErr}</div>
-            <button onClick={loadMenu} style={{ padding: "10px 24px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "12px", cursor: "pointer", fontSize: "13px" }}>
-              🔄 إعادة المحاولة
-            </button>
+          <div style={{ padding: "24px 16px" }}>
+            <div style={{
+              background: "#1a0a0a", border: "2px solid #ef4444",
+              borderRadius: "16px", padding: "20px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                <span style={{ fontSize: "28px" }}>🚨</span>
+                <span style={{ color: "#ef4444", fontWeight: "800", fontSize: "16px" }}>خطأ في تحميل المنيو</span>
+              </div>
+
+              <pre style={{
+                color: "#fca5a5", fontSize: "11px", background: "#0a0a0f",
+                border: "1px solid #3f1f1f", borderRadius: "8px",
+                padding: "10px 12px", margin: "0 0 8px",
+                whiteSpace: "pre-wrap", wordBreak: "break-all",
+                direction: "ltr", textAlign: "left", lineHeight: "1.7",
+                fontFamily: "monospace",
+              }}>
+                {fetchErr}
+              </pre>
+
+              <div style={{ color: "#64748b", fontSize: "10px", direction: "ltr", textAlign: "left", marginBottom: "16px" }}>
+                API: {MENU_API}
+              </div>
+
+              <button
+                onClick={loadMenu}
+                style={{
+                  width: "100%", padding: "13px",
+                  background: "rgba(245,158,11,0.15)", color: "#f59e0b",
+                  border: "1px solid rgba(245,158,11,0.3)", borderRadius: "12px",
+                  cursor: "pointer", fontSize: "14px", fontWeight: "700",
+                }}
+              >
+                🔄 إعادة المحاولة
+              </button>
+            </div>
           </div>
         )}
 
