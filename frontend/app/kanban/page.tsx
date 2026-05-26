@@ -17,7 +17,17 @@ async function fetchWithRetry(url: string, retries = 4, delayMs = 3000): Promise
   return fetch(url);
 }
 
-type Order = { id: number; table_number: number; total_price: number; status: string; created_at: string; };
+type OrderItem = { name: string; price: number; category: string };
+type Order = {
+  id: number;
+  table_number: number;
+  total_price: number;
+  status: string;
+  created_at: string;
+  items: OrderItem[];
+  cashier: string;
+  notes: string;
+};
 type Stage = "new" | "preparing" | "ready" | "served";
 
 const STAGES: { id: Stage; label: string; color: string }[] = [
@@ -28,18 +38,35 @@ const STAGES: { id: Stage; label: string; color: string }[] = [
 ];
 const STAGE_ORDER: Stage[] = ["new", "preparing", "ready", "served"];
 
-function elapsed(created_at: string, now: number) {
-  const ms = now - new Date(created_at).getTime();
-  const m  = Math.floor(ms / 60000);
-  const s  = Math.floor((ms % 60000) / 1000);
-  return { label: `${m}:${s.toString().padStart(2, "0")}`, mins: m };
+const CAT_EMOJI: Record<string, string> = {
+  "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
+  "حلويات": "🍰", "مقبلات": "🥗", "رئيسية": "🍽️",
+  "وجبات": "🍽️", "أخرى": "🍴",
+};
+const catEmoji = (c: string) => CAT_EMOJI[c] ?? "🍴";
+
+function aggregateItems(items: OrderItem[]) {
+  const map: Record<string, { name: string; price: number; category: string; qty: number }> = {};
+  for (const item of items) {
+    if (map[item.name]) map[item.name].qty++;
+    else map[item.name] = { name: item.name, price: item.price, category: item.category || "", qty: 1 };
+  }
+  return Object.values(map);
 }
 
-function timerColor(mins: number, stage: Stage) {
-  if (stage === "ready")  return "#22c55e";
+/* Always parse server time as UTC — appends Z if missing */
+function parseUTC(dateStr: string): number {
+  const s = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  return new Date(s).getTime();
+}
+
+function elapsedMins(created_at: string, now: number) {
+  return Math.max(0, Math.floor((now - parseUTC(created_at)) / 60000));
+}
+
+function stageColor(mins: number, stage: Stage) {
   if (stage === "served") return "#64748b";
-  if (mins < 5)  return "#f59e0b";
-  if (mins < 15) return "#f97316";
+  if (mins < 15) return "#22c55e";
   return "#ef4444";
 }
 
@@ -49,42 +76,108 @@ function Card({ order, stage, now, onNext, onPrev }: {
   onNext: () => void; onPrev: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: String(order.id) });
-  const { label: timer, mins } = elapsed(order.created_at, now);
-  const tc = timerColor(mins, stage);
+  const mins = elapsedMins(order.created_at, now);
+  const tc   = stageColor(mins, stage);
+  const aggregated = order.items?.length ? aggregateItems(order.items) : [];
 
   return (
     <div
       ref={setNodeRef}
       {...listeners} {...attributes}
       style={{
-        background: "#1c1c28", border: `1px solid ${tc}30`,
-        borderRight: `4px solid ${tc}`, borderRadius: "14px",
-        padding: "14px", marginBottom: "10px", cursor: "grab",
+        background: "#1c1c28",
+        border: `1px solid ${tc}35`,
+        borderRight: `4px solid ${tc}`,
+        borderRadius: "14px",
+        padding: "14px",
+        marginBottom: "10px",
+        cursor: "grab",
         transform: CSS.Translate.toString(transform),
-        opacity: isDragging ? 0.45 : 1, userSelect: "none",
+        opacity: isDragging ? 0.45 : 1,
+        userSelect: "none",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-        <div>
-          <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px" }}>طلب #{order.id}</div>
-          <div style={{ color: "#64748b", fontSize: "12px", marginTop: "2px" }}>🪑 طاولة {order.table_number}</div>
-        </div>
-        <div style={{ background: `${tc}18`, color: tc, borderRadius: "8px", padding: "4px 9px", fontSize: "12px", fontWeight: "700" }}>
-          ⏱ {timer}
-        </div>
+      {/* 1. Order number */}
+      <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "15px", marginBottom: "2px" }}>
+        طلب #{order.id}
       </div>
 
-      <div style={{ color: "#f59e0b", fontSize: "18px", fontWeight: "800", marginBottom: "4px" }}>
-        {order.total_price.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400" }}>د.ع</span>
+      {/* 2. Table number */}
+      <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "12px" }}>
+        🪑 طاولة {order.table_number}
       </div>
 
-      {mins >= 15 && stage !== "ready" && stage !== "served" && (
-        <div style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", padding: "4px 10px", fontSize: "11px", marginBottom: "10px" }}>
-          ⚠️ تأخر — {mins} دقيقة
-        </div>
-      )}
+      {/* 3. Items */}
+      <div style={{
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid #252535",
+        borderRadius: "10px",
+        padding: "8px 10px",
+        marginBottom: "10px",
+      }}>
+        {aggregated.length > 0 ? aggregated.map((item, i) => (
+          <div key={i} style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "4px 0",
+            borderBottom: i < aggregated.length - 1 ? "1px solid #1e2030" : "none",
+          }}>
+            <span style={{ color: "#e2e8f0", fontSize: "13px" }}>
+              {catEmoji(item.category)} {item.name}
+              {item.qty > 1 && (
+                <span style={{
+                  background: "rgba(245,158,11,0.18)",
+                  color: "#f59e0b",
+                  borderRadius: "5px",
+                  padding: "1px 6px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  marginRight: "6px",
+                }}>
+                  ×{item.qty}
+                </span>
+              )}
+            </span>
+            <span style={{ color: "#94a3b8", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
+              {(item.price * item.qty).toLocaleString()} <span style={{ fontSize: "10px" }}>د.ع</span>
+            </span>
+          </div>
+        )) : (
+          <div style={{ color: "#334155", fontSize: "12px", textAlign: "center", padding: "4px 0" }}>
+            — طلب قديم —
+          </div>
+        )}
+      </div>
 
-      <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+      {/* 4. Total price */}
+      <div style={{
+        color: "#f59e0b",
+        fontSize: "20px",
+        fontWeight: "800",
+        marginBottom: "10px",
+      }}>
+        {order.total_price.toLocaleString()}
+        <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b", marginRight: "4px" }}>د.ع</span>
+      </div>
+
+      {/* 5. Extra notes */}
+      {order.notes ? (
+        <div style={{
+          background: "rgba(245,158,11,0.08)",
+          border: "1px solid rgba(245,158,11,0.25)",
+          borderRadius: "9px",
+          padding: "8px 12px",
+          fontSize: "13px",
+          color: "#fbbf24",
+          lineHeight: "1.5",
+        }}>
+          📝 {order.notes}
+        </div>
+      ) : null}
+
+      {/* Next/Prev buttons — kept for usability */}
+      <div style={{ display: "flex", gap: "6px", marginTop: "12px" }}>
         {stage !== "new" && (
           <button
             onPointerDown={e => e.stopPropagation()}
@@ -117,7 +210,7 @@ function Column({ stage, orders, now, onNext, onPrev }: {
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
-    <div style={{ flex: 1, minWidth: "230px", maxWidth: "300px" }}>
+    <div style={{ flex: 1, minWidth: "240px", maxWidth: "300px" }}>
       <div style={{
         background: `${stage.color}10`, border: `1px solid ${stage.color}25`,
         borderRadius: "14px", padding: "10px 14px", marginBottom: "12px",
@@ -150,11 +243,11 @@ function Column({ stage, orders, now, onNext, onPrev }: {
 
 /* ── Page ── */
 export default function KanbanPage() {
-  const [orders, setOrders]   = useState<Order[]>([]);
+  const [orders, setOrders]     = useState<Order[]>([]);
   const [stageMap, setStageMap] = useState<Record<number, Stage>>({});
-  const [now, setNow]         = useState(Date.now());
-  const [loading, setLoading] = useState(true);
-  const [waking, setWaking]   = useState(false);
+  const [now, setNow]           = useState(Date.now());
+  const [loading, setLoading]   = useState(true);
+  const [waking, setWaking]     = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
   const fetchOrders = useCallback(async () => {
@@ -175,7 +268,6 @@ export default function KanbanPage() {
         const next = { ...prev };
         list.forEach(o => {
           if (!(o.id in next)) next[o.id] = o.status === "done" ? "served" : "new";
-          if (o.status === "done") next[o.id] = "served";
         });
         return next;
       });

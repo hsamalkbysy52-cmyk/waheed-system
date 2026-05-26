@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -64,11 +65,14 @@ def add_item(name: str, price: float, category: str, db: Session = Depends(get_d
 class OrderItem(BaseModel):
     name: str
     price: float
+    category: str = ""
 
 
 class OrderRequest(BaseModel):
     items: List[OrderItem]
     table_number: int = 1
+    cashier: str = ""
+    notes: str = ""
 
 
 @app.get("/orders")
@@ -80,7 +84,10 @@ def get_orders(db: Session = Depends(get_db)):
             "table_number": o.table_number,
             "total_price": o.total_price,
             "status": o.status,
-            "created_at": str(o.created_at)
+            "created_at": o.created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "items": json.loads(o.items_json) if o.items_json else [],
+            "cashier": o.cashier or "",
+            "notes": o.notes or "",
         }
         for o in orders
     ]}
@@ -89,10 +96,14 @@ def get_orders(db: Session = Depends(get_db)):
 @app.post("/orders/create")
 def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     total = sum(item.price for item in order.items)
+    items_data = [{"name": i.name, "price": i.price, "category": i.category} for i in order.items]
     new_order = Order(
         table_number=order.table_number,
         total_price=total,
-        status="pending"
+        status="pending",
+        items_json=json.dumps(items_data, ensure_ascii=False),
+        cashier=order.cashier,
+        notes=order.notes,
     )
     db.add(new_order)
     db.commit()

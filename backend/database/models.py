@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -33,7 +33,10 @@ class Order(Base):
     table_number = Column(Integer)
     total_price = Column(Float)
     status = Column(String, default="pending")
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    items_json = Column(String, nullable=True)
+    cashier = Column(String(100), nullable=True)
+    notes = Column(String, nullable=True)
 
 
 class CancellationLog(Base):
@@ -47,6 +50,18 @@ class CancellationLog(Base):
 
 def create_tables():
     Base.metadata.create_all(engine)
+    # Safe migration: add new columns if they don't exist (works on both SQLite and PostgreSQL)
+    with engine.connect() as conn:
+        for sql in [
+            "ALTER TABLE orders ADD COLUMN items_json TEXT",
+            "ALTER TABLE orders ADD COLUMN cashier VARCHAR(100)",
+            "ALTER TABLE orders ADD COLUMN notes TEXT",
+        ]:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass
     print("DB tables ready")
 
 

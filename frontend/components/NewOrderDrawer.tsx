@@ -33,6 +33,7 @@ export default function NewOrderDrawer({
   const [cart, setCart]       = useState<CartLine[]>([]);
   const [table, setTable]     = useState(1);
   const [cat, setCat]         = useState("الكل");
+  const [notes, setNotes]     = useState("");
   const [sending, setSending] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -103,13 +104,14 @@ export default function NewOrderDrawer({
       /* Expand qty: backend expects [{name, price}] with no quantity field.
          Repeat each item qty times so total_price is computed correctly. */
       const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price }))
+        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
       );
+      const cashier = localStorage.getItem("username") || "";
 
       const r = await fetch(`${API}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: table, items: expandedItems }),
+        body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -360,6 +362,21 @@ export default function NewOrderDrawer({
                   </span>
                 </div>
               )}
+
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="ملاحظات خاصة (اختياري) — مثال: بدون بصل، إضافة صوص..."
+                rows={2}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  background: "#1c1c28", border: "1px solid #252535",
+                  borderRadius: "10px", color: "#f1f5f9",
+                  padding: "9px 12px", fontSize: "12px",
+                  resize: "none", outline: "none", direction: "rtl",
+                  fontFamily: "inherit", marginBottom: "10px",
+                }}
+              />
 
               {orderError && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>
