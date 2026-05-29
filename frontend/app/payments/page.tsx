@@ -15,8 +15,8 @@ const PAY_METHODS = [
   { id: "qr"   as PayMethod, label: "QR / محفظة", icon: "📱" },
 ];
 
-const GUEST_COLORS = ["#f59e0b", "#22c55e", "#818cf8", "#f472b6"];
-const GUEST_LABELS = ["A", "B", "C", "D"];
+const PALETTE = ["#f59e0b","#22c55e","#818cf8","#f472b6","#38bdf8","#fb923c","#a3e635","#e879f9","#34d399","#f87171"];
+const guestColor = (i: number) => PALETTE[i % PALETTE.length];
 
 const CAT_EMOJI: Record<string, string> = {
   "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
@@ -46,6 +46,7 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
   const [equalMethods, setEqualMethods] = useState<PayMethod[]>(["cash", "cash"]);
 
   /* items split */
+  const [numGuests, setNumGuests]   = useState(2);
   const [assign, setAssign]         = useState<Record<string, string>>({});
   const [guestPaid, setGuestPaid]   = useState<Record<string, boolean>>({});
   const [guestMethods, setGuestMethods] = useState<Record<string, PayMethod>>({});
@@ -61,9 +62,10 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
 
   /* equal helpers */
   const changeNumPeople = (n: number) => {
-    setNumPeople(n);
-    setEqualPaid(Array(n).fill(false));
-    setEqualMethods(Array(n).fill("cash"));
+    const clamped = Math.max(2, n);
+    setNumPeople(clamped);
+    setEqualPaid(Array(clamped).fill(false));
+    setEqualMethods(Array(clamped).fill("cash"));
   };
   const share = Math.ceil(order.total_price / numPeople);
   const paidCount = equalPaid.filter(Boolean).length;
@@ -75,14 +77,22 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
   };
 
   /* items helpers */
-  const guests = [...new Set(Object.values(assign))].filter(Boolean).sort();
+  const guestLabels = Array.from({ length: numGuests }, (_, i) => String(i + 1));
+  const changeNumGuests = (n: number) => {
+    const clamped = Math.max(2, n);
+    setNumGuests(clamped);
+    setAssign({});
+    setGuestPaid({});
+    setGuestMethods({});
+  };
+  const guests = guestLabels.filter(g => Object.values(assign).includes(g));
   const guestItems = (g: string) => items.filter(it => assign[it.name] === g);
   const guestTotal = (g: string) => guestItems(g).reduce((s, it) => s + it.price * it.qty, 0);
   const unassigned = items.filter(it => !assign[it.name]).reduce((s, it) => s + it.price * it.qty, 0);
   const payGuestItems = (g: string) => {
     const p = { ...guestPaid, [g]: true };
     setGuestPaid(p);
-    if (unassigned === 0 && guests.every(x => p[x])) markDone();
+    if (unassigned === 0 && guestLabels.every(x => p[x])) markDone();
   };
   const partiallyPaid = paidCount > 0 && paidCount < numPeople;
   const someGuestPaid = Object.values(guestPaid).some(Boolean);
@@ -197,16 +207,27 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
               {/* People picker */}
               <div style={{ marginBottom: "16px" }}>
                 <div style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "10px" }}>عدد الأشخاص</div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {[2,3,4,5,6].map(n => (
-                    <button key={n} onClick={() => changeNumPeople(n)} style={{
-                      flex: 1, padding: "11px 4px", borderRadius: "10px", fontSize: "15px", fontWeight: "800",
-                      background: numPeople === n ? "rgba(245,158,11,0.15)" : "#1c1c28",
-                      color: numPeople === n ? "#f59e0b" : "#64748b",
-                      border: `1px solid ${numPeople === n ? "rgba(245,158,11,0.4)" : "#252535"}`,
-                      cursor: "pointer",
-                    }}>{n}</button>
-                  ))}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button onClick={() => changeNumPeople(numPeople - 1)} disabled={numPeople <= 2} style={{
+                    width: "40px", height: "40px", borderRadius: "10px", fontSize: "20px", fontWeight: "700",
+                    background: "#1c1c28", color: numPeople <= 2 ? "#334155" : "#f59e0b",
+                    border: "1px solid #252535", cursor: numPeople <= 2 ? "not-allowed" : "pointer",
+                  }}>−</button>
+                  <input
+                    type="number" min={2} value={numPeople}
+                    onChange={e => changeNumPeople(parseInt(e.target.value) || 2)}
+                    style={{
+                      flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px",
+                      background: "rgba(245,158,11,0.08)", color: "#f59e0b",
+                      border: "1px solid rgba(245,158,11,0.35)", fontSize: "18px", fontWeight: "800",
+                      outline: "none",
+                    }}
+                  />
+                  <button onClick={() => changeNumPeople(numPeople + 1)} style={{
+                    width: "40px", height: "40px", borderRadius: "10px", fontSize: "20px", fontWeight: "700",
+                    background: "#1c1c28", color: "#f59e0b",
+                    border: "1px solid #252535", cursor: "pointer",
+                  }}>+</button>
                 </div>
               </div>
 
@@ -272,26 +293,56 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
                   لا توجد تفاصيل أصناف لهذا الطلب
                 </div>
               ) : (<>
-                {/* Assign items */}
+                {/* Guest count picker */}
+                <div style={{ marginBottom: "16px" }}>
+                  <div style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "10px" }}>عدد الزبائن</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button onClick={() => changeNumGuests(numGuests - 1)} disabled={numGuests <= 2} style={{
+                      width: "40px", height: "40px", borderRadius: "10px", fontSize: "20px", fontWeight: "700",
+                      background: "#1c1c28", color: numGuests <= 2 ? "#334155" : "#f59e0b",
+                      border: "1px solid #252535", cursor: numGuests <= 2 ? "not-allowed" : "pointer",
+                    }}>−</button>
+                    <input
+                      type="number" min={2} value={numGuests}
+                      onChange={e => changeNumGuests(parseInt(e.target.value) || 2)}
+                      style={{
+                        flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px",
+                        background: "rgba(245,158,11,0.08)", color: "#f59e0b",
+                        border: "1px solid rgba(245,158,11,0.35)", fontSize: "18px", fontWeight: "800",
+                        outline: "none",
+                      }}
+                    />
+                    <button onClick={() => changeNumGuests(numGuests + 1)} style={{
+                      width: "40px", height: "40px", borderRadius: "10px", fontSize: "20px", fontWeight: "700",
+                      background: "#1c1c28", color: "#f59e0b",
+                      border: "1px solid #252535", cursor: "pointer",
+                    }}>+</button>
+                  </div>
+                </div>
+
+              {/* Assign items */}
                 <div style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "10px" }}>وزّع الأصناف على الزبائن</div>
                 <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", padding: "4px 12px", marginBottom: "16px" }}>
                   {items.map((it, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < items.length - 1 ? "1px solid #252535" : "none" }}>
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0, marginLeft: "10px" }}>
                         <div style={{ color: "#f1f5f9", fontSize: "13px" }}>
                           {catEmoji(it.category)} {it.name}{it.qty > 1 ? ` ×${it.qty}` : ""}
                         </div>
                         <div style={{ color: "#64748b", fontSize: "11px" }}>{(it.price * it.qty).toLocaleString()} د.ع</div>
                       </div>
-                      <div style={{ display: "flex", gap: "5px" }}>
-                        {GUEST_LABELS.map((g, gi) => (
-                          <button key={g} onClick={() => setAssign(prev => ({ ...prev, [it.name]: prev[it.name] === g ? "" : g }))} style={{
-                            width: "30px", height: "30px", borderRadius: "8px", fontSize: "12px", fontWeight: "800", cursor: "pointer",
-                            background: assign[it.name] === g ? GUEST_COLORS[gi] + "25" : "#252535",
-                            color: assign[it.name] === g ? GUEST_COLORS[gi] : "#64748b",
-                            border: `1px solid ${assign[it.name] === g ? GUEST_COLORS[gi] + "60" : "transparent"}`,
-                          }}>{g}</button>
-                        ))}
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end", maxWidth: "160px" }}>
+                        {guestLabels.map((g, gi) => {
+                          const col = guestColor(gi);
+                          return (
+                            <button key={g} onClick={() => setAssign(prev => ({ ...prev, [it.name]: prev[it.name] === g ? "" : g }))} style={{
+                              width: "28px", height: "28px", borderRadius: "7px", fontSize: "11px", fontWeight: "800", cursor: "pointer",
+                              background: assign[it.name] === g ? col + "25" : "#252535",
+                              color: assign[it.name] === g ? col : "#64748b",
+                              border: `1px solid ${assign[it.name] === g ? col + "70" : "transparent"}`,
+                            }}>{g}</button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -309,7 +360,7 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
                   <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "#f59e0b", fontSize: "12px", fontWeight: "600" }}>⏳ مدفوع جزئياً</span>
                     <span style={{ color: "#f59e0b", fontSize: "13px", fontWeight: "800" }}>
-                      متبقي {guests.filter(g => !guestPaid[g]).reduce((s, g) => s + guestTotal(g), 0).toLocaleString()} د.ع
+                      متبقي {guestLabels.filter(g => !guestPaid[g] && Object.values(assign).includes(g)).reduce((s, g) => s + guestTotal(g), 0).toLocaleString()} د.ع
                     </span>
                   </div>
                 )}
@@ -320,7 +371,7 @@ function BillModal({ order, onClose, onPaid }: { order: Order; onClose: () => vo
                     {guests.map((g, gi) => {
                       const total = guestTotal(g);
                       const paid  = guestPaid[g];
-                      const color = GUEST_COLORS[GUEST_LABELS.indexOf(g)];
+                      const color = guestColor(guestLabels.indexOf(g));
                       return (
                         <div key={g} style={{
                           background: paid ? "rgba(34,197,94,0.08)" : "#1c1c28",
