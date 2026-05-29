@@ -70,6 +70,13 @@ function stageColor(mins: number, stage: Stage) {
   return "#ef4444";
 }
 
+function timeAgo(created_at: string, now: number) {
+  const mins = Math.floor(Math.max(0, now - parseUTC(created_at)) / 60000);
+  if (mins < 1) return "الآن";
+  if (mins < 60) return `منذ ${mins} دقيقة`;
+  return `منذ ${Math.floor(mins / 60)} ساعة`;
+}
+
 /* ── Draggable card ── */
 function Card({ order, stage, now, onNext, onPrev }: {
   order: Order; stage: Stage; now: number;
@@ -102,9 +109,10 @@ function Card({ order, stage, now, onNext, onPrev }: {
         طلب #{order.id}
       </div>
 
-      {/* 2. Table number */}
-      <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "12px" }}>
-        🪑 طاولة {order.table_number}
+      {/* 2. Table number + time ago */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+        <div style={{ color: "#64748b", fontSize: "12px" }}>🪑 طاولة {order.table_number}</div>
+        <div style={{ color: "#64748b", fontSize: "11px" }}>🕐 {timeAgo(order.created_at, now)}</div>
       </div>
 
       {/* 3. Items */}
