@@ -24,6 +24,7 @@ class MenuItem(Base):
     price = Column(Float)
     category = Column(String)
     is_available = Column(Boolean, default=True)
+    description = Column(String, nullable=True)
 
 
 class Order(Base):
@@ -56,6 +57,7 @@ def create_tables():
             "ALTER TABLE orders ADD COLUMN items_json TEXT",
             "ALTER TABLE orders ADD COLUMN cashier VARCHAR(100)",
             "ALTER TABLE orders ADD COLUMN notes TEXT",
+            "ALTER TABLE menu_items ADD COLUMN description TEXT",
         ]:
             try:
                 conn.execute(text(sql))

@@ -51,15 +51,59 @@ def home():
 @app.get("/menu")
 def get_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
-    return {"menu": items}
+    return {"menu": [
+        {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
+         "is_available": i.is_available, "description": i.description or ""}
+        for i in items
+    ]}
+
+
+class MenuItemPayload(BaseModel):
+    name: str
+    price: float
+    category: str
+    description: str = ""
 
 
 @app.post("/menu/add")
-def add_item(name: str, price: float, category: str, db: Session = Depends(get_db)):
-    item = MenuItem(name=name, price=price, category=category)
+def add_item(payload: MenuItemPayload, db: Session = Depends(get_db)):
+    item = MenuItem(name=payload.name, price=payload.price, category=payload.category, description=payload.description or None)
     db.add(item)
     db.commit()
-    return {"message": f"تم إضافة {name}", "price": price}
+    return {"message": f"تم إضافة {payload.name}", "id": item.id}
+
+
+@app.put("/menu/{item_id}")
+def edit_item(item_id: int, payload: MenuItemPayload, db: Session = Depends(get_db)):
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        return {"error": "الصنف غير موجود"}
+    item.name = payload.name
+    item.price = payload.price
+    item.category = payload.category
+    item.description = payload.description or None
+    db.commit()
+    return {"message": "تم تعديل الصنف"}
+
+
+@app.delete("/menu/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        return {"error": "الصنف غير موجود"}
+    db.delete(item)
+    db.commit()
+    return {"message": "تم حذف الصنف"}
+
+
+@app.put("/menu/{item_id}/toggle")
+def toggle_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        return {"error": "الصنف غير موجود"}
+    item.is_available = not item.is_available
+    db.commit()
+    return {"message": "تم تغيير الحالة", "is_available": item.is_available}
 
 
 class OrderItem(BaseModel):
