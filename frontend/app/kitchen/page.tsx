@@ -3,14 +3,41 @@ import { useState, useEffect, useCallback } from "react";
 
 const API = "https://waheed-system-production.up.railway.app";
 
-type Item = { name: string; quantity: number; notes?: string };
-type Order = { id: number; table_number: number; status: string; created_at: string; items?: Item[] };
+type RawItem = { name: string; price: number; category: string };
+type Order = { id: number; table_number: number; status: string; created_at: string; items?: RawItem[] };
+
+const CAT_EMOJI: Record<string, string> = {
+  "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
+  "حلويات": "🍰", "مقبلات": "🥗", "رئيسية": "🍽️", "وجبات": "🍽️", "باستا": "🍝",
+};
+const catEmoji = (name: string, cat: string) => CAT_EMOJI[name] ?? CAT_EMOJI[cat] ?? "🍴";
+
+function aggregateItems(items: RawItem[]) {
+  const map: Record<string, { name: string; category: string; qty: number }> = {};
+  for (const it of items) {
+    if (map[it.name]) map[it.name].qty++;
+    else map[it.name] = { name: it.name, category: it.category, qty: 1 };
+  }
+  return Object.values(map);
+}
+
+function aggregateAll(orders: Order[]) {
+  const map: Record<string, { name: string; category: string; qty: number }> = {};
+  for (const order of orders) {
+    for (const it of order.items ?? []) {
+      if (map[it.name]) map[it.name].qty++;
+      else map[it.name] = { name: it.name, category: it.category, qty: 1 };
+    }
+  }
+  return Object.values(map).sort((a, b) => b.qty - a.qty);
+}
 
 function elapsed(created_at: string, now: number) {
-  const ms = now - new Date(created_at).getTime();
-  const m  = Math.floor(ms / 60000);
-  const s  = Math.floor((ms % 60000) / 1000);
-  return { label: `${m}:${s.toString().padStart(2, "0")}`, mins: m };
+  const s = created_at.endsWith("Z") || created_at.includes("+") ? created_at : created_at + "Z";
+  const ms = now - new Date(s).getTime();
+  const m  = Math.max(0, Math.floor(ms / 60000));
+  const sc = Math.floor((Math.max(0, ms) % 60000) / 1000);
+  return { label: `${m}:${sc.toString().padStart(2, "0")}`, mins: m };
 }
 
 function urgencyColor(mins: number) {
@@ -55,12 +82,13 @@ export default function KitchenPage() {
   };
 
   const urgentCount = orders.filter(o => elapsed(o.created_at, now).mins >= 15).length;
+  const totals = aggregateAll(orders);
 
   return (
     <div style={{ padding: "24px", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
           <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>🍳 شاشة المطبخ</h1>
           <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
@@ -79,6 +107,35 @@ export default function KitchenPage() {
         </div>
       </div>
 
+      {/* ── Totals summary strip ── */}
+      {!loading && totals.length > 0 && (
+        <div style={{
+          background: "#111118", border: "1px solid #252535",
+          borderRadius: "16px", padding: "16px 20px", marginBottom: "24px",
+        }}>
+          <div style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "600", marginBottom: "12px" }}>
+            📊 إجمالي الأصناف — كل الطاولات
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {totals.map((item, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: "7px",
+                background: "#1c1c28", border: "1px solid #252535",
+                borderRadius: "12px", padding: "8px 14px",
+              }}>
+                <span style={{ fontSize: "18px" }}>{catEmoji(item.name, item.category)}</span>
+                <span style={{ color: "#f1f5f9", fontSize: "14px", fontWeight: "600" }}>{item.name}</span>
+                <span style={{
+                  background: "rgba(245,158,11,0.18)", color: "#f59e0b",
+                  borderRadius: "8px", padding: "2px 10px",
+                  fontSize: "15px", fontWeight: "800",
+                }}>×{item.qty}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Order grid */}
       {loading ? (
         <div style={{ textAlign: "center", color: "#64748b", paddingTop: "80px", fontSize: "16px" }}>⏳ جاري التحميل...</div>
@@ -94,6 +151,7 @@ export default function KitchenPage() {
             const { label: timer, mins } = elapsed(order.created_at, now);
             const u = urgencyColor(mins);
             const busy = marking.has(order.id);
+            const aggItems = aggregateItems(order.items ?? []);
             return (
               <div key={order.id} style={{
                 background: u.bg, border: `1px solid ${u.border}40`,
@@ -118,17 +176,14 @@ export default function KitchenPage() {
 
                 {/* Items */}
                 <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: "10px", padding: "10px 12px", flex: 1 }}>
-                  {order.items && order.items.length > 0 ? (
-                    order.items.map((item, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < order.items!.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                        <div>
-                          <span style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600" }}>{item.name}</span>
-                          {item.notes && <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "1px" }}>{item.notes}</div>}
-                        </div>
-                        <span style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: "700" }}>×{item.quantity}</span>
-                      </div>
-                    ))
-                  ) : (
+                  {aggItems.length > 0 ? aggItems.map((item, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < aggItems.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                      <span style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600" }}>
+                        {catEmoji(item.name, item.category)} {item.name}
+                      </span>
+                      <span style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: "700" }}>×{item.qty}</span>
+                    </div>
+                  )) : (
                     <div style={{ color: "#64748b", fontSize: "12px", textAlign: "center", padding: "6px 0" }}>لا توجد تفاصيل للأصناف</div>
                   )}
                 </div>
