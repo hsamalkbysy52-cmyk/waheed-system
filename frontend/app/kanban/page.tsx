@@ -307,6 +307,7 @@ export default function KanbanPage() {
   const moveTo = async (orderId: number, stage: Stage) => {
     if (stage === "served") {
       await fetch(`${API}/orders/${orderId}/done`, { method: "PUT" });
+      fetch(`${API}/inventory/deduct/${orderId}`, { method: "POST" }).catch(() => {});
     }
     setStageMap(p => ({ ...p, [orderId]: stage }));
   };

@@ -49,6 +49,25 @@ class CancellationLog(Base):
     cancelled_at = Column(DateTime, default=datetime.now)
 
 
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    unit = Column(String, default="قطعة")
+    quantity = Column(Float, default=0)
+    min_quantity = Column(Float, default=5)
+
+
+class RecipeIngredient(Base):
+    __tablename__ = "recipe_ingredients"
+
+    id = Column(Integer, primary_key=True)
+    menu_item_id = Column(Integer)
+    inventory_item_id = Column(Integer)
+    amount = Column(Float, default=1)
+
+
 def create_tables():
     Base.metadata.create_all(engine)
     # Safe migration: add new columns if they don't exist (works on both SQLite and PostgreSQL)

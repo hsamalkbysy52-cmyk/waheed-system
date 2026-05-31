@@ -9,7 +9,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog
+from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -185,6 +185,112 @@ def cancel_order(order_id: int, cashier: str, db: Session = Depends(get_db)):
     if fraud_detected:
         result["fraud_alert"] = f"⚠️ {cashier} ألغى 3 طلبات أو أكثر خلال ساعة — تم إبلاغ المالك."
     return result
+
+
+class InventoryPayload(BaseModel):
+    name: str
+    unit: str = "قطعة"
+    quantity: float = 0
+    min_quantity: float = 5
+
+
+@app.get("/inventory")
+def get_inventory(db: Session = Depends(get_db)):
+    items = db.query(InventoryItem).all()
+    return {"items": [
+        {"id": i.id, "name": i.name, "unit": i.unit, "quantity": i.quantity, "min_quantity": i.min_quantity}
+        for i in items
+    ]}
+
+
+@app.post("/inventory/add")
+def add_inventory_item(payload: InventoryPayload, db: Session = Depends(get_db)):
+    item = InventoryItem(name=payload.name, unit=payload.unit, quantity=payload.quantity, min_quantity=payload.min_quantity)
+    db.add(item)
+    db.commit()
+    return {"message": f"تم إضافة {payload.name}", "id": item.id}
+
+
+@app.put("/inventory/{item_id}")
+def update_inventory_item(item_id: int, payload: InventoryPayload, db: Session = Depends(get_db)):
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    if not item:
+        return {"error": "المادة غير موجودة"}
+    item.name = payload.name
+    item.unit = payload.unit
+    item.quantity = payload.quantity
+    item.min_quantity = payload.min_quantity
+    db.commit()
+    return {"message": "تم تعديل المادة"}
+
+
+@app.delete("/inventory/{item_id}")
+def delete_inventory_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    if not item:
+        return {"error": "المادة غير موجودة"}
+    db.query(RecipeIngredient).filter(RecipeIngredient.inventory_item_id == item_id).delete()
+    db.delete(item)
+    db.commit()
+    return {"message": "تم حذف المادة"}
+
+
+@app.get("/inventory/recipe/{menu_item_id}")
+def get_recipe(menu_item_id: int, db: Session = Depends(get_db)):
+    rows = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
+    result = []
+    for r in rows:
+        inv = db.query(InventoryItem).filter(InventoryItem.id == r.inventory_item_id).first()
+        result.append({
+            "id": r.id,
+            "inventory_item_id": r.inventory_item_id,
+            "amount": r.amount,
+            "inventory_name": inv.name if inv else "",
+            "unit": inv.unit if inv else "",
+        })
+    return {"recipe": result}
+
+
+class RecipeItem(BaseModel):
+    inventory_item_id: int
+    amount: float
+
+
+class RecipePayload(BaseModel):
+    ingredients: List[RecipeItem]
+
+
+@app.post("/inventory/recipe/{menu_item_id}")
+def save_recipe(menu_item_id: int, payload: RecipePayload, db: Session = Depends(get_db)):
+    db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).delete()
+    for ing in payload.ingredients:
+        db.add(RecipeIngredient(menu_item_id=menu_item_id, inventory_item_id=ing.inventory_item_id, amount=ing.amount))
+    db.commit()
+    return {"message": "تم حفظ الوصفة"}
+
+
+@app.post("/inventory/deduct/{order_id}")
+def deduct_inventory_for_order(order_id: int, db: Session = Depends(get_db)):
+    from collections import Counter
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    items = json.loads(order.items_json) if order.items_json else []
+    counts = Counter(it["name"] for it in items)
+    low_stock = []
+    for item_name, qty in counts.items():
+        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        if not menu_item:
+            continue
+        recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
+        for ri in recipe:
+            inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+            if inv:
+                inv.quantity = max(0, inv.quantity - ri.amount * qty)
+                if inv.quantity <= inv.min_quantity:
+                    low_stock.append(inv.name)
+    db.commit()
+    return {"message": "تم خصم المكونات", "low_stock": low_stock}
 
 
 @app.post("/login")

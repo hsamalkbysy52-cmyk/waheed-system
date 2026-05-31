@@ -3,12 +3,137 @@ import { useState, useEffect, useCallback } from "react";
 
 const API = "https://waheed-system-production.up.railway.app";
 
-type Item = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string };
+type Item    = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string };
+type InvItem = { id: number; name: string; unit: string };
+type RecipeRow = { inventory_item_id: number; name: string; unit: string; amount: number };
 
 const CATS = ["برجر", "بيتزا", "مشروبات", "حلويات", "مقبلات", "رئيسية", "أخرى"];
 const ALL_CATS = ["الكل", ...CATS];
 
 const EMPTY_FORM = { name: "", price: "", category: "برجر", description: "" };
+
+/* ─── Recipe Modal ─── */
+function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => void }) {
+  const [invItems, setInvItems] = useState<InvItem[]>([]);
+  const [recipe,   setRecipe]   = useState<RecipeRow[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [selId,    setSelId]    = useState<number | "">("");
+  const [amount,   setAmount]   = useState("1");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API}/inventory`).then(r => r.json()),
+      fetch(`${API}/inventory/recipe/${menuItem.id}`).then(r => r.json()),
+    ]).then(([invData, recipeData]) => {
+      setInvItems(invData.items || []);
+      setRecipe((recipeData.recipe || []).map((r: { inventory_item_id: number; inventory_name: string; unit: string; amount: number }) => ({
+        inventory_item_id: r.inventory_item_id,
+        name: r.inventory_name,
+        unit: r.unit,
+        amount: r.amount,
+      })));
+    }).finally(() => setLoading(false));
+  }, [menuItem.id]);
+
+  const addIngredient = () => {
+    if (!selId) return;
+    const inv = invItems.find(i => i.id === selId);
+    if (!inv || recipe.find(r => r.inventory_item_id === selId)) return;
+    setRecipe(p => [...p, { inventory_item_id: inv.id, name: inv.name, unit: inv.unit, amount: parseFloat(amount) || 1 }]);
+    setSelId(""); setAmount("1");
+  };
+
+  const saveRecipe = async () => {
+    setSaving(true);
+    try {
+      await fetch(`${API}/inventory/recipe/${menuItem.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients: recipe.map(r => ({ inventory_item_id: r.inventory_item_id, amount: r.amount })) }),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: "16px" }}>
+      <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "460px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🔗 وصفة: {menuItem.name}</div>
+            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>اربط المكونات ومقدارها لكل وحدة</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
+        </div>
+
+        <div style={{ overflowY: "auto", flex: 1, padding: "18px 22px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>⏳ جاري التحميل...</div>
+          ) : (<>
+            {/* Add ingredient */}
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "8px" }}>إضافة مكوّن من المخزون</div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <select value={selId} onChange={e => setSelId(e.target.value === "" ? "" : parseInt(e.target.value))}
+                  style={{ flex: 2, padding: "9px 10px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: selId === "" ? "#334155" : "#f1f5f9", fontSize: "13px" }}>
+                  <option value="">اختر مادة...</option>
+                  {invItems.filter(i => !recipe.find(r => r.inventory_item_id === i.id)).map(i => (
+                    <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                  ))}
+                </select>
+                <input type="number" value={amount} min="0.1" step="0.1" onChange={e => setAmount(e.target.value)} placeholder="كمية"
+                  style={{ width: "70px", padding: "9px 10px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", textAlign: "center" }} />
+                <button onClick={addIngredient} disabled={!selId}
+                  style={{ padding: "9px 14px", background: selId ? "rgba(34,197,94,0.15)" : "#1c1c28", color: selId ? "#22c55e" : "#334155", border: `1px solid ${selId ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "10px", cursor: selId ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: "700" }}>
+                  + أضف
+                </button>
+              </div>
+              {invItems.length === 0 && (
+                <div style={{ color: "#64748b", fontSize: "11px", marginTop: "6px" }}>لا توجد مواد. أضفها أولاً من صفحة المخزون.</div>
+              )}
+            </div>
+
+            {/* Current recipe list */}
+            {recipe.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#334155", padding: "24px 0", fontSize: "13px" }}>لم تُربط أي مكونات بعد</div>
+            ) : (
+              <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
+                {recipe.map((r, i) => (
+                  <div key={r.inventory_item_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: i < recipe.length - 1 ? "1px solid #252535" : "none" }}>
+                    <div>
+                      <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600" }}>{r.name}</div>
+                      <div style={{ color: "#64748b", fontSize: "11px" }}>{r.amount} {r.unit} لكل وحدة</div>
+                    </div>
+                    <button onClick={() => setRecipe(p => p.filter(x => x.inventory_item_id !== r.inventory_item_id))}
+                      style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", padding: "4px 10px", cursor: "pointer", fontSize: "12px" }}>
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>)}
+        </div>
+
+        {/* Save footer */}
+        <div style={{ padding: "14px 22px", borderTop: "1px solid #252535", flexShrink: 0 }}>
+          <button onClick={saveRecipe} disabled={saving || loading} style={{
+            width: "100%", padding: "13px", border: "none", borderRadius: "12px",
+            cursor: (saving || loading) ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: "800",
+            background: saved ? "rgba(34,197,94,0.15)" : (saving || loading) ? "#252535" : "linear-gradient(135deg,#f59e0b,#d97706)",
+            color: saved ? "#22c55e" : (saving || loading) ? "#64748b" : "#000",
+          }}>
+            {saved ? "✅ تم حفظ الوصفة!" : saving ? "⏳ جاري الحفظ..." : "💾 حفظ الوصفة"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MenuPage() {
   const [items, setItems]       = useState<Item[]>([]);
@@ -19,8 +144,9 @@ export default function MenuPage() {
   const [form, setForm]         = useState(EMPTY_FORM);
   const [error, setError]       = useState("");
   const [editId, setEditId]     = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteId, setDeleteId]   = useState<number | null>(null);
+  const [deleting, setDeleting]   = useState(false);
+  const [recipeItem, setRecipeItem] = useState<Item | null>(null);
 
   const fetchMenu = useCallback(async () => {
     try {
@@ -229,6 +355,10 @@ export default function MenuPage() {
                   style={{ padding: "7px 12px", background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
                 >🗑️</button>
               </div>
+              <button
+                onClick={() => setRecipeItem(item)}
+                style={{ width: "100%", padding: "7px", background: "rgba(245,158,11,0.08)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
+              >🔗 وصفة المكونات</button>
 
               <button
                 onClick={() => toggleAvailable(item)}
@@ -246,6 +376,9 @@ export default function MenuPage() {
           ))}
         </div>
       )}
+
+      {/* Recipe modal */}
+      {recipeItem && <RecipeModal menuItem={recipeItem} onClose={() => setRecipeItem(null)} />}
 
       {/* Delete confirmation modal */}
       {deleteId && (
