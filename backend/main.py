@@ -137,6 +137,20 @@ def get_orders(db: Session = Depends(get_db)):
     ]}
 
 
+def _deduct_inventory(items_data: list, db: Session):
+    from collections import Counter
+    counts = Counter(it["name"] for it in items_data)
+    for item_name, qty in counts.items():
+        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        if not menu_item:
+            continue
+        recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
+        for ri in recipe:
+            inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+            if inv:
+                inv.quantity = max(0.0, inv.quantity - ri.amount * qty)
+
+
 @app.post("/orders/create")
 def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     total = sum(item.price for item in order.items)
@@ -150,6 +164,7 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
         notes=order.notes,
     )
     db.add(new_order)
+    _deduct_inventory(items_data, db)
     db.commit()
     return {
         "message": "تم حفظ الطلب!",
