@@ -440,6 +440,7 @@ export default function TablesPage() {
   const occupiedCount     = tableEls.filter(e => e.tableNumber && occupiedTables.has(e.tableNumber)).length;
   const selectedEl        = elements.find(e => e.id === selected);
   const activeTableOrders = activeTable ? orders.filter(o => o.table_number === activeTable) : [];
+  const canvasH = Math.max(560, elements.length > 0 ? Math.max(...elements.map(e => e.y + e.h)) + 80 : 560);
 
   const inputSt: React.CSSProperties = {
     width: "100%", padding: "6px 8px",
@@ -595,46 +596,49 @@ export default function TablesPage() {
             </div>
           </div>
 
-          {/* Canvas */}
-          <div
-            ref={canvasRef}
-            onMouseDown={e => { if (e.target === e.currentTarget) setSelected(null); }}
-            style={{
-              flex: 1, height: 640,
-              background: "#111118", border: "1px solid #252535", borderRadius: 16,
-              position: "relative", overflow: "hidden",
-              backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px)",
-              backgroundSize: `${GRID}px ${GRID}px`,
-              cursor: ghostVisible ? "crosshair" : "default",
-            }}
-          >
-            {elements.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                <div style={{ fontSize: 48, opacity: 0.1, marginBottom: 12 }}>🏠</div>
-                <div style={{ color: "#252535", fontSize: 13 }}>اسحب العناصر من الشريط الجانبي</div>
-              </div>
-            )}
-            {elements.map(el => (
-              <CanvasEl key={el.id} el={el} editMode selected={selected === el.id} occupied={false}
-                onDown={e => {
-                  e.stopPropagation();
-                  setSelected(el.id);
-                  const rect = canvasRef.current!.getBoundingClientRect();
-                  dragging.current = { id: el.id, ox: e.clientX - rect.left - el.x, oy: e.clientY - rect.top - el.y };
-                }}
-                onResizeDown={e => {
-                  e.stopPropagation();
-                  resizing.current = { id: el.id, mx: e.clientX, my: e.clientY, ow: el.w, oh: el.h };
-                }}
-              />
-            ))}
+          {/* Canvas — scrollable wrapper */}
+          <div style={{ flex: 1, height: 640, overflow: "auto", border: "1px solid #252535", borderRadius: 16 }}>
+            <div
+              ref={canvasRef}
+              onMouseDown={e => { if (e.target === e.currentTarget) setSelected(null); }}
+              style={{
+                width: "100%", height: canvasH,
+                background: "#111118",
+                position: "relative",
+                backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px)",
+                backgroundSize: `${GRID}px ${GRID}px`,
+                cursor: ghostVisible ? "crosshair" : "default",
+              }}
+            >
+              {elements.length === 0 && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                  <div style={{ fontSize: 48, opacity: 0.1, marginBottom: 12 }}>🏠</div>
+                  <div style={{ color: "#252535", fontSize: 13 }}>اسحب العناصر من الشريط الجانبي</div>
+                </div>
+              )}
+              {elements.map(el => (
+                <CanvasEl key={el.id} el={el} editMode selected={selected === el.id} occupied={false}
+                  onDown={e => {
+                    e.stopPropagation();
+                    setSelected(el.id);
+                    const rect = canvasRef.current!.getBoundingClientRect();
+                    dragging.current = { id: el.id, ox: e.clientX - rect.left - el.x, oy: e.clientY - rect.top - el.y };
+                  }}
+                  onResizeDown={e => {
+                    e.stopPropagation();
+                    resizing.current = { id: el.id, mx: e.clientX, my: e.clientY, ow: el.w, oh: el.h };
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
       ) : (
         /* ════ LIVE MODE ════ */
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "flex-start" }}>
-          <div ref={canvasRef} style={{ background: "#111118", border: "1px solid #252535", borderRadius: 16, position: "relative", height: 560, overflow: "hidden" }}>
+          <div style={{ border: "1px solid #252535", borderRadius: 16, height: 560, overflow: "auto" }}>
+            <div ref={canvasRef} style={{ background: "#111118", position: "relative", height: canvasH, minWidth: "100%" }}>
             {elements.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
                 <div style={{ fontSize: 48, opacity: 0.12, marginBottom: 4 }}>🏠</div>
@@ -700,6 +704,7 @@ export default function TablesPage() {
                 );
               })
             )}
+            </div>
           </div>
 
           {/* Side panel */}
@@ -781,33 +786,40 @@ export default function TablesPage() {
                 >−</button>
                 <div style={{ flex: 1, textAlign: "center", color: "#f59e0b", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{quickCount}</div>
                 <button
-                  onClick={() => setQuickCount(c => Math.min(30, c + 1))}
+                  onClick={() => setQuickCount(c => Math.min(100, c + 1))}
                   style={{ width: 40, height: 40, borderRadius: "50%", background: "#1c1c28", border: "1px solid #252535", color: "#f1f5f9", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
                 >+</button>
               </div>
               <input
-                type="range" min={1} max={30} value={quickCount}
+                type="range" min={1} max={100} value={quickCount}
                 onChange={e => setQuickCount(parseInt(e.target.value))}
                 style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer" }}
               />
               <div style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 10, marginTop: 2 }}>
-                <span>١</span><span>١٥</span><span>٣٠</span>
+                <span>١</span><span>٥٠</span><span>١٠٠</span>
               </div>
             </div>
 
             {/* Dots preview */}
             <div style={{ background: "#0a0a0f", border: "1px solid #1c1c28", borderRadius: 12, padding: "12px 14px", marginBottom: 22, minHeight: 58 }}>
-              <div style={{ color: "#334155", fontSize: 10, marginBottom: 8 }}>معاينة</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {Array.from({ length: quickCount }, (_, i) => (
-                  <div key={i} style={{
-                    width: 22, height: 22, borderRadius: "50%",
-                    background: "rgba(34,197,94,0.25)", border: "1px solid rgba(34,197,94,0.5)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 8, color: "#22c55e", fontWeight: 700,
-                  }}>{i + 1}</div>
-                ))}
-              </div>
+              <div style={{ color: "#334155", fontSize: 10, marginBottom: 8 }}>معاينة — {quickCount} طاولة</div>
+              {(() => {
+                const dotSz = quickCount <= 30 ? 20 : quickCount <= 60 ? 14 : 10;
+                const gap   = quickCount <= 60 ? 4 : 3;
+                const showNums = quickCount <= 30;
+                return (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap }}>
+                    {Array.from({ length: quickCount }, (_, i) => (
+                      <div key={i} style={{
+                        width: dotSz, height: dotSz, borderRadius: "50%",
+                        background: "rgba(34,197,94,0.25)", border: "1px solid rgba(34,197,94,0.5)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 7, color: "#22c55e", fontWeight: 700,
+                      }}>{showNums ? i + 1 : ""}</div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
