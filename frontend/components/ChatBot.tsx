@@ -28,11 +28,13 @@ export default function ChatBot() {
   const [placing, setPlacing] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  const { menu, fetchMenu } = useStore();
+  const menu      = useStore(s => s.menu);
+  const fetchMenu = useStore(s => s.fetchMenu);
 
+  // Fetch menu once when the chat is first opened
   useEffect(() => {
-    if (menu.length === 0) fetchMenu();
-  }, [menu.length, fetchMenu]);
+    if (open && menu.length === 0) fetchMenu().catch(() => {});
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
