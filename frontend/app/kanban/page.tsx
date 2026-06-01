@@ -293,20 +293,6 @@ export default function KanbanPage() {
     } finally { setLoading(false); setWaking(false); }
   }, []);
 
-  // Load saved stages from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("kanban_stages");
-      if (saved) setStageMap(JSON.parse(saved));
-    } catch {}
-  }, []);
-
-  // Persist stage positions to localStorage on every change
-  useEffect(() => {
-    if (Object.keys(stageMap).length > 0) {
-      localStorage.setItem("kanban_stages", JSON.stringify(stageMap));
-    }
-  }, [stageMap]);
 
   useEffect(() => {
     fetchOrders();
