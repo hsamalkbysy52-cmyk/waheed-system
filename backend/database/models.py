@@ -68,6 +68,21 @@ class RecipeIngredient(Base):
     amount = Column(Float, default=1)
 
 
+class TableLayoutElement(Base):
+    __tablename__ = "table_layout"
+
+    id = Column(Integer, primary_key=True)
+    element_id = Column(String)
+    element_type = Column(String)
+    x = Column(Float, default=0)
+    y = Column(Float, default=0)
+    w = Column(Float, default=90)
+    h = Column(Float, default=90)
+    table_number = Column(Integer, nullable=True)
+    capacity = Column(Integer, nullable=True)
+    label = Column(String, nullable=True)
+
+
 def create_tables():
     Base.metadata.create_all(engine)
     # Safe migration: add new columns if they don't exist (works on both SQLite and PostgreSQL)

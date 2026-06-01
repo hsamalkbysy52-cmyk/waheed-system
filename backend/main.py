@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient
+from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -306,6 +306,54 @@ def deduct_inventory_for_order(order_id: int, db: Session = Depends(get_db)):
                     low_stock.append(inv.name)
     db.commit()
     return {"message": "تم خصم المكونات", "low_stock": low_stock}
+
+
+@app.get("/table-layout")
+def get_table_layout(db: Session = Depends(get_db)):
+    elements = db.query(TableLayoutElement).all()
+    return {"elements": [
+        {
+            "element_id": e.element_id,
+            "element_type": e.element_type,
+            "x": e.x, "y": e.y, "w": e.w, "h": e.h,
+            "table_number": e.table_number,
+            "capacity": e.capacity,
+            "label": e.label or "",
+        }
+        for e in elements
+    ]}
+
+
+class LayoutElementPayload(BaseModel):
+    element_id: str
+    element_type: str
+    x: float
+    y: float
+    w: float
+    h: float
+    table_number: Optional[int] = None
+    capacity: Optional[int] = None
+    label: str = ""
+
+
+class LayoutSavePayload(BaseModel):
+    elements: List[LayoutElementPayload]
+
+
+@app.post("/table-layout/save")
+def save_table_layout(payload: LayoutSavePayload, db: Session = Depends(get_db)):
+    db.query(TableLayoutElement).delete()
+    for el in payload.elements:
+        db.add(TableLayoutElement(
+            element_id=el.element_id,
+            element_type=el.element_type,
+            x=el.x, y=el.y, w=el.w, h=el.h,
+            table_number=el.table_number,
+            capacity=el.capacity,
+            label=el.label,
+        ))
+    db.commit()
+    return {"message": "تم حفظ المخطط"}
 
 
 @app.post("/login")
