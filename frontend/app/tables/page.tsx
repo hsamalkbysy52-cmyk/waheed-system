@@ -273,6 +273,7 @@ export default function TablesPage() {
   const [ghostPos, setGhostPos]       = useState({ x: 0, y: 0 });
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [quickCount, setQuickCount]   = useState(10);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
   const resizing    = useRef<{ id: string; mx: number; my: number; ow: number; oh: number } | null>(null);
@@ -435,6 +436,19 @@ export default function TablesPage() {
     } finally { setSaving(false); }
   };
 
+  const clearLayout = async () => {
+    setElements([]);
+    setEditMode(false);
+    setSelected(null);
+    setActiveTable(null);
+    setConfirmClear(false);
+    await fetch(`${API}/table-layout/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ elements: [] }),
+    }).catch(() => {});
+  };
+
   const occupiedTables    = new Set(orders.map(o => o.table_number));
   const tableEls          = elements.filter(e => e.type === "round_table" || e.type === "rect_table");
   const occupiedCount     = tableEls.filter(e => e.tableNumber && occupiedTables.has(e.tableNumber)).length;
@@ -480,6 +494,22 @@ export default function TablesPage() {
           >
             ⚡ إعداد سريع
           </button>
+          {elements.length > 0 && (
+            confirmClear ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ color: "#ef4444", fontSize: 12 }}>تأكيد المسح؟</span>
+                <button onClick={clearLayout} style={{ padding: "7px 14px", background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>نعم</button>
+                <button onClick={() => setConfirmClear(false)} style={{ padding: "7px 12px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: 10, cursor: "pointer", fontSize: 12 }}>لا</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmClear(true)}
+                style={{ padding: "9px 18px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >
+                🗑️ مسح المخطط
+              </button>
+            )
+          )}
           <button
             onClick={() => { setEditMode(v => !v); setSelected(null); setActiveTable(null); }}
             style={{
