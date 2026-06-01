@@ -275,7 +275,12 @@ export default function KanbanPage() {
       setStageMap(prev => {
         const next = { ...prev };
         list.forEach(o => {
-          if (!(o.id in next)) next[o.id] = o.status === "done" ? "served" : "new";
+          if (!(o.id in next)) {
+            next[o.id] = o.status === "done" ? "served" : "new";
+          } else if (o.status === "done") {
+            // always sync backend "done" → "served", overrides local stage
+            next[o.id] = "served";
+          }
         });
         return next;
       });
