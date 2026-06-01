@@ -271,6 +271,8 @@ export default function TablesPage() {
   const [saved, setSaved]             = useState(false);
   const [ghostVisible, setGhostVisible] = useState(false);
   const [ghostPos, setGhostPos]       = useState({ x: 0, y: 0 });
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
+  const [quickCount, setQuickCount]   = useState(10);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
   const resizing    = useRef<{ id: string; mx: number; my: number; ow: number; oh: number } | null>(null);
@@ -397,6 +399,42 @@ export default function TablesPage() {
     } finally { setSaving(false); }
   };
 
+  const handleQuickSetup = async () => {
+    const cols = 5;
+    const tableW = 100, tableH = 100;
+    const gapX = 35, gapY = 48;
+    const startX = 30, startY = 30;
+    const newEls: LayoutEl[] = Array.from({ length: quickCount }, (_, i) => ({
+      id: `quick_${i + 1}_${Date.now()}_${i}`,
+      type: "round_table" as ElementType,
+      x: startX + (i % cols) * (tableW + gapX),
+      y: startY + Math.floor(i / cols) * (tableH + gapY),
+      w: tableW, h: tableH,
+      tableNumber: i + 1,
+      capacity: 4,
+    }));
+    setElements(newEls);
+    setShowQuickSetup(false);
+    setSaving(true);
+    try {
+      await fetch(`${API}/table-layout/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          elements: newEls.map(el => ({
+            element_id: el.id, element_type: el.type,
+            x: el.x, y: el.y, w: el.w, h: el.h,
+            table_number: el.tableNumber ?? null,
+            capacity: el.capacity ?? null,
+            label: "",
+          })),
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  };
+
   const occupiedTables    = new Set(orders.map(o => o.table_number));
   const tableEls          = elements.filter(e => e.type === "round_table" || e.type === "rect_table");
   const occupiedCount     = tableEls.filter(e => e.tableNumber && occupiedTables.has(e.tableNumber)).length;
@@ -435,6 +473,12 @@ export default function TablesPage() {
               {saved ? "✅ تم الحفظ" : saving ? "⏳..." : "💾 حفظ المخطط"}
             </button>
           )}
+          <button
+            onClick={() => setShowQuickSetup(true)}
+            style={{ padding: "9px 18px", background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+          >
+            ⚡ إعداد سريع
+          </button>
           <button
             onClick={() => { setEditMode(v => !v); setSelected(null); setActiveTable(null); }}
             style={{
@@ -592,12 +636,55 @@ export default function TablesPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "flex-start" }}>
           <div ref={canvasRef} style={{ background: "#111118", border: "1px solid #252535", borderRadius: 16, position: "relative", height: 560, overflow: "hidden" }}>
             {elements.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 14 }}>
-                <div style={{ fontSize: 48, opacity: 0.15 }}>🏠</div>
-                <div style={{ color: "#334155", fontSize: 14 }}>لم يتم إنشاء مخطط بعد</div>
-                <button onClick={() => setEditMode(true)} style={{ padding: "9px 20px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                  ✏️ إنشاء مخطط الطاولات
-                </button>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
+                <div style={{ fontSize: 48, opacity: 0.12, marginBottom: 4 }}>🏠</div>
+                <div style={{ color: "#64748b", fontSize: 14, marginBottom: 4 }}>اختر طريقة إنشاء الطاولات</div>
+                <div style={{ display: "flex", gap: 14 }}>
+                  {/* Quick Setup option */}
+                  <div
+                    onClick={() => setShowQuickSetup(true)}
+                    style={{
+                      width: 180, padding: "20px 16px", cursor: "pointer",
+                      background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.25)",
+                      borderRadius: 16, textAlign: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>⚡</div>
+                    <div style={{ color: "#22c55e", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>إعداد سريع</div>
+                    <div style={{ color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+                      أنشئ طاولات دائرية بعدد تختاره
+                      <br />مثالي للمطاعم السريعة
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center", marginTop: 12 }}>
+                      {Array.from({ length: 6 }, (_, i) => (
+                        <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: "#22c55e", opacity: 0.5 }} />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Custom layout option */}
+                  <div
+                    onClick={() => setEditMode(true)}
+                    style={{
+                      width: 180, padding: "20px 16px", cursor: "pointer",
+                      background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)",
+                      borderRadius: 16, textAlign: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>✏️</div>
+                    <div style={{ color: "#f59e0b", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>تصميم مخصص</div>
+                    <div style={{ color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+                      صمم مخطط المطعم بالكامل
+                      <br />طاولات وجدران وأبواب
+                    </div>
+                    <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 12, alignItems: "center" }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#f59e0b", opacity: 0.4 }} />
+                      <div style={{ width: 30, height: 18, borderRadius: 4, background: "#f59e0b", opacity: 0.4 }} />
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#f59e0b", opacity: 0.4 }} />
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               elements.map(el => {
@@ -665,6 +752,74 @@ export default function TablesPage() {
                 <p style={{ color: "#334155", margin: "6px 0 0", fontSize: 11 }}>🟢 متاحة  🔴 مشغولة</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick Setup Modal ── */}
+      {showQuickSetup && (
+        <div
+          onClick={() => setShowQuickSetup(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#111118", border: "1px solid #252535", borderRadius: 20, padding: "28px 28px 24px", width: 380, direction: "rtl", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
+          >
+            <div style={{ color: "#f1f5f9", fontSize: 18, fontWeight: 800, marginBottom: 4 }}>⚡ إعداد سريع</div>
+            <div style={{ color: "#64748b", fontSize: 12, marginBottom: 24 }}>
+              طاولات دائرية مرتبة بشكل تلقائي — مثالي للمطاعم السريعة
+            </div>
+
+            {/* Counter */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>عدد الطاولات</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                <button
+                  onClick={() => setQuickCount(c => Math.max(1, c - 1))}
+                  style={{ width: 40, height: 40, borderRadius: "50%", background: "#1c1c28", border: "1px solid #252535", color: "#f1f5f9", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
+                >−</button>
+                <div style={{ flex: 1, textAlign: "center", color: "#f59e0b", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{quickCount}</div>
+                <button
+                  onClick={() => setQuickCount(c => Math.min(30, c + 1))}
+                  style={{ width: 40, height: 40, borderRadius: "50%", background: "#1c1c28", border: "1px solid #252535", color: "#f1f5f9", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
+                >+</button>
+              </div>
+              <input
+                type="range" min={1} max={30} value={quickCount}
+                onChange={e => setQuickCount(parseInt(e.target.value))}
+                style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 10, marginTop: 2 }}>
+                <span>١</span><span>١٥</span><span>٣٠</span>
+              </div>
+            </div>
+
+            {/* Dots preview */}
+            <div style={{ background: "#0a0a0f", border: "1px solid #1c1c28", borderRadius: 12, padding: "12px 14px", marginBottom: 22, minHeight: 58 }}>
+              <div style={{ color: "#334155", fontSize: 10, marginBottom: 8 }}>معاينة</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {Array.from({ length: quickCount }, (_, i) => (
+                  <div key={i} style={{
+                    width: 22, height: 22, borderRadius: "50%",
+                    background: "rgba(34,197,94,0.25)", border: "1px solid rgba(34,197,94,0.5)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 8, color: "#22c55e", fontWeight: 700,
+                  }}>{i + 1}</div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowQuickSetup(false)}
+                style={{ flex: 1, padding: 11, background: "rgba(100,116,139,0.1)", color: "#94a3b8", border: "1px solid #252535", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >إلغاء</button>
+              <button
+                onClick={handleQuickSetup}
+                style={{ flex: 2, padding: 11, background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
+              >⚡ إنشاء {quickCount} طاولة</button>
+            </div>
           </div>
         </div>
       )}
