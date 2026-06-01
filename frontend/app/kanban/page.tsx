@@ -270,16 +270,22 @@ export default function KanbanPage() {
         setWaking(false);
       }
       const d = await r.json();
-      const list: Order[] = (d.orders || []).filter((o: Order) => o.status !== "cancelled");
+      const list: Order[] = (d.orders || []).filter((o: Order) => o.status !== "cancelled" && o.status !== "done");
       setOrders(list);
       setStageMap(prev => {
         const next = { ...prev };
         list.forEach(o => {
           if (!(o.id in next)) {
-            next[o.id] = o.status === "done" ? "served" : "new";
-          } else if (o.status === "done") {
-            // always sync backend "done" → "served", overrides local stage
-            next[o.id] = "served";
+            if (o.status === "done")        next[o.id] = "served";
+            else if (o.status === "ready")  next[o.id] = "ready";
+            else                            next[o.id] = "new";
+          } else {
+            if (o.status === "done") {
+              next[o.id] = "served";
+            } else if (o.status === "ready" && (next[o.id] === "new" || next[o.id] === "preparing")) {
+              // kitchen marked ready → push to جاهز column
+              next[o.id] = "ready";
+            }
           }
         });
         return next;
@@ -331,7 +337,7 @@ export default function KanbanPage() {
   };
 
   const byStage = (s: Stage) => orders.filter(o => (stageMap[o.id] ?? "new") === s);
-  const active  = orders.filter(o => o.status === "pending").length;
+  const active  = orders.length;
 
   return (
     <div style={{ padding: "24px 24px 0", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>

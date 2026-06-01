@@ -173,6 +173,16 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     }
 
 
+@app.put("/orders/{order_id}/ready")
+def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب مو موجود"}
+    order.status = "ready"
+    db.commit()
+    return {"message": "الطلب جاهز للتقديم!"}
+
+
 @app.put("/orders/{order_id}/done")
 def complete_order(order_id: int, db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == order_id).first()

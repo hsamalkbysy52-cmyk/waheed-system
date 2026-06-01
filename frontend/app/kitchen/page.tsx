@@ -74,7 +74,7 @@ export default function KitchenPage() {
   const markReady = async (id: number) => {
     setMarking(p => new Set(p).add(id));
     try {
-      await fetch(`${API}/orders/${id}/done`, { method: "PUT" });
+      await fetch(`${API}/orders/${id}/ready`, { method: "PUT" });
       setOrders(p => p.filter(o => o.id !== id));
     } finally {
       setMarking(p => { const s = new Set(p); s.delete(id); return s; });
