@@ -56,7 +56,7 @@ export default function KitchenPage() {
     try {
       const r = await fetch(`${API}/orders`);
       const d = await r.json();
-      const pending = (d.orders || []).filter((o: Order) => o.status === "pending");
+      const pending = (d.orders || []).filter((o: Order) => o.status === "preparing");
       pending.sort((a: Order, b: Order) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );

@@ -28,15 +28,16 @@ type Order = {
   cashier: string;
   notes: string;
 };
-type Stage = "new" | "preparing" | "ready" | "served";
+type Stage = "preparing" | "ready" | "served";
+type MenuItem = { id: number; name: string; price: number; category: string; out_of_stock?: boolean };
+type EditCartLine = { name: string; price: number; category: string; qty: number };
 
 const STAGES: { id: Stage; label: string; color: string }[] = [
-  { id: "new",       label: "🟡 جديد",       color: "#f59e0b" },
   { id: "preparing", label: "🟠 قيد التحضير", color: "#f97316" },
   { id: "ready",     label: "🟢 جاهز",        color: "#22c55e" },
   { id: "served",    label: "⚪ تم التقديم",   color: "#64748b" },
 ];
-const STAGE_ORDER: Stage[] = ["new", "preparing", "ready", "served"];
+const STAGE_ORDER: Stage[] = ["preparing", "ready", "served"];
 
 const CAT_EMOJI: Record<string, string> = {
   "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
@@ -78,10 +79,12 @@ function timeAgo(created_at: string, now: number) {
 }
 
 /* ── Draggable card ── */
-function Card({ order, stage, now, onNext, onPrev }: {
+function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting }: {
   order: Order; stage: Stage; now: number;
   onNext: () => void; onPrev: () => void;
+  onEdit: () => void; onDelete: () => void; isDeleting: boolean;
 }) {
+  const [confirmDel, setConfirmDel] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: String(order.id) });
   const mins = elapsedMins(order.created_at, now);
   const tc   = stageColor(mins, stage);
@@ -184,9 +187,9 @@ function Card({ order, stage, now, onNext, onPrev }: {
         </div>
       ) : null}
 
-      {/* Next/Prev buttons — kept for usability */}
+      {/* Next/Prev buttons */}
       <div style={{ display: "flex", gap: "6px", marginTop: "12px" }}>
-        {stage !== "new" && (
+        {stage !== "preparing" && (
           <button
             onPointerDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onPrev(); }}
@@ -207,18 +210,51 @@ function Card({ order, stage, now, onNext, onPrev }: {
           >{stage === "ready" ? "✅ تقديم" : "التالي →"}</button>
         )}
       </div>
+
+      {/* Edit / Delete — only while preparing */}
+      {stage === "preparing" && (
+        <div style={{ display: "flex", gap: "6px", marginTop: "8px", borderTop: "1px solid #1c1c28", paddingTop: "10px" }}>
+          <button
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); setConfirmDel(false); onEdit(); }}
+            style={{ flex: 1, padding: "7px", background: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}
+          >✏️ تعديل</button>
+          {confirmDel ? (
+            <div style={{ flex: 1, display: "flex", gap: "4px" }}>
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); onDelete(); }}
+                disabled={isDeleting}
+                style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "9px", cursor: isDeleting ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: "700" }}
+              >{isDeleting ? "⏳" : "تأكيد"}</button>
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setConfirmDel(false); }}
+                style={{ padding: "7px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "9px", cursor: "pointer", fontSize: "11px" }}
+              >لا</button>
+            </div>
+          ) : (
+            <button
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); setConfirmDel(true); }}
+              style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
+            >🗑️ حذف</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
+  onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
-    <div style={{ flex: 1, minWidth: "240px", maxWidth: "300px" }}>
+    <div style={{ flex: 1, minWidth: "260px", maxWidth: "320px" }}>
       <div style={{
         background: `${stage.color}10`, border: `1px solid ${stage.color}25`,
         borderRadius: "14px", padding: "10px 14px", marginBottom: "12px",
@@ -239,7 +275,9 @@ function Column({ stage, orders, now, onNext, onPrev }: {
       >
         {orders.map(o => (
           <Card key={o.id} order={o} stage={stage.id} now={now}
-            onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)} />
+            onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)}
+            onEdit={() => onEdit(o)} onDelete={() => onDelete(o.id)}
+            isDeleting={deletingId === o.id} />
         ))}
         {!orders.length && (
           <div style={{ textAlign: "center", color: "#334155", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
@@ -257,6 +295,16 @@ export default function KanbanPage() {
   const [loading, setLoading]   = useState(true);
   const [waking, setWaking]     = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const [editOrderId, setEditOrderId]       = useState<number | null>(null);
+  const [editCart, setEditCart]             = useState<EditCartLine[]>([]);
+  const [editTable, setEditTable]           = useState(1);
+  const [editNotes, setEditNotes]           = useState("");
+  const [editMenu, setEditMenu]             = useState<MenuItem[]>([]);
+  const [loadingEditMenu, setLoadingEditMenu] = useState(false);
+  const [savingEdit, setSavingEdit]         = useState(false);
+  const [editError, setEditError]           = useState("");
+  const [deletingId, setDeletingId]         = useState<number | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -278,12 +326,11 @@ export default function KanbanPage() {
           if (!(o.id in next)) {
             if (o.status === "done")        next[o.id] = "served";
             else if (o.status === "ready")  next[o.id] = "ready";
-            else                            next[o.id] = "new";
+            else                            next[o.id] = "preparing";
           } else {
             if (o.status === "done") {
               next[o.id] = "served";
-            } else if (o.status === "ready" && (next[o.id] === "new" || next[o.id] === "preparing")) {
-              // kitchen marked ready → push to جاهز column
+            } else if (o.status === "ready" && next[o.id] === "preparing") {
               next[o.id] = "ready";
             }
           }
@@ -309,11 +356,11 @@ export default function KanbanPage() {
   };
 
   const next = (id: number) => {
-    const idx = STAGE_ORDER.indexOf(stageMap[id] ?? "new");
+    const idx = STAGE_ORDER.indexOf(stageMap[id] ?? "preparing");
     if (idx < STAGE_ORDER.length - 1) moveTo(id, STAGE_ORDER[idx + 1]);
   };
   const prev = (id: number) => {
-    const idx = STAGE_ORDER.indexOf(stageMap[id] ?? "new");
+    const idx = STAGE_ORDER.indexOf(stageMap[id] ?? "preparing");
     if (idx > 0) setStageMap(p => ({ ...p, [id]: STAGE_ORDER[idx - 1] }));
   };
 
@@ -322,7 +369,58 @@ export default function KanbanPage() {
     moveTo(parseInt(String(e.active.id)), String(e.over.id) as Stage);
   };
 
-  const byStage = (s: Stage) => orders.filter(o => (stageMap[o.id] ?? "new") === s);
+  const openEdit = async (order: Order) => {
+    const aggCart: EditCartLine[] = [];
+    for (const item of order.items ?? []) {
+      const ex = aggCart.find(c => c.name === item.name);
+      if (ex) ex.qty++;
+      else aggCart.push({ name: item.name, price: item.price, category: item.category, qty: 1 });
+    }
+    setEditCart(aggCart);
+    setEditTable(order.table_number);
+    setEditNotes(order.notes || "");
+    setEditError("");
+    setEditOrderId(order.id);
+    if (editMenu.length === 0) {
+      setLoadingEditMenu(true);
+      try {
+        const r = await fetch(`${API}/menu`);
+        const d = await r.json();
+        setEditMenu((d.menu || []).filter((i: MenuItem) => i.is_available !== false));
+      } finally { setLoadingEditMenu(false); }
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editOrderId || editCart.length === 0) return;
+    setSavingEdit(true); setEditError("");
+    try {
+      const expanded = editCart.flatMap(c =>
+        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
+      );
+      const r = await fetch(`${API}/orders/${editOrderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: expanded, table_number: editTable, notes: editNotes }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setEditError(d.detail || d.error || "فشل التعديل"); return; }
+      setEditOrderId(null);
+      fetchOrders();
+    } catch { setEditError("تعذر الاتصال بالسيرفر"); }
+    finally { setSavingEdit(false); }
+  };
+
+  const deleteOrder = async (orderId: number) => {
+    setDeletingId(orderId);
+    try {
+      await fetch(`${API}/orders/${orderId}`, { method: "DELETE" });
+      setOrders(p => p.filter(o => o.id !== orderId));
+      setStageMap(p => { const n = { ...p }; delete n[orderId]; return n; });
+    } finally { setDeletingId(null); }
+  };
+
+  const byStage = (s: Stage) => orders.filter(o => (stageMap[o.id] ?? "preparing") === s);
   const active  = orders.length;
 
   return (
@@ -357,10 +455,125 @@ export default function KanbanPage() {
         <div style={{ display: "flex", gap: "14px", overflowX: "auto", paddingBottom: "24px", alignItems: "flex-start" }}>
           {STAGES.map(s => (
             <Column key={s.id} stage={s} orders={byStage(s.id)} now={now}
-              onNext={next} onPrev={prev} />
+              onNext={next} onPrev={prev}
+              onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId} />
           ))}
         </div>
       </DndContext>
+
+      {/* ── Edit Order Modal ── */}
+      {editOrderId !== null && (() => {
+        const editTotal = editCart.reduce((s, c) => s + c.price * c.qty, 0);
+        const addToCart = (item: MenuItem) => {
+          if (item.out_of_stock) return;
+          setEditCart(prev => {
+            const ex = prev.find(c => c.name === item.name);
+            return ex ? prev.map(c => c.name === item.name ? { ...c, qty: c.qty + 1 } : c)
+                      : [...prev, { name: item.name, price: item.price, category: item.category, qty: 1 }];
+          });
+        };
+        const setEditQty = (name: string, delta: number) =>
+          setEditCart(prev => prev.flatMap(c => {
+            if (c.name !== name) return [c];
+            const q = c.qty + delta;
+            return q > 0 ? [{ ...c, qty: q }] : [];
+          }));
+        return (
+          <div onClick={() => !savingEdit && setEditOrderId(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "860px", maxHeight: "88vh", display: "flex", flexDirection: "column", direction: "rtl", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.9)" }}>
+
+              {/* Header */}
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #252535", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>✏️ تعديل طلب #{editOrderId}</div>
+                <button onClick={() => setEditOrderId(null)} style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#1c1c28", border: "1px solid #252535", color: "#64748b", cursor: "pointer", fontSize: "16px" }}>✕</button>
+              </div>
+
+              <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+
+                {/* Left — add from menu */}
+                <div style={{ flex: "0 0 55%", display: "flex", flexDirection: "column", borderLeft: "1px solid #1c1c28", overflow: "hidden" }}>
+                  <div style={{ padding: "10px 14px", color: "#64748b", fontSize: "11px", fontWeight: "700", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>إضافة أصناف</div>
+                  <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: "8px", alignContent: "start" }}>
+                    {loadingEditMenu ? (
+                      <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "40px", color: "#64748b" }}>⏳ تحميل...</div>
+                    ) : editMenu.map(item => {
+                      const inCart = editCart.find(c => c.name === item.name);
+                      const sold = item.out_of_stock === true;
+                      return (
+                        <button key={item.id} onClick={() => addToCart(item)} disabled={sold}
+                          style={{ background: sold ? "#16161f" : inCart ? "rgba(245,158,11,0.1)" : "#1c1c28", border: `1px solid ${sold ? "#1c1c28" : inCart ? "rgba(245,158,11,0.45)" : "#252535"}`, borderRadius: "12px", padding: "10px 8px", cursor: sold ? "not-allowed" : "pointer", textAlign: "center", opacity: sold ? 0.4 : 1, position: "relative" }}>
+                          {sold && <span style={{ position: "absolute", top: "5px", right: "5px", background: "rgba(239,68,68,0.15)", color: "#ef4444", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</span>}
+                          {inCart && !sold && <span style={{ position: "absolute", top: "5px", left: "5px", background: "#f59e0b", color: "#000", borderRadius: "50%", width: "18px", height: "18px", fontSize: "10px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>{inCart.qty}</span>}
+                          <div style={{ fontSize: "22px", marginBottom: "4px" }}>{catEmoji(item.category)}</div>
+                          <div style={{ color: "#f1f5f9", fontSize: "11px", fontWeight: "600" }}>{item.name}</div>
+                          <div style={{ color: "#f59e0b", fontSize: "11px", fontWeight: "700", marginTop: "2px" }}>{item.price.toLocaleString()}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right — cart + options */}
+                <div style={{ flex: "0 0 45%", display: "flex", flexDirection: "column", background: "#0d0d14", overflow: "hidden" }}>
+
+                  {/* Table picker */}
+                  <div style={{ padding: "12px 14px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
+                    <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px" }}>🪑 الطاولة</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px" }}>
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map(t => (
+                        <button key={t} onClick={() => setEditTable(t)}
+                          style={{ padding: "8px 2px", borderRadius: "8px", background: editTable === t ? "rgba(245,158,11,0.2)" : "#1c1c28", color: editTable === t ? "#f59e0b" : "#64748b", border: `1px solid ${editTable === t ? "rgba(245,158,11,0.5)" : "#252535"}`, cursor: "pointer", fontSize: "13px", fontWeight: editTable === t ? "800" : "500" }}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cart items */}
+                  <div style={{ flex: 1, overflowY: "auto", padding: "8px 14px" }}>
+                    {editCart.length === 0
+                      ? <div style={{ textAlign: "center", color: "#334155", paddingTop: "40px", fontSize: "12px" }}>السلة فارغة</div>
+                      : editCart.map(c => (
+                        <div key={c.name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #1c1c28" }}>
+                          <div style={{ fontSize: "18px", flexShrink: 0 }}>{catEmoji(c.category)}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                            <div style={{ color: "#f59e0b", fontSize: "11px" }}>{(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span></div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+                            <button onClick={() => setEditQty(c.name, -1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "12px" : "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>{c.qty === 1 ? "🗑" : "−"}</button>
+                            <span style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "800", minWidth: "18px", textAlign: "center" }}>{c.qty}</span>
+                            <button onClick={() => setEditQty(c.name, 1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(245,158,11,0.15)", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{ padding: "12px 14px", borderTop: "1px solid #1c1c28", flexShrink: 0 }}>
+                    {editCart.length > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: "10px" }}>
+                        <span style={{ color: "#94a3b8", fontSize: "12px" }}>الإجمالي</span>
+                        <span style={{ color: "#f59e0b", fontSize: "18px", fontWeight: "900" }}>{editTotal.toLocaleString()} <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "400" }}>د.ع</span></span>
+                      </div>
+                    )}
+                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="ملاحظات..." rows={2}
+                      style={{ width: "100%", boxSizing: "border-box", background: "#1c1c28", border: "1px solid #252535", borderRadius: "8px", color: "#f1f5f9", padding: "7px 10px", fontSize: "11px", resize: "none", outline: "none", direction: "rtl", fontFamily: "inherit", marginBottom: "8px" }} />
+                    {editError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "8px", padding: "7px 10px", color: "#ef4444", fontSize: "11px", marginBottom: "8px" }}>⚠️ {editError}</div>}
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button onClick={() => setEditOrderId(null)} style={{ flex: 1, padding: "11px", background: "rgba(100,116,139,0.1)", color: "#94a3b8", border: "1px solid #252535", borderRadius: "11px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>إلغاء</button>
+                      <button onClick={saveEdit} disabled={savingEdit || editCart.length === 0}
+                        style={{ flex: 2, padding: "11px", background: savingEdit || editCart.length === 0 ? "#1c1c28" : "linear-gradient(135deg,#f59e0b,#d97706)", color: savingEdit || editCart.length === 0 ? "#64748b" : "#000", border: "none", borderRadius: "11px", cursor: savingEdit || editCart.length === 0 ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "800" }}>
+                        {savingEdit ? "⏳ جاري الحفظ..." : "💾 حفظ التعديلات"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showDrawer && (
         <NewOrderDrawer

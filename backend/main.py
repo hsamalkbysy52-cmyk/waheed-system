@@ -170,6 +170,21 @@ def _check_stock(items_data: list, db: Session) -> list:
     return unavailable
 
 
+def _restore_inventory(items_data: list, db: Session):
+    """Return previously deducted ingredients back to inventory."""
+    from collections import Counter
+    counts = Counter(it["name"] for it in items_data)
+    for item_name, qty in counts.items():
+        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        if not menu_item:
+            continue
+        recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
+        for ri in recipe:
+            inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+            if inv:
+                inv.quantity += ri.amount * qty
+
+
 def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
     """True if any recipe ingredient is insufficient for a single serving."""
     recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
@@ -193,12 +208,13 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     new_order = Order(
         table_number=order.table_number,
         total_price=total,
-        status="pending",
+        status="preparing",
         items_json=json.dumps(items_data, ensure_ascii=False),
         cashier=order.cashier,
         notes=order.notes,
     )
     db.add(new_order)
+    _deduct_inventory(items_data, db)
     db.commit()
     return {
         "message": "تم حفظ الطلب!",
@@ -213,10 +229,51 @@ def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
     if not order:
         return {"error": "الطلب مو موجود"}
     order.status = "ready"
-    items_data = json.loads(order.items_json) if order.items_json else []
-    _deduct_inventory(items_data, db)
     db.commit()
     return {"message": "الطلب جاهز للتقديم!"}
+
+
+class OrderEditPayload(BaseModel):
+    items: List[OrderItem]
+    table_number: int = 1
+    notes: str = ""
+
+
+@app.put("/orders/{order_id}")
+def edit_order(order_id: int, payload: OrderEditPayload, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    if order.status not in ("preparing", "pending"):
+        return {"error": "لا يمكن تعديل الطلب بعد إعداده"}
+    old_items = json.loads(order.items_json) if order.items_json else []
+    new_items = [{"name": i.name, "price": i.price, "category": i.category} for i in payload.items]
+    _restore_inventory(old_items, db)
+    unavailable = _check_stock(new_items, db)
+    if unavailable:
+        _deduct_inventory(old_items, db)
+        raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
+    _deduct_inventory(new_items, db)
+    order.items_json = json.dumps(new_items, ensure_ascii=False)
+    order.total_price = sum(i.price for i in payload.items)
+    order.table_number = payload.table_number
+    order.notes = payload.notes
+    db.commit()
+    return {"message": "تم تعديل الطلب", "order_id": order_id}
+
+
+@app.delete("/orders/{order_id}")
+def delete_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    if order.status in ("preparing", "pending"):
+        items_data = json.loads(order.items_json) if order.items_json else []
+        _restore_inventory(items_data, db)
+    order.status = "cancelled"
+    db.commit()
+    return {"message": "تم حذف الطلب", "order_id": order_id}
 
 
 @app.put("/orders/{order_id}/done")
