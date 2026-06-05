@@ -15,7 +15,7 @@ const CAT_EMOJI: Record<string, string> = {
 };
 const emoji = (c: string) => CAT_EMOJI[c] ?? "🍴";
 
-type RawItem = { id: number; name: string; price: number; category: string; available?: boolean | number | null; is_available?: boolean | number | null; description?: string };
+type RawItem = { id: number; name: string; price: number; category: string; available?: boolean | number | null; is_available?: boolean | number | null; description?: string; out_of_stock?: boolean };
 type CartLine = { id: number; name: string; price: number; category: string; qty: number };
 
 export default function NewOrderDrawer({
@@ -55,7 +55,8 @@ export default function NewOrderDrawer({
           const items: RawItem[] = (d.menu || d.items || d || []).map((i: RawItem) => ({
             ...i,
             available: i.available ?? i.is_available ?? true,
-          })).filter((i: RawItem) => i.available !== false && i.available !== 0);
+          })).filter((i: RawItem) => i.available !== false && i.available !== 0)
+            .sort((a: RawItem, b: RawItem) => (a.out_of_stock ? 1 : 0) - (b.out_of_stock ? 1 : 0));
           setMenuItems(items);
         }
       })
@@ -237,22 +238,32 @@ export default function NewOrderDrawer({
 
               {/* Menu cards */}
               {!loadingMenu && !fetchError && filtered.map((item) => {
-                const inCart = cart.find((c) => c.id === item.id);
+                const inCart   = cart.find((c) => c.id === item.id);
+                const soldOut  = item.out_of_stock === true;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => addItem(item)}
+                    onClick={() => !soldOut && addItem(item)}
+                    disabled={soldOut}
                     style={{
-                      background: inCart ? "rgba(245,158,11,0.1)" : "#1c1c28",
-                      border: `2px solid ${inCart ? "rgba(245,158,11,0.55)" : "#252535"}`,
+                      background: soldOut ? "#16161f" : inCart ? "rgba(245,158,11,0.1)" : "#1c1c28",
+                      border: `2px solid ${soldOut ? "#1c1c28" : inCart ? "rgba(245,158,11,0.55)" : "#252535"}`,
                       borderRadius: "15px", padding: "14px 10px 12px",
-                      cursor: "pointer", textAlign: "center",
+                      cursor: soldOut ? "not-allowed" : "pointer", textAlign: "center",
                       transition: "border-color 0.15s, background 0.15s",
-                      position: "relative", minHeight: "108px",
+                      position: "relative", minHeight: "108px", opacity: soldOut ? 0.45 : 1,
                       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "5px",
                     }}
                   >
-                    {inCart && (
+                    {soldOut && (
+                      <div style={{
+                        position: "absolute", top: "6px", right: "6px",
+                        background: "rgba(239,68,68,0.15)", color: "#ef4444",
+                        borderRadius: "6px", padding: "2px 6px",
+                        fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)",
+                      }}>نفد</div>
+                    )}
+                    {inCart && !soldOut && (
                       <div style={{
                         position: "absolute", top: "7px", left: "7px",
                         background: "#f59e0b", color: "#000",
@@ -264,8 +275,8 @@ export default function NewOrderDrawer({
                       </div>
                     )}
                     <div style={{ fontSize: "28px", lineHeight: 1 }}>{emoji(item.category)}</div>
-                    <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
-                    <div style={{ color: "#f59e0b", fontSize: "12px", fontWeight: "700" }}>
+                    <div style={{ color: soldOut ? "#64748b" : "#f1f5f9", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
+                    <div style={{ color: soldOut ? "#334155" : "#f59e0b", fontSize: "12px", fontWeight: "700" }}>
                       {item.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
                     </div>
                   </button>

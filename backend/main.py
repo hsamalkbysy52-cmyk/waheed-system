@@ -53,7 +53,8 @@ def get_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
     return {"menu": [
         {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
-         "is_available": i.is_available, "description": i.description or ""}
+         "is_available": i.is_available, "description": i.description or "",
+         "out_of_stock": _is_out_of_stock(i.id, db)}
         for i in items
     ]}
 
@@ -151,10 +152,44 @@ def _deduct_inventory(items_data: list, db: Session):
                 inv.quantity = max(0.0, inv.quantity - ri.amount * qty)
 
 
+def _check_stock(items_data: list, db: Session) -> list:
+    """Returns names of items that lack sufficient ingredients for the requested quantity."""
+    from collections import Counter
+    counts = Counter(it["name"] for it in items_data)
+    unavailable = []
+    for item_name, qty in counts.items():
+        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        if not menu_item:
+            continue
+        recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
+        for ri in recipe:
+            inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+            if inv and inv.quantity < ri.amount * qty:
+                if item_name not in unavailable:
+                    unavailable.append(item_name)
+    return unavailable
+
+
+def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
+    """True if any recipe ingredient is insufficient for a single serving."""
+    recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
+    if not recipe:
+        return False
+    for ri in recipe:
+        inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+        if inv and inv.quantity < ri.amount:
+            return True
+    return False
+
+
 @app.post("/orders/create")
 def create_order(order: OrderRequest, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
     total = sum(item.price for item in order.items)
     items_data = [{"name": i.name, "price": i.price, "category": i.category} for i in order.items]
+    unavailable = _check_stock(items_data, db)
+    if unavailable:
+        raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
     new_order = Order(
         table_number=order.table_number,
         total_price=total,
@@ -164,7 +199,6 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
         notes=order.notes,
     )
     db.add(new_order)
-    _deduct_inventory(items_data, db)
     db.commit()
     return {
         "message": "تم حفظ الطلب!",
@@ -179,6 +213,8 @@ def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
     if not order:
         return {"error": "الطلب مو موجود"}
     order.status = "ready"
+    items_data = json.loads(order.items_json) if order.items_json else []
+    _deduct_inventory(items_data, db)
     db.commit()
     return {"message": "الطلب جاهز للتقديم!"}
 
