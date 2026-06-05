@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DndContext, DragEndEvent, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import NewOrderDrawer from "@/components/NewOrderDrawer";
+import { BillModal } from "@/components/BillModal";
 
 const API = "https://waheed-system-production.up.railway.app";
 
@@ -79,10 +80,11 @@ function timeAgo(created_at: string, now: number) {
 }
 
 /* ── Draggable card ── */
-function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting }: {
+function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting, onInvoice, isPaid }: {
   order: Order; stage: Stage; now: number;
   onNext: () => void; onPrev: () => void;
   onEdit: () => void; onDelete: () => void; isDeleting: boolean;
+  onInvoice: () => void; isPaid: boolean;
 }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: String(order.id) });
@@ -242,15 +244,42 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting 
           )}
         </div>
       )}
+
+      {/* Invoice / Paid — all stages */}
+      <div style={{ marginTop: "8px", borderTop: "1px solid #1c1c28", paddingTop: "10px" }}>
+        {isPaid ? (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
+            borderRadius: "9px", padding: "8px",
+          }}>
+            <span style={{ fontSize: "15px" }}>✅</span>
+            <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700" }}>تم الدفع</span>
+          </div>
+        ) : (
+          <button
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onInvoice(); }}
+            style={{
+              width: "100%", padding: "8px",
+              background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
+              color: "#f59e0b",
+              border: "1px solid rgba(245,158,11,0.35)",
+              borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
+            }}
+          >🧾 عرض الفاتورة والدفع</button>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
   onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
+  onInvoice: (order: Order) => void; paidIds: Set<number>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
@@ -277,7 +306,8 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
           <Card key={o.id} order={o} stage={stage.id} now={now}
             onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)}
             onEdit={() => onEdit(o)} onDelete={() => onDelete(o.id)}
-            isDeleting={deletingId === o.id} />
+            isDeleting={deletingId === o.id}
+            onInvoice={() => onInvoice(o)} isPaid={paidIds.has(o.id)} />
         ))}
         {!orders.length && (
           <div style={{ textAlign: "center", color: "#334155", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
@@ -295,6 +325,9 @@ export default function KanbanPage() {
   const [loading, setLoading]   = useState(true);
   const [waking, setWaking]     = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const [invoiceOrder, setInvoiceOrder]     = useState<Order | null>(null);
+  const [paidIds, setPaidIds]               = useState<Set<number>>(new Set());
 
   const [editOrderId, setEditOrderId]       = useState<number | null>(null);
   const [editCart, setEditCart]             = useState<EditCartLine[]>([]);
@@ -456,7 +489,8 @@ export default function KanbanPage() {
           {STAGES.map(s => (
             <Column key={s.id} stage={s} orders={byStage(s.id)} now={now}
               onNext={next} onPrev={prev}
-              onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId} />
+              onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
+              onInvoice={setInvoiceOrder} paidIds={paidIds} />
           ))}
         </div>
       </DndContext>
@@ -579,6 +613,14 @@ export default function KanbanPage() {
         <NewOrderDrawer
           onClose={() => setShowDrawer(false)}
           onSuccess={() => { fetchOrders(); setShowDrawer(false); }}
+        />
+      )}
+
+      {invoiceOrder && (
+        <BillModal
+          order={invoiceOrder}
+          onClose={() => setInvoiceOrder(null)}
+          onPaid={() => setPaidIds(p => new Set(p).add(invoiceOrder.id))}
         />
       )}
     </div>
