@@ -29,7 +29,7 @@ type Order = {
   notes: string;
 };
 type Stage = "preparing" | "ready" | "served";
-type MenuItem = { id: number; name: string; price: number; category: string; out_of_stock?: boolean };
+type MenuItem = { id: number; name: string; price: number; category: string; is_available?: boolean; out_of_stock?: boolean };
 type EditCartLine = { name: string; price: number; category: string; qty: number };
 
 const STAGES: { id: Stage; label: string; color: string }[] = [
