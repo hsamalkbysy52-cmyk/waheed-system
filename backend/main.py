@@ -54,7 +54,8 @@ def get_menu(db: Session = Depends(get_db)):
     return {"menu": [
         {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
          "is_available": i.is_available, "description": i.description or "",
-         "out_of_stock": _is_out_of_stock(i.id, db)}
+         "out_of_stock": _is_out_of_stock(i.id, db),
+         "max_qty": _get_max_qty(i.id, db)}
         for i in items
     ]}
 
@@ -183,6 +184,21 @@ def _restore_inventory(items_data: list, db: Session):
             inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
             if inv:
                 inv.quantity += ri.amount * qty
+
+
+def _get_max_qty(menu_item_id: int, db: Session):
+    """Returns max servings possible given current inventory, or None if item has no recipe."""
+    recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
+    if not recipe:
+        return None
+    max_q = None
+    for ri in recipe:
+        inv = db.query(InventoryItem).filter(InventoryItem.id == ri.inventory_item_id).first()
+        if inv and ri.amount > 0:
+            possible = int(inv.quantity / ri.amount)
+            if max_q is None or possible < max_q:
+                max_q = possible
+    return max_q if max_q is not None else None
 
 
 def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:

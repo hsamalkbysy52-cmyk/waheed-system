@@ -15,7 +15,7 @@ const CAT_EMOJI: Record<string, string> = {
 };
 const emoji = (c: string) => CAT_EMOJI[c] ?? "🍴";
 
-type RawItem = { id: number; name: string; price: number; category: string; available?: boolean | number | null; is_available?: boolean | number | null; description?: string; out_of_stock?: boolean };
+type RawItem = { id: number; name: string; price: number; category: string; available?: boolean | number | null; is_available?: boolean | number | null; description?: string; out_of_stock?: boolean; max_qty?: number | null };
 type CartLine = { id: number; name: string; price: number; category: string; qty: number };
 
 export default function NewOrderDrawer({
@@ -37,7 +37,13 @@ export default function NewOrderDrawer({
   const [sending, setSending] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [stockAlert, setStockAlert] = useState("");
   const cartRef               = useRef<HTMLDivElement>(null);
+
+  const showStockAlert = (msg: string) => {
+    setStockAlert(msg);
+    setTimeout(() => setStockAlert(""), 3500);
+  };
 
   /* ── fetch menu on open ── */
   useEffect(() => {
@@ -76,6 +82,11 @@ export default function NewOrderDrawer({
 
   /* ── cart helpers ── */
   const addItem = (item: RawItem) => {
+    const currentQty = cart.find((c) => c.id === item.id)?.qty ?? 0;
+    if (item.max_qty != null && currentQty >= item.max_qty) {
+      showStockAlert(`⚠️ الكمية المتاحة من "${item.name}" في المخزون: ${item.max_qty} فقط`);
+      return;
+    }
     setCart((prev) => {
       const hit = prev.find((c) => c.id === item.id);
       return hit
@@ -263,6 +274,14 @@ export default function NewOrderDrawer({
                         fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)",
                       }}>نفد</div>
                     )}
+                    {!soldOut && item.max_qty != null && item.max_qty <= 10 && (
+                      <div style={{
+                        position: "absolute", top: "6px", right: "6px",
+                        background: "rgba(245,158,11,0.15)", color: "#f59e0b",
+                        borderRadius: "6px", padding: "2px 6px",
+                        fontSize: "9px", fontWeight: "700", border: "1px solid rgba(245,158,11,0.3)",
+                      }}>متبقي {item.max_qty}</div>
+                    )}
                     {inCart && !soldOut && (
                       <div style={{
                         position: "absolute", top: "7px", left: "7px",
@@ -322,37 +341,48 @@ export default function NewOrderDrawer({
                 </div>
               ) : (
                 <div style={{ paddingTop: "4px" }}>
-                  {cart.map((c, idx) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "8px",
-                        padding: "10px 0",
-                        borderBottom: idx < cart.length - 1 ? "1px solid #1c1c28" : "none",
-                      }}
-                    >
-                      <div style={{ fontSize: "20px", flexShrink: 0, width: "28px", textAlign: "center" }}>
-                        {emoji(c.category)}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                        <div style={{ color: "#f59e0b", fontSize: "11px", marginTop: "1px" }}>
-                          {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
+                  {cart.map((c, idx) => {
+                    const menuItem = menuItems.find(m => m.id === c.id);
+                    const maxQty   = menuItem?.max_qty;
+                    const atMax    = maxQty != null && c.qty >= maxQty;
+                    return (
+                      <div
+                        key={c.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "8px",
+                          padding: "10px 0",
+                          borderBottom: idx < cart.length - 1 ? "1px solid #1c1c28" : "none",
+                        }}
+                      >
+                        <div style={{ fontSize: "20px", flexShrink: 0, width: "28px", textAlign: "center" }}>
+                          {emoji(c.category)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                          <div style={{ color: "#f59e0b", fontSize: "11px", marginTop: "1px" }}>
+                            {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                          <button
+                            onClick={() => setQty(c.id, -1)}
+                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "14px" : "17px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
+                          >{c.qty === 1 ? "🗑" : "−"}</button>
+                          <span style={{ color: "#f1f5f9", fontSize: "15px", fontWeight: "800", minWidth: "22px", textAlign: "center" }}>{c.qty}</span>
+                          <button
+                            onClick={() => {
+                              if (atMax) {
+                                showStockAlert(`⚠️ الكمية المتاحة من "${c.name}" في المخزون: ${maxQty} فقط`);
+                                return;
+                              }
+                              setQty(c.id, 1);
+                            }}
+                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: atMax ? "#1c1c28" : "rgba(245,158,11,0.15)", border: `1px solid ${atMax ? "#252535" : "transparent"}`, color: atMax ? "#334155" : "#f59e0b", cursor: atMax ? "not-allowed" : "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
+                          >+</button>
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                        <button
-                          onClick={() => setQty(c.id, -1)}
-                          style={{ width: "30px", height: "30px", borderRadius: "9px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "14px" : "17px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
-                        >{c.qty === 1 ? "🗑" : "−"}</button>
-                        <span style={{ color: "#f1f5f9", fontSize: "15px", fontWeight: "800", minWidth: "22px", textAlign: "center" }}>{c.qty}</span>
-                        <button
-                          onClick={() => setQty(c.id, 1)}
-                          style={{ width: "30px", height: "30px", borderRadius: "9px", background: "rgba(245,158,11,0.15)", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
-                        >+</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -371,6 +401,12 @@ export default function NewOrderDrawer({
                     {total.toLocaleString()}
                     <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b", marginRight: "4px" }}>د.ع</span>
                   </span>
+                </div>
+              )}
+
+              {stockAlert && (
+                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", fontWeight: "600", marginBottom: "10px" }}>
+                  {stockAlert}
                 </div>
               )}
 
