@@ -382,9 +382,12 @@ export default function KanbanPage() {
   }, [fetchOrders]);
 
   const moveTo = async (orderId: number, stage: Stage) => {
-    if (stage === "served") {
-      await fetch(`${API}/orders/${orderId}/done`, { method: "PUT" });
-    }
+    const endpoint: Record<Stage, string> = {
+      preparing: `${API}/orders/${orderId}/preparing`,
+      ready:     `${API}/orders/${orderId}/ready`,
+      served:    `${API}/orders/${orderId}/done`,
+    };
+    await fetch(endpoint[stage], { method: "PUT" });
     setStageMap(p => ({ ...p, [orderId]: stage }));
   };
 
@@ -394,7 +397,7 @@ export default function KanbanPage() {
   };
   const prev = (id: number) => {
     const idx = STAGE_ORDER.indexOf(stageMap[id] ?? "preparing");
-    if (idx > 0) setStageMap(p => ({ ...p, [id]: STAGE_ORDER[idx - 1] }));
+    if (idx > 0) moveTo(id, STAGE_ORDER[idx - 1]);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {

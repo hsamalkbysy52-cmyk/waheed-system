@@ -249,6 +249,16 @@ def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
     return {"message": "الطلب جاهز للتقديم!"}
 
 
+@app.put("/orders/{order_id}/preparing")
+def mark_order_preparing(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    order.status = "preparing"
+    db.commit()
+    return {"message": "تم إرجاع الطلب لقيد التحضير"}
+
+
 class OrderEditPayload(BaseModel):
     items: List[OrderItem]
     table_number: int = 1
