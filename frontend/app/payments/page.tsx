@@ -40,7 +40,7 @@ export default function PaymentsPage() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  const pending = orders.filter(o => o.status === "pending");
+  const pending = orders.filter(o => ["preparing", "ready", "served", "pending"].includes(o.status));
   const done    = orders.filter(o => o.status === "done");
   const revenue = done.reduce((s, o) => s + o.total_price, 0);
   const display = tab === "pending" ? pending : done;

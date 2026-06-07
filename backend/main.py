@@ -302,14 +302,25 @@ def delete_order(order_id: int, db: Session = Depends(get_db)):
     return {"message": "تم حذف الطلب", "order_id": order_id}
 
 
+@app.put("/orders/{order_id}/served")
+def mark_order_served(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    order.status = "served"
+    db.commit()
+    return {"message": "تم تقديم الطلب للطاولة"}
+
+
 @app.put("/orders/{order_id}/done")
 def complete_order(order_id: int, db: Session = Depends(get_db)):
+    """Payment completion only — called by BillModal after cashier confirms payment."""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         return {"error": "الطلب مو موجود"}
     order.status = "done"
     db.commit()
-    return {"message": "تم إنجاز الطلب!"}
+    return {"message": "تم الدفع وإنجاز الطلب!"}
 
 
 @app.post("/orders/{order_id}/cancel")

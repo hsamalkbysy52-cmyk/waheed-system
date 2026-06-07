@@ -356,15 +356,15 @@ export default function KanbanPage() {
       setStageMap(prev => {
         const next = { ...prev };
         list.forEach(o => {
+          const backendStage: Stage =
+            o.status === "served" ? "served" :
+            o.status === "ready"  ? "ready"  : "preparing";
           if (!(o.id in next)) {
-            if (o.status === "done")        next[o.id] = "served";
-            else if (o.status === "ready")  next[o.id] = "ready";
-            else                            next[o.id] = "preparing";
+            next[o.id] = backendStage;
           } else {
-            if (o.status === "done") {
-              next[o.id] = "served";
-            } else if (o.status === "ready" && next[o.id] === "preparing") {
-              next[o.id] = "ready";
+            // always trust backend for terminal/forward moves; never downgrade locally
+            if (backendStage === "served" || backendStage === "ready") {
+              next[o.id] = backendStage;
             }
           }
         });
@@ -385,7 +385,7 @@ export default function KanbanPage() {
     const endpoint: Record<Stage, string> = {
       preparing: `${API}/orders/${orderId}/preparing`,
       ready:     `${API}/orders/${orderId}/ready`,
-      served:    `${API}/orders/${orderId}/done`,
+      served:    `${API}/orders/${orderId}/served`,   // food delivered, NOT paid
     };
     await fetch(endpoint[stage], { method: "PUT" });
     setStageMap(p => ({ ...p, [orderId]: stage }));
