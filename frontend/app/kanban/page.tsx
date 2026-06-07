@@ -623,7 +623,14 @@ export default function KanbanPage() {
         <BillModal
           order={invoiceOrder}
           onClose={() => setInvoiceOrder(null)}
-          onPaid={() => setPaidIds(p => new Set(p).add(invoiceOrder.id))}
+          onPaid={() => {
+            const id = invoiceOrder.id;          // capture before onClose nullifies invoiceOrder
+            setPaidIds(p => new Set(p).add(id)); // show "تم الدفع" badge instantly
+            setTimeout(() => {
+              setOrders(p => p.filter(o => o.id !== id));
+              setStageMap(p => { const n = { ...p }; delete n[id]; return n; });
+            }, 2000);                             // remove card after 2 s — short enough to feel immediate
+          }}
         />
       )}
     </div>
