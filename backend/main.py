@@ -315,6 +315,20 @@ def mark_order_served(order_id: int, db: Session = Depends(get_db)):
     return {"message": "تم تقديم الطلب للطاولة"}
 
 
+class PayOrderPayload(BaseModel):
+    payment_method: str = "cash"
+
+@app.put("/orders/{order_id}/pay")
+def pay_order(order_id: int, payload: PayOrderPayload, db: Session = Depends(get_db)):
+    """Record payment without changing operational status — order stays on kanban board."""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return {"error": "الطلب غير موجود"}
+    order.payment_method = payload.payment_method
+    db.commit()
+    return {"message": "تم تسجيل الدفع"}
+
+
 @app.put("/orders/{order_id}/done")
 def complete_order(order_id: int, db: Session = Depends(get_db)):
     """Payment completion only — called by BillModal after cashier confirms payment."""

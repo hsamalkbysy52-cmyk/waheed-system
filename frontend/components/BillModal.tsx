@@ -39,10 +39,11 @@ function aggregate(items: { name: string; price: number; category: string }[]): 
   return Object.values(m);
 }
 
-export function BillModal({ order, onClose, onPaid }: {
+export function BillModal({ order, onClose, onPaid, payOnly }: {
   order: OrderForBill;
   onClose: () => void;
   onPaid: () => void;
+  payOnly?: boolean;
 }) {
   const [splitMode, setSplitMode]   = useState<SplitMode>("none");
   const [method, setMethod]         = useState<PayMethod>("cash");
@@ -62,8 +63,18 @@ export function BillModal({ order, onClose, onPaid }: {
 
   const markDone = async () => {
     setPaying(true);
-    try { await fetch(`${API}/orders/${order.id}/done`, { method: "PUT" }); setDone(true); }
-    catch {}
+    try {
+      if (payOnly) {
+        await fetch(`${API}/orders/${order.id}/pay`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_method: method }),
+        });
+      } else {
+        await fetch(`${API}/orders/${order.id}/done`, { method: "PUT" });
+      }
+      setDone(true);
+    } catch {}
     finally { setPaying(false); }
   };
 

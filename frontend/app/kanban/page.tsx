@@ -657,13 +657,12 @@ export default function KanbanPage() {
         <BillModal
           order={invoiceOrder}
           onClose={() => setInvoiceOrder(null)}
+          payOnly
           onPaid={() => {
-            const id = invoiceOrder.id;          // capture before onClose nullifies invoiceOrder
-            setPaidIds(p => new Set(p).add(id)); // show "تم الدفع" badge instantly
-            setTimeout(() => {
-              setOrders(p => p.filter(o => o.id !== id));
-              setStageMap(p => { const n = { ...p }; delete n[id]; return n; });
-            }, 2000);                             // remove card after 2 s — short enough to feel immediate
+            const id = invoiceOrder.id;
+            setPaidIds(p => new Set(p).add(id));
+            // Update local order so prePaid badge shows immediately without waiting for next poll
+            setOrders(p => p.map(o => o.id === id ? { ...o, payment_method: o.payment_method ?? "cash" } : o));
           }}
         />
       )}
