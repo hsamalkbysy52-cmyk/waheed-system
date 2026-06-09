@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { BillModal, OrderForBill } from "@/components/BillModal";
 
 const API    = "https://waheed-system-production.up.railway.app";
 const TABLES = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -38,7 +39,7 @@ export default function NewOrderDrawer({
   const [orderError, setOrderError] = useState("");
   const [success, setSuccess]   = useState(false);
   const [stockAlert, setStockAlert] = useState("");
-  const [payMethod, setPayMethod] = useState<"cash" | "card" | "qr">("cash");
+  const [pendingBillOrder, setPendingBillOrder] = useState<OrderForBill | null>(null);
   const cartRef                 = useRef<HTMLDivElement>(null);
 
   const showStockAlert = (msg: string) => {
@@ -140,8 +141,44 @@ export default function NewOrderDrawer({
     }
   };
 
+  /* ── pay + send: create order then open BillModal for payment options ── */
+  const doPayAndSend = async () => {
+    if (!cart.length) { setOrderError("أضف صنفاً واحداً على الأقل"); return; }
+    setSending(true);
+    setOrderError("");
+    try {
+      const expandedItems = cart.flatMap((c) =>
+        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
+      );
+      const cashier = localStorage.getItem("username") || "";
+      const r = await fetch(`${API}/orders/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setOrderError(d.detail || `فشل الإرسال (${r.status})`);
+        return;
+      }
+      const d = await r.json();
+      setPendingBillOrder({ id: d.order_id, table_number: table, total_price: total, notes, items: expandedItems });
+    } catch {
+      setOrderError("تعذر الاتصال بالسيرفر — تحقق من الشبكة");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const finishAfterPay = () => {
+    setPendingBillOrder(null);
+    setSuccess(true);
+    setTimeout(() => { onSuccess(); onClose(); }, 1400);
+  };
+
   /* ══════════════════════════════ RENDER ══════════════════════════════ */
   return (
+    <>
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 300,
@@ -426,35 +463,6 @@ export default function NewOrderDrawer({
                 }}
               />
 
-              {/* ── Immediate payment method selector ── */}
-              <div style={{ marginBottom: "10px" }}>
-                <div style={{ color: "#64748b", fontSize: "10px", fontWeight: "600", marginBottom: "6px", letterSpacing: "0.4px" }}>
-                  💰 طريقة الدفع الفوري
-                </div>
-                <div style={{ display: "flex", gap: "5px" }}>
-                  {([
-                    { id: "cash" as const, label: "كاش",        icon: "💵" },
-                    { id: "card" as const, label: "بطاقة",      icon: "💳" },
-                    { id: "qr"   as const, label: "QR / محفظة", icon: "📱" },
-                  ]).map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setPayMethod(m.id)}
-                      style={{
-                        flex: 1, padding: "6px 4px", borderRadius: "9px",
-                        cursor: "pointer", textAlign: "center", fontSize: "10px",
-                        fontWeight: payMethod === m.id ? "700" : "400",
-                        background: payMethod === m.id ? "rgba(34,197,94,0.12)" : "#1c1c28",
-                        color: payMethod === m.id ? "#22c55e" : "#64748b",
-                        border: `1px solid ${payMethod === m.id ? "rgba(34,197,94,0.35)" : "#252535"}`,
-                      }}
-                    >
-                      <div style={{ fontSize: "15px", marginBottom: "2px" }}>{m.icon}</div>
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {orderError && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>
@@ -488,7 +496,7 @@ export default function NewOrderDrawer({
 
               {/* ── Button 2: pay + send to kitchen ── */}
               <button
-                onClick={() => doSubmit(payMethod)}
+                onClick={doPayAndSend}
                 disabled={sending || cart.length === 0 || success}
                 style={{
                   width: "100%", padding: "15px 12px",
@@ -508,5 +516,15 @@ export default function NewOrderDrawer({
         </div>
       </div>
     </div>
+
+    {pendingBillOrder && (
+      <BillModal
+        order={pendingBillOrder}
+        payOnly
+        onClose={finishAfterPay}
+        onPaid={finishAfterPay}
+      />
+    )}
+    </>
   );
 }

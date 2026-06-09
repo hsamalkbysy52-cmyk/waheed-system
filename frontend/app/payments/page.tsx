@@ -6,7 +6,7 @@ const API = "https://waheed-system-production.up.railway.app";
 
 type RawItem = { name: string; price: number; category: string };
 type AggItem = { name: string; price: number; category: string; qty: number };
-type Order   = { id: number; table_number: number; total_price: number; status: string; created_at: string; items: RawItem[]; notes: string; cashier: string; };
+type Order   = { id: number; table_number: number; total_price: number; status: string; created_at: string; items: RawItem[]; notes: string; cashier: string; payment_method?: string | null; };
 
 const CAT_EMOJI: Record<string, string> = {
   "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
@@ -40,8 +40,8 @@ export default function PaymentsPage() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  const pending = orders.filter(o => ["preparing", "ready", "served", "pending"].includes(o.status));
-  const done    = orders.filter(o => o.status === "done");
+  const pending = orders.filter(o => !o.payment_method && ["preparing", "ready", "served", "pending"].includes(o.status));
+  const done    = orders.filter(o => o.status === "done" || !!o.payment_method);
   const revenue = done.reduce((s, o) => s + o.total_price, 0);
   const display = tab === "pending" ? pending : done;
 
