@@ -12,8 +12,9 @@ type RawItem = {
   description?: string;
   available?: boolean;
   is_available?: boolean;
+  max_qty?: number | null;
 };
-type MenuItem = RawItem & { available: boolean };
+type MenuItem = RawItem & { available: boolean; max_qty?: number | null };
 type CartLine = { id: number; name: string; price: number; category: string; qty: number };
 
 const CAT_EMOJI: Record<string, string> = {
@@ -91,10 +92,11 @@ function SuccessScreen({ tableId, total, onReset }: {
 }
 
 /* ─── cart sheet ─────────────────────────────────────────────── */
-function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing }: {
+function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, notes, onNotesChange }: {
   cart: CartLine[]; total: number; onClose: () => void;
   onChangeQty: (id: number, delta: number) => void;
   onPlaceOrder: () => void; placing: boolean;
+  notes: string; onNotesChange: (v: string) => void;
 }) {
   return (
     <div style={{
@@ -164,6 +166,24 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing }:
               {total.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
             </span>
           </div>
+          {/* notes */}
+          <textarea
+            value={notes}
+            onChange={e => onNotesChange(e.target.value)}
+            placeholder="ملاحظات خاصة — مثال: بدون بصل، حساسية من الفلفل..."
+            rows={2}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              background: "#1c1c28", border: "1px solid #252535",
+              borderRadius: "12px", color: "#f1f5f9",
+              padding: "10px 14px", fontSize: "13px",
+              resize: "none", outline: "none", direction: "rtl",
+              fontFamily: "inherit", marginBottom: "12px",
+              lineHeight: "1.5",
+            }}
+            onFocus={e => { e.target.style.borderColor = "rgba(245,158,11,0.4)"; }}
+            onBlur={e => { e.target.style.borderColor = "#252535"; }}
+          />
           <button
             onClick={onPlaceOrder}
             disabled={placing}
@@ -197,6 +217,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [placing, setPlacing]     = useState(false);
   const [success, setSuccess]     = useState(false);
   const [orderTotal, setOrderTotal] = useState(0);
+  const [notes, setNotes]         = useState("");
+  const [stockAlert, setStockAlert] = useState("");
 
   /* fetch menu — direct Railway call with CORS mode + cache-bust */
   const loadMenu = useCallback(() => {
@@ -240,8 +262,21 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const cartTotal  = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const cartCount  = cart.reduce((s, c) => s + c.qty, 0);
 
+  const showStockMsg = (name: string) => {
+    setStockAlert(name);
+    setTimeout(() => setStockAlert(""), 4000);
+  };
+
   /* cart helpers */
-  const changeQty = (id: number, delta: number) =>
+  const changeQty = (id: number, delta: number) => {
+    if (delta > 0) {
+      const item = menuItems.find(m => m.id === id);
+      const currentQty = cart.find(c => c.id === id)?.qty ?? 0;
+      if (item?.max_qty != null && currentQty >= item.max_qty) {
+        showStockMsg(item.name);
+        return;
+      }
+    }
     setCart((prev) =>
       prev.flatMap((c) => {
         if (c.id !== id) return [c];
@@ -249,14 +284,21 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         return next > 0 ? [{ ...c, qty: next }] : [];
       })
     );
+  };
 
-  const addItem = (item: MenuItem) =>
+  const addItem = (item: MenuItem) => {
+    const currentQty = cart.find(c => c.id === item.id)?.qty ?? 0;
+    if (item.max_qty != null && currentQty >= item.max_qty) {
+      showStockMsg(item.name);
+      return;
+    }
     setCart((prev) => {
       const hit = prev.find((c) => c.id === item.id);
       return hit
         ? prev.map((c) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c)
         : [...prev, { id: item.id, name: item.name, price: item.price, category: item.category, qty: 1 }];
     });
+  };
 
   /* place order */
   const placeOrder = async () => {
@@ -264,17 +306,18 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
     setPlacing(true);
     try {
       const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price }))
+        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
       );
       const r = await fetch(`${RAILWAY}/orders/create`, {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems }),
+        body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || null }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setOrderTotal(cartTotal);
       setCartOpen(false);
+      setNotes("");
       setSuccess(true);
     } catch (e) {
       alert(`فشل إرسال الطلب: ${e}`);
@@ -470,6 +513,31 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         )}
       </div>
 
+      {/* ── stock alert toast ── */}
+      {stockAlert && (
+        <div style={{
+          position: "fixed", bottom: cartCount > 0 ? "96px" : "24px",
+          left: "50%", transform: "translateX(-50%)",
+          width: "calc(100% - 32px)", maxWidth: "448px",
+          background: "#1a0a0a", border: "1px solid rgba(239,68,68,0.5)",
+          borderRadius: "14px", padding: "14px 18px",
+          zIndex: 450, direction: "rtl",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+        }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+            <span style={{ fontSize: "22px", flexShrink: 0 }}>⚠️</span>
+            <div>
+              <div style={{ color: "#f87171", fontWeight: "700", fontSize: "14px", marginBottom: "4px" }}>
+                عذراً، لا يمكنك طلب هذه الكمية من "{stockAlert}"
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: "12px", lineHeight: "1.5" }}>
+                الكمية المتاحة محدودة — يرجى التواصل مع الغرسون للمساعدة
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── floating cart button ── */}
       {cartCount > 0 && !cartOpen && (
         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "480px", padding: "12px 16px 20px", zIndex: 400 }}>
@@ -504,6 +572,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           onChangeQty={changeQty}
           onPlaceOrder={placeOrder}
           placing={placing}
+          notes={notes}
+          onNotesChange={setNotes}
         />
       )}
     </div>
