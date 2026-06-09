@@ -38,6 +38,7 @@ class Order(Base):
     items_json = Column(String, nullable=True)
     cashier = Column(String(100), nullable=True)
     notes = Column(String, nullable=True)
+    payment_method = Column(String(10), nullable=True)   # null=unpaid; cash/card/qr=prepaid
 
 
 class CancellationLog(Base):
@@ -92,6 +93,7 @@ def create_tables():
             "ALTER TABLE orders ADD COLUMN cashier VARCHAR(100)",
             "ALTER TABLE orders ADD COLUMN notes TEXT",
             "ALTER TABLE menu_items ADD COLUMN description TEXT",
+            "ALTER TABLE orders ADD COLUMN payment_method VARCHAR(10)",
         ]:
             try:
                 conn.execute(text(sql))

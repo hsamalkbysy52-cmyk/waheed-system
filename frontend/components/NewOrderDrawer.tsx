@@ -34,11 +34,12 @@ export default function NewOrderDrawer({
   const [table, setTable]     = useState(1);
   const [cat, setCat]         = useState("الكل");
   const [notes, setNotes]     = useState("");
-  const [sending, setSending] = useState(false);
+  const [sending, setSending]   = useState(false);
   const [orderError, setOrderError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess]   = useState(false);
   const [stockAlert, setStockAlert] = useState("");
-  const cartRef               = useRef<HTMLDivElement>(null);
+  const [payMethod, setPayMethod] = useState<"cash" | "card" | "qr">("cash");
+  const cartRef                 = useRef<HTMLDivElement>(null);
 
   const showStockAlert = (msg: string) => {
     setStockAlert(msg);
@@ -107,23 +108,23 @@ export default function NewOrderDrawer({
   const total      = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const totalItems = cart.reduce((s, c) => s + c.qty, 0);
 
-  /* ── submit ── */
-  const submit = async () => {
+  /* ── submit (shared by both buttons) ── */
+  const doSubmit = async (withPayment?: "cash" | "card" | "qr") => {
     if (!cart.length) { setOrderError("أضف صنفاً واحداً على الأقل"); return; }
     setSending(true);
     setOrderError("");
     try {
-      /* Expand qty: backend expects [{name, price}] with no quantity field.
-         Repeat each item qty times so total_price is computed correctly. */
       const expandedItems = cart.flatMap((c) =>
         Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
       );
       const cashier = localStorage.getItem("username") || "";
+      const body: Record<string, unknown> = { table_number: table, items: expandedItems, cashier, notes };
+      if (withPayment) body.payment_method = withPayment;
 
       const r = await fetch(`${API}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -425,6 +426,36 @@ export default function NewOrderDrawer({
                 }}
               />
 
+              {/* ── Immediate payment method selector ── */}
+              <div style={{ marginBottom: "10px" }}>
+                <div style={{ color: "#64748b", fontSize: "10px", fontWeight: "600", marginBottom: "6px", letterSpacing: "0.4px" }}>
+                  💰 طريقة الدفع الفوري
+                </div>
+                <div style={{ display: "flex", gap: "5px" }}>
+                  {([
+                    { id: "cash" as const, label: "كاش",        icon: "💵" },
+                    { id: "card" as const, label: "بطاقة",      icon: "💳" },
+                    { id: "qr"   as const, label: "QR / محفظة", icon: "📱" },
+                  ]).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setPayMethod(m.id)}
+                      style={{
+                        flex: 1, padding: "6px 4px", borderRadius: "9px",
+                        cursor: "pointer", textAlign: "center", fontSize: "10px",
+                        fontWeight: payMethod === m.id ? "700" : "400",
+                        background: payMethod === m.id ? "rgba(34,197,94,0.12)" : "#1c1c28",
+                        color: payMethod === m.id ? "#22c55e" : "#64748b",
+                        border: `1px solid ${payMethod === m.id ? "rgba(34,197,94,0.35)" : "#252535"}`,
+                      }}
+                    >
+                      <div style={{ fontSize: "15px", marginBottom: "2px" }}>{m.icon}</div>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {orderError && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>
                   ⚠️ {orderError}
@@ -437,21 +468,40 @@ export default function NewOrderDrawer({
                 </div>
               )}
 
+              {/* ── Button 1: kitchen only (no payment) ── */}
               <button
-                onClick={submit}
+                onClick={() => doSubmit()}
+                disabled={sending || cart.length === 0 || success}
+                style={{
+                  width: "100%", padding: "13px 12px", marginBottom: "8px",
+                  background: (sending || cart.length === 0 || success) ? "#1c1c28" : "rgba(245,158,11,0.12)",
+                  color: (sending || cart.length === 0 || success) ? "#64748b" : "#f59e0b",
+                  border: `1px solid ${(sending || cart.length === 0 || success) ? "#252535" : "rgba(245,158,11,0.35)"}`,
+                  borderRadius: "14px",
+                  cursor: (sending || cart.length === 0 || success) ? "not-allowed" : "pointer",
+                  fontSize: "14px", fontWeight: "700",
+                  transition: "all 0.15s",
+                }}
+              >
+                {sending ? "⏳ جاري الإرسال..." : success ? "✅ تم!" : "🍳 إرسال للمطبخ فقط"}
+              </button>
+
+              {/* ── Button 2: pay + send to kitchen ── */}
+              <button
+                onClick={() => doSubmit(payMethod)}
                 disabled={sending || cart.length === 0 || success}
                 style={{
                   width: "100%", padding: "15px 12px",
-                  background: (sending || cart.length === 0 || success) ? "#1c1c28" : "linear-gradient(135deg,#f59e0b,#d97706)",
+                  background: (sending || cart.length === 0 || success) ? "#1c1c28" : "linear-gradient(135deg,#22c55e,#16a34a)",
                   color: (sending || cart.length === 0 || success) ? "#64748b" : "#000",
                   border: "none", borderRadius: "14px",
                   cursor: (sending || cart.length === 0 || success) ? "not-allowed" : "pointer",
                   fontSize: "15px", fontWeight: "900",
-                  boxShadow: (cart.length > 0 && !sending && !success) ? "0 6px 24px rgba(245,158,11,0.4)" : "none",
+                  boxShadow: (cart.length > 0 && !sending && !success) ? "0 6px 24px rgba(34,197,94,0.35)" : "none",
                   transition: "all 0.15s",
                 }}
               >
-                {sending ? "⏳ جاري الإرسال..." : success ? "✅ تم!" : "🍳 تأكيد وإرسال للمطبخ"}
+                {sending ? "⏳ جاري الإرسال..." : success ? "✅ تم!" : `💰 دفع وإرسال للمطبخ`}
               </button>
             </div>
           </div>

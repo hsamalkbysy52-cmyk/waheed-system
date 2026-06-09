@@ -119,6 +119,7 @@ class OrderRequest(BaseModel):
     table_number: int = 1
     cashier: str = ""
     notes: str = ""
+    payment_method: Optional[str] = None   # cash / card / qr for prepaid orders
 
 
 @app.get("/orders")
@@ -134,6 +135,7 @@ def get_orders(db: Session = Depends(get_db)):
             "items": json.loads(o.items_json) if o.items_json else [],
             "cashier": o.cashier or "",
             "notes": o.notes or "",
+            "payment_method": o.payment_method or None,
         }
         for o in orders
     ]}
@@ -228,6 +230,7 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
         items_json=json.dumps(items_data, ensure_ascii=False),
         cashier=order.cashier,
         notes=order.notes,
+        payment_method=order.payment_method or None,
     )
     db.add(new_order)
     _deduct_inventory(items_data, db)

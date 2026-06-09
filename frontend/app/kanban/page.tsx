@@ -28,6 +28,7 @@ type Order = {
   items: OrderItem[];
   cashier: string;
   notes: string;
+  payment_method?: string | null;
 };
 type Stage = "preparing" | "ready" | "served";
 type MenuItem = { id: number; name: string; price: number; category: string; is_available?: boolean; out_of_stock?: boolean };
@@ -80,11 +81,12 @@ function timeAgo(created_at: string, now: number) {
 }
 
 /* ── Draggable card ── */
-function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting, onInvoice, isPaid }: {
+function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting, onInvoice, isPaid, onComplete }: {
   order: Order; stage: Stage; now: number;
   onNext: () => void; onPrev: () => void;
   onEdit: () => void; onDelete: () => void; isDeleting: boolean;
   onInvoice: () => void; isPaid: boolean;
+  onComplete: () => void;
 }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: String(order.id) });
@@ -246,40 +248,64 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
       )}
 
       {/* Invoice / Paid — all stages */}
-      <div style={{ marginTop: "8px", borderTop: "1px solid #1c1c28", paddingTop: "10px" }}>
-        {isPaid ? (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-            background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
-            borderRadius: "9px", padding: "8px",
-          }}>
-            <span style={{ fontSize: "15px" }}>✅</span>
-            <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700" }}>تم الدفع</span>
+      {(() => {
+        const prePaid   = !!order.payment_method;
+        const fullyPaid = prePaid || isPaid;
+        const methodIcon = order.payment_method === "card" ? "💳" : order.payment_method === "qr" ? "📱" : "💵";
+        return (
+          <div style={{ marginTop: "8px", borderTop: "1px solid #1c1c28", paddingTop: "10px" }}>
+            {fullyPaid ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                  background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
+                  borderRadius: "9px", padding: "8px",
+                }}>
+                  <span style={{ fontSize: "15px" }}>✅</span>
+                  <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700" }}>تم الدفع</span>
+                  {prePaid && <span style={{ fontSize: "14px" }}>{methodIcon}</span>}
+                </div>
+                {/* Prepaid served order: let cashier close it */}
+                {prePaid && stage === "served" && (
+                  <button
+                    onPointerDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); onComplete(); }}
+                    style={{
+                      width: "100%", padding: "7px",
+                      background: "rgba(100,116,139,0.12)", color: "#94a3b8",
+                      border: "1px solid #252535", borderRadius: "9px",
+                      cursor: "pointer", fontSize: "12px", fontWeight: "600",
+                    }}
+                  >✓ أغلق الطلب</button>
+                )}
+              </div>
+            ) : (
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); onInvoice(); }}
+                style={{
+                  width: "100%", padding: "8px",
+                  background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
+                  color: "#f59e0b",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                  borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
+                }}
+              >🧾 عرض الفاتورة والدفع</button>
+            )}
           </div>
-        ) : (
-          <button
-            onPointerDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onInvoice(); }}
-            style={{
-              width: "100%", padding: "8px",
-              background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
-              color: "#f59e0b",
-              border: "1px solid rgba(245,158,11,0.35)",
-              borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
-            }}
-          >🧾 عرض الفاتورة والدفع</button>
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
   onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
   onInvoice: (order: Order) => void; paidIds: Set<number>;
+  onComplete: (id: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
@@ -307,7 +333,8 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
             onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)}
             onEdit={() => onEdit(o)} onDelete={() => onDelete(o.id)}
             isDeleting={deletingId === o.id}
-            onInvoice={() => onInvoice(o)} isPaid={paidIds.has(o.id)} />
+            onInvoice={() => onInvoice(o)} isPaid={paidIds.has(o.id)}
+            onComplete={() => onComplete(o.id)} />
         ))}
         {!orders.length && (
           <div style={{ textAlign: "center", color: "#334155", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
@@ -456,6 +483,12 @@ export default function KanbanPage() {
     } finally { setDeletingId(null); }
   };
 
+  const completeOrder = async (orderId: number) => {
+    await fetch(`${API}/orders/${orderId}/done`, { method: "PUT" });
+    setOrders(p => p.filter(o => o.id !== orderId));
+    setStageMap(p => { const n = { ...p }; delete n[orderId]; return n; });
+  };
+
   const byStage = (s: Stage) => orders.filter(o => (stageMap[o.id] ?? "preparing") === s);
   const active  = orders.length;
 
@@ -493,7 +526,8 @@ export default function KanbanPage() {
             <Column key={s.id} stage={s} orders={byStage(s.id)} now={now}
               onNext={next} onPrev={prev}
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
-              onInvoice={setInvoiceOrder} paidIds={paidIds} />
+              onInvoice={setInvoiceOrder} paidIds={paidIds}
+              onComplete={completeOrder} />
           ))}
         </div>
       </DndContext>
