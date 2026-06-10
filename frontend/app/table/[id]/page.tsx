@@ -1,5 +1,6 @@
 "use client";
 import { use, useState, useEffect, useCallback } from "react";
+import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 
 const RAILWAY = "https://waheed-system-production.up.railway.app";
 const MENU_API = "/api/menu";
@@ -13,9 +14,18 @@ type RawItem = {
   available?: boolean;
   is_available?: boolean;
   max_qty?: number | null;
+  modifiers?: ModGroup[];
 };
 type MenuItem = RawItem & { available: boolean; max_qty?: number | null };
-type CartLine = { id: number; name: string; price: number; category: string; qty: number };
+type CartLine = {
+  key: string;        // "${id}:${sorted_option_ids}"
+  id: number;
+  name: string;
+  price: number;      // includes modifier price deltas
+  category: string;
+  qty: number;
+  mods: SelectedMod[];
+};
 
 const CAT_EMOJI: Record<string, string> = {
   "برجر": "🍔", "بيتزا": "🍕", "مشروبات": "🥤",
@@ -94,7 +104,7 @@ function SuccessScreen({ tableId, total, onReset }: {
 /* ─── cart sheet ─────────────────────────────────────────────── */
 function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, notes, onNotesChange }: {
   cart: CartLine[]; total: number; onClose: () => void;
-  onChangeQty: (id: number, delta: number) => void;
+  onChangeQty: (key: string, delta: number) => void;
   onPlaceOrder: () => void; placing: boolean;
   notes: string; onNotesChange: (v: string) => void;
 }) {
@@ -130,24 +140,33 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
         {/* items */}
         <div style={{ overflowY: "auto", flex: 1, padding: "8px 16px" }}>
           {cart.map((c, idx) => (
-            <div key={c.id} style={{
-              display: "flex", alignItems: "center", gap: "10px",
+            <div key={c.key} style={{
+              display: "flex", alignItems: "flex-start", gap: "10px",
               padding: "12px 0",
               borderBottom: idx < cart.length - 1 ? "1px solid #1c1c28" : "none",
             }}>
-              <div style={{ fontSize: "24px", flexShrink: 0 }}>{ce(c.category)}</div>
+              <div style={{ fontSize: "24px", flexShrink: 0, marginTop: "2px" }}>{ce(c.category)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px" }}>{c.name}</div>
-                <div style={{ color: "#f59e0b", fontSize: "12px", marginTop: "2px" }}>
+                {c.mods.length > 0 && (
+                  <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "3px" }}>
+                    {c.mods.map((m, mi) => (
+                      <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
+                        {m.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ color: "#f59e0b", fontSize: "12px", marginTop: "3px" }}>
                   {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-                <QtyButton variant="remove" onClick={() => onChangeQty(c.id, -1)}>
+                <QtyButton variant="remove" onClick={() => onChangeQty(c.key, -1)}>
                   {c.qty === 1 ? "🗑" : "−"}
                 </QtyButton>
                 <span style={{ color: "#f1f5f9", fontWeight: "800", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{c.qty}</span>
-                <QtyButton variant="add" onClick={() => onChangeQty(c.id, 1)}>+</QtyButton>
+                <QtyButton variant="add" onClick={() => onChangeQty(c.key, 1)}>+</QtyButton>
               </div>
             </div>
           ))}
@@ -219,8 +238,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [orderTotal, setOrderTotal] = useState(0);
   const [notes, setNotes]         = useState("");
   const [stockAlert, setStockAlert] = useState("");
+  const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
 
-  /* fetch menu — direct Railway call with CORS mode + cache-bust */
+  /* fetch menu */
   const loadMenu = useCallback(() => {
     setLoading(true);
     setFetchErr("");
@@ -268,18 +288,21 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   };
 
   /* cart helpers */
-  const changeQty = (id: number, delta: number) => {
+  const changeQty = (key: string, delta: number) => {
     if (delta > 0) {
-      const item = menuItems.find(m => m.id === id);
-      const currentQty = cart.find(c => c.id === id)?.qty ?? 0;
-      if (item?.max_qty != null && currentQty >= item.max_qty) {
-        showStockMsg(item.name);
-        return;
+      const line = cart.find(c => c.key === key);
+      if (line) {
+        const item = menuItems.find(m => m.id === line.id);
+        const totalQtyForItem = cart.filter(c => c.id === line.id).reduce((s, c) => s + c.qty, 0);
+        if (item?.max_qty != null && totalQtyForItem >= item.max_qty) {
+          showStockMsg(item.name);
+          return;
+        }
       }
     }
     setCart((prev) =>
       prev.flatMap((c) => {
-        if (c.id !== id) return [c];
+        if (c.key !== key) return [c];
         const next = c.qty + delta;
         return next > 0 ? [{ ...c, qty: next }] : [];
       })
@@ -287,17 +310,41 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   };
 
   const addItem = (item: MenuItem) => {
-    const currentQty = cart.find(c => c.id === item.id)?.qty ?? 0;
+    // If item has modifier groups, show ModifierSelector first
+    if (item.modifiers && item.modifiers.length > 0) {
+      setModifierItem(item);
+      return;
+    }
+    const key = `${item.id}:`;
+    const currentQty = cart.find(c => c.key === key)?.qty ?? 0;
     if (item.max_qty != null && currentQty >= item.max_qty) {
       showStockMsg(item.name);
       return;
     }
     setCart((prev) => {
-      const hit = prev.find((c) => c.id === item.id);
+      const hit = prev.find((c) => c.key === key);
       return hit
-        ? prev.map((c) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c)
-        : [...prev, { id: item.id, name: item.name, price: item.price, category: item.category, qty: 1 }];
+        ? prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c)
+        : [...prev, { key, id: item.id, name: item.name, price: item.price, category: item.category, qty: 1, mods: [] }];
     });
+  };
+
+  const addItemWithMods = (item: MenuItem, mods: SelectedMod[]) => {
+    const sortedIds = mods.map((m) => m.option_id).sort().join(",");
+    const key = `${item.id}:${sortedIds}`;
+    const finalPrice = item.price + mods.reduce((s, m) => s + m.price_delta, 0);
+    const totalQtyForItem = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+    if (item.max_qty != null && totalQtyForItem >= item.max_qty) {
+      showStockMsg(item.name);
+      return;
+    }
+    setCart((prev) => {
+      const hit = prev.find((c) => c.key === key);
+      return hit
+        ? prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c)
+        : [...prev, { key, id: item.id, name: item.name, price: finalPrice, category: item.category, qty: 1, mods }];
+    });
+    setModifierItem(null);
   };
 
   /* place order */
@@ -306,7 +353,17 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
     setPlacing(true);
     try {
       const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
+        Array.from({ length: c.qty }, () => ({
+          name: c.name,
+          price: c.price,
+          category: c.category,
+          modifiers: c.mods.map((m) => ({
+            name: m.name,
+            price_delta: m.price_delta,
+            inventory_item_id: m.inventory_item_id,
+            quantity_delta: m.quantity_delta,
+          })),
+        }))
       );
       const r = await fetch(`${RAILWAY}/orders/create`, {
         method: "POST",
@@ -372,7 +429,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           </div>
         )}
 
-        {/* error — always visible, full details for debugging */}
+        {/* error */}
         {!loading && fetchErr && (
           <div style={{ padding: "24px 16px" }}>
             <div style={{
@@ -445,13 +502,15 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                 </div>
               ) : (
                 filtered.map((item) => {
+                  const totalQtyForItem = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
                   const line = cart.find((c) => c.id === item.id);
+                  const hasMods = item.modifiers && item.modifiers.length > 0;
                   return (
                     <div
                       key={item.id}
                       style={{
-                        background: line ? "rgba(245,158,11,0.05)" : "#111118",
-                        border: `1px solid ${line ? "rgba(245,158,11,0.3)" : "#1c1c28"}`,
+                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.05)" : "#111118",
+                        border: `1px solid ${totalQtyForItem > 0 ? "rgba(245,158,11,0.3)" : "#1c1c28"}`,
                         borderRadius: "16px", padding: "14px 16px",
                         display: "flex", alignItems: "center", gap: "12px",
                         transition: "border-color 0.15s",
@@ -460,7 +519,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       {/* icon */}
                       <div style={{
                         width: "52px", height: "52px", borderRadius: "14px", flexShrink: 0,
-                        background: line ? "rgba(245,158,11,0.15)" : "#1c1c28",
+                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.15)" : "#1c1c28",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "26px", transition: "background 0.15s",
                       }}>
@@ -471,6 +530,11 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>
                           {item.name}
+                          {hasMods && (
+                            <span style={{ marginRight: "6px", background: "rgba(99,102,241,0.15)", color: "#818cf8", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontWeight: "600" }}>
+                              تعديلات
+                            </span>
+                          )}
                         </div>
                         {item.description && (
                           <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "4px", lineHeight: "1.4", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
@@ -483,13 +547,13 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       </div>
 
                       {/* add / qty */}
-                      {line ? (
+                      {line && !hasMods ? (
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-                          <QtyButton variant="remove" onClick={() => changeQty(item.id, -1)}>
+                          <QtyButton variant="remove" onClick={() => changeQty(line.key, -1)}>
                             {line.qty === 1 ? "🗑" : "−"}
                           </QtyButton>
                           <span style={{ color: "#f1f5f9", fontWeight: "900", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{line.qty}</span>
-                          <QtyButton variant="add" onClick={() => changeQty(item.id, 1)}>+</QtyButton>
+                          <QtyButton variant="add" onClick={() => changeQty(line.key, 1)}>+</QtyButton>
                         </div>
                       ) : (
                         <button
@@ -574,6 +638,16 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           placing={placing}
           notes={notes}
           onNotesChange={setNotes}
+        />
+      )}
+
+      {/* ── modifier selector ── */}
+      {modifierItem && (
+        <ModifierSelector
+          item={{ name: modifierItem.name, price: modifierItem.price }}
+          groups={modifierItem.modifiers ?? []}
+          onConfirm={(mods) => addItemWithMods(modifierItem, mods)}
+          onClose={() => setModifierItem(null)}
         />
       )}
     </div>

@@ -9,7 +9,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement
+from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -48,6 +48,30 @@ def home():
     return {"message": "Waheed System Running!", "status": "ok"}
 
 
+def _get_item_modifiers(menu_item_id: int, db: Session) -> list:
+    """Returns modifier groups with their options for a given menu item."""
+    groups = db.query(ModifierGroup).filter(ModifierGroup.menu_item_id == menu_item_id).all()
+    result = []
+    for g in groups:
+        options = db.query(ModifierOption).filter(ModifierOption.group_id == g.id).all()
+        result.append({
+            "id": g.id,
+            "name": g.name,
+            "max_selections": g.max_selections,
+            "options": [
+                {
+                    "id": o.id,
+                    "name": o.name,
+                    "price_delta": o.price_delta,
+                    "inventory_item_id": o.inventory_item_id,
+                    "quantity_delta": o.quantity_delta,
+                }
+                for o in options
+            ],
+        })
+    return result
+
+
 @app.get("/menu")
 def get_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
@@ -55,7 +79,8 @@ def get_menu(db: Session = Depends(get_db)):
         {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
          "is_available": i.is_available, "description": i.description or "",
          "out_of_stock": _is_out_of_stock(i.id, db),
-         "max_qty": _get_max_qty(i.id, db)}
+         "max_qty": _get_max_qty(i.id, db),
+         "modifiers": _get_item_modifiers(i.id, db)}
         for i in items
     ]}
 
@@ -98,6 +123,60 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     return {"message": "تم حذف الصنف"}
 
 
+@app.get("/menu/{item_id}/modifiers/groups")
+def get_modifier_groups(item_id: int, db: Session = Depends(get_db)):
+    return {"groups": _get_item_modifiers(item_id, db)}
+
+
+class ModifierGroupPayload(BaseModel):
+    name: str
+    max_selections: int = 1
+
+
+@app.post("/menu/{item_id}/modifiers/groups")
+def create_modifier_group(item_id: int, payload: ModifierGroupPayload, db: Session = Depends(get_db)):
+    group = ModifierGroup(menu_item_id=item_id, name=payload.name, max_selections=payload.max_selections)
+    db.add(group)
+    db.commit()
+    return {"message": "تم إنشاء المجموعة", "id": group.id}
+
+
+@app.delete("/modifiers/groups/{group_id}")
+def delete_modifier_group(group_id: int, db: Session = Depends(get_db)):
+    db.query(ModifierOption).filter(ModifierOption.group_id == group_id).delete()
+    db.query(ModifierGroup).filter(ModifierGroup.id == group_id).delete()
+    db.commit()
+    return {"message": "تم حذف المجموعة والخيارات"}
+
+
+class ModifierOptionPayload(BaseModel):
+    name: str
+    price_delta: float = 0
+    inventory_item_id: Optional[int] = None
+    quantity_delta: float = 0
+
+
+@app.post("/modifiers/groups/{group_id}/options")
+def create_modifier_option(group_id: int, payload: ModifierOptionPayload, db: Session = Depends(get_db)):
+    option = ModifierOption(
+        group_id=group_id,
+        name=payload.name,
+        price_delta=payload.price_delta,
+        inventory_item_id=payload.inventory_item_id,
+        quantity_delta=payload.quantity_delta,
+    )
+    db.add(option)
+    db.commit()
+    return {"message": "تم إضافة الخيار", "id": option.id}
+
+
+@app.delete("/modifiers/options/{option_id}")
+def delete_modifier_option(option_id: int, db: Session = Depends(get_db)):
+    db.query(ModifierOption).filter(ModifierOption.id == option_id).delete()
+    db.commit()
+    return {"message": "تم حذف الخيار"}
+
+
 @app.put("/menu/{item_id}/toggle")
 def toggle_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
@@ -112,6 +191,7 @@ class OrderItem(BaseModel):
     name: str
     price: float
     category: str = ""
+    modifiers: List[dict] = []
 
 
 class OrderRequest(BaseModel):
@@ -203,6 +283,20 @@ def _get_max_qty(menu_item_id: int, db: Session):
     return max_q if max_q is not None else None
 
 
+def _apply_modifier_inventory(items_data: list, db: Session):
+    """Apply inventory adjustments based on modifier options selected for each item."""
+    for item in items_data:
+        for mod in item.get("modifiers", []):
+            inv_id = mod.get("inventory_item_id")
+            qty_delta = mod.get("quantity_delta", 0)
+            if inv_id is None or qty_delta == 0:
+                continue
+            inv = db.query(InventoryItem).filter(InventoryItem.id == inv_id).first()
+            if inv:
+                # positive delta = deduct more inventory; negative delta = restore inventory
+                inv.quantity = max(0.0, inv.quantity - qty_delta)
+
+
 def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
     """True if any recipe ingredient is insufficient for a single serving."""
     recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
@@ -219,7 +313,10 @@ def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
 def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     from fastapi import HTTPException
     total = sum(item.price for item in order.items)
-    items_data = [{"name": i.name, "price": i.price, "category": i.category} for i in order.items]
+    items_data = [
+        {"name": i.name, "price": i.price, "category": i.category, "modifiers": i.modifiers}
+        for i in order.items
+    ]
     unavailable = _check_stock(items_data, db)
     if unavailable:
         raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
@@ -234,6 +331,7 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     )
     db.add(new_order)
     _deduct_inventory(items_data, db)
+    _apply_modifier_inventory(items_data, db)
     db.commit()
     return {
         "message": "تم حفظ الطلب!",

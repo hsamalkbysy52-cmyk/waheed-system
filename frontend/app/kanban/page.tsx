@@ -18,7 +18,7 @@ async function fetchWithRetry(url: string, retries = 4, delayMs = 3000): Promise
   return fetch(url);
 }
 
-type OrderItem = { name: string; price: number; category: string };
+type OrderItem = { name: string; price: number; category: string; modifiers?: { name: string }[] };
 type Order = {
   id: number;
   table_number: number;
@@ -49,10 +49,12 @@ const CAT_EMOJI: Record<string, string> = {
 const catEmoji = (c: string) => CAT_EMOJI[c] ?? "🍴";
 
 function aggregateItems(items: OrderItem[]) {
-  const map: Record<string, { name: string; price: number; category: string; qty: number }> = {};
+  const map: Record<string, { name: string; price: number; category: string; qty: number; mods: string[] }> = {};
   for (const item of items) {
-    if (map[item.name]) map[item.name].qty++;
-    else map[item.name] = { name: item.name, price: item.price, category: item.category || "", qty: 1 };
+    const modKey = (item.modifiers || []).map(m => m.name).join(",");
+    const key = `${item.name}|${modKey}`;
+    if (map[key]) map[key].qty++;
+    else map[key] = { name: item.name, price: item.price, category: item.category || "", qty: 1, mods: (item.modifiers || []).map(m => m.name) };
   }
   return Object.values(map);
 }
@@ -132,31 +134,37 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
       }}>
         {aggregated.length > 0 ? aggregated.map((item, i) => (
           <div key={i} style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
             padding: "4px 0",
             borderBottom: i < aggregated.length - 1 ? "1px solid #1e2030" : "none",
           }}>
-            <span style={{ color: "#e2e8f0", fontSize: "13px" }}>
-              {catEmoji(item.category)} {item.name}
-              {item.qty > 1 && (
-                <span style={{
-                  background: "rgba(245,158,11,0.18)",
-                  color: "#f59e0b",
-                  borderRadius: "5px",
-                  padding: "1px 6px",
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  marginRight: "6px",
-                }}>
-                  ×{item.qty}
-                </span>
-              )}
-            </span>
-            <span style={{ color: "#94a3b8", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
-              {(item.price * item.qty).toLocaleString()} <span style={{ fontSize: "10px" }}>د.ع</span>
-            </span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#e2e8f0", fontSize: "13px" }}>
+                {catEmoji(item.category)} {item.name}
+                {item.qty > 1 && (
+                  <span style={{
+                    background: "rgba(245,158,11,0.18)",
+                    color: "#f59e0b",
+                    borderRadius: "5px",
+                    padding: "1px 6px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    marginRight: "6px",
+                  }}>
+                    ×{item.qty}
+                  </span>
+                )}
+              </span>
+              <span style={{ color: "#94a3b8", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
+                {(item.price * item.qty).toLocaleString()} <span style={{ fontSize: "10px" }}>د.ع</span>
+              </span>
+            </div>
+            {item.mods.length > 0 && (
+              <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "2px" }}>
+                {item.mods.map((m, mi) => (
+                  <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>{m}</span>
+                ))}
+              </div>
+            )}
           </div>
         )) : (
           <div style={{ color: "#334155", fontSize: "12px", textAlign: "center", padding: "4px 0" }}>

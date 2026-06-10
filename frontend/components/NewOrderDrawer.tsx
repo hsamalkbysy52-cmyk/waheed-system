@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { BillModal, OrderForBill } from "@/components/BillModal";
+import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 
 const API    = "https://waheed-system-production.up.railway.app";
 const TABLES = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -16,8 +17,28 @@ const CAT_EMOJI: Record<string, string> = {
 };
 const emoji = (c: string) => CAT_EMOJI[c] ?? "🍴";
 
-type RawItem = { id: number; name: string; price: number; category: string; available?: boolean | number | null; is_available?: boolean | number | null; description?: string; out_of_stock?: boolean; max_qty?: number | null };
-type CartLine = { id: number; name: string; price: number; category: string; qty: number };
+type RawItem = {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  available?: boolean | number | null;
+  is_available?: boolean | number | null;
+  description?: string;
+  out_of_stock?: boolean;
+  max_qty?: number | null;
+  modifiers?: ModGroup[];
+};
+
+type CartLine = {
+  key: string;      // "${id}:${sorted_option_ids}"
+  id: number;
+  name: string;
+  price: number;    // includes modifier price deltas
+  category: string;
+  qty: number;
+  mods: SelectedMod[];
+};
 
 export default function NewOrderDrawer({
   onClose,
@@ -26,9 +47,9 @@ export default function NewOrderDrawer({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  /* ── local menu state (not Zustand — avoids hydration timing issues) ── */
+  /* ── local menu state ── */
   const [menuItems, setMenuItems] = useState<RawItem[]>([]);
-  const [loadingMenu, setLoadingMenu] = useState(true);   // start TRUE so the spinner shows first
+  const [loadingMenu, setLoadingMenu] = useState(true);
   const [fetchError, setFetchError]   = useState("");
 
   const [cart, setCart]       = useState<CartLine[]>([]);
@@ -40,6 +61,7 @@ export default function NewOrderDrawer({
   const [success, setSuccess]   = useState(false);
   const [stockAlert, setStockAlert] = useState("");
   const [pendingBillOrder, setPendingBillOrder] = useState<OrderForBill | null>(null);
+  const [modifierItem, setModifierItem] = useState<RawItem | null>(null);
   const cartRef                 = useRef<HTMLDivElement>(null);
 
   const showStockAlert = (msg: string) => {
@@ -59,7 +81,6 @@ export default function NewOrderDrawer({
       })
       .then((d) => {
         if (!cancelled) {
-          /* Normalize: API returns `is_available`, not `available` */
           const items: RawItem[] = (d.menu || d.items || d || []).map((i: RawItem) => ({
             ...i,
             available: i.available ?? i.is_available ?? true,
@@ -84,23 +105,48 @@ export default function NewOrderDrawer({
 
   /* ── cart helpers ── */
   const addItem = (item: RawItem) => {
-    const currentQty = cart.find((c) => c.id === item.id)?.qty ?? 0;
+    // If item has modifier groups, show ModifierSelector first
+    if (item.modifiers && item.modifiers.length > 0) {
+      setModifierItem(item);
+      return;
+    }
+    const key = `${item.id}:`;
+    const currentQty = cart.find((c) => c.key === key)?.qty ?? 0;
     if (item.max_qty != null && currentQty >= item.max_qty) {
       showStockAlert(`⚠️ الكمية المتاحة من "${item.name}" في المخزون: ${item.max_qty} فقط`);
       return;
     }
     setCart((prev) => {
-      const hit = prev.find((c) => c.id === item.id);
+      const hit = prev.find((c) => c.key === key);
       return hit
-        ? prev.map((c) => (c.id === item.id ? { ...c, qty: c.qty + 1 } : c))
-        : [...prev, { id: item.id, name: item.name, price: item.price, category: item.category, qty: 1 }];
+        ? prev.map((c) => (c.key === key ? { ...c, qty: c.qty + 1 } : c))
+        : [...prev, { key, id: item.id, name: item.name, price: item.price, category: item.category, qty: 1, mods: [] }];
     });
   };
 
-  const setQty = (id: number, delta: number) =>
+  const addItemWithMods = (item: RawItem, mods: SelectedMod[]) => {
+    const sortedIds = mods.map((m) => m.option_id).sort().join(",");
+    const key = `${item.id}:${sortedIds}`;
+    const finalPrice = item.price + mods.reduce((s, m) => s + m.price_delta, 0);
+    // For max_qty check, count total qty of this item across all mod variants
+    const totalItemQty = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+    if (item.max_qty != null && totalItemQty >= item.max_qty) {
+      showStockAlert(`⚠️ الكمية المتاحة من "${item.name}" في المخزون: ${item.max_qty} فقط`);
+      return;
+    }
+    setCart((prev) => {
+      const hit = prev.find((c) => c.key === key);
+      return hit
+        ? prev.map((c) => (c.key === key ? { ...c, qty: c.qty + 1 } : c))
+        : [...prev, { key, id: item.id, name: item.name, price: finalPrice, category: item.category, qty: 1, mods }];
+    });
+    setModifierItem(null);
+  };
+
+  const setQty = (key: string, delta: number) =>
     setCart((prev) =>
       prev.flatMap((c) => {
-        if (c.id !== id) return [c];
+        if (c.key !== key) return [c];
         const next = c.qty + delta;
         return next > 0 ? [{ ...c, qty: next }] : [];
       })
@@ -116,7 +162,17 @@ export default function NewOrderDrawer({
     setOrderError("");
     try {
       const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
+        Array.from({ length: c.qty }, () => ({
+          name: c.name,
+          price: c.price,
+          category: c.category,
+          modifiers: c.mods.map((m) => ({
+            name: m.name,
+            price_delta: m.price_delta,
+            inventory_item_id: m.inventory_item_id,
+            quantity_delta: m.quantity_delta,
+          })),
+        }))
       );
       const cashier = localStorage.getItem("username") || "";
       const body: Record<string, unknown> = { table_number: table, items: expandedItems, cashier, notes };
@@ -141,14 +197,24 @@ export default function NewOrderDrawer({
     }
   };
 
-  /* ── pay + send: create order then open BillModal for payment options ── */
+  /* ── pay + send ── */
   const doPayAndSend = async () => {
     if (!cart.length) { setOrderError("أضف صنفاً واحداً على الأقل"); return; }
     setSending(true);
     setOrderError("");
     try {
       const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
+        Array.from({ length: c.qty }, () => ({
+          name: c.name,
+          price: c.price,
+          category: c.category,
+          modifiers: c.mods.map((m) => ({
+            name: m.name,
+            price_delta: m.price_delta,
+            inventory_item_id: m.inventory_item_id,
+            quantity_delta: m.quantity_delta,
+          })),
+        }))
       );
       const cashier = localStorage.getItem("username") || "";
       const r = await fetch(`${API}/orders/create`, {
@@ -227,7 +293,7 @@ export default function NewOrderDrawer({
           {/* ══ MENU PANEL (60%) ══ */}
           <div style={{ flex: "0 0 60%", display: "flex", flexDirection: "column", borderLeft: "1px solid #1c1c28", overflow: "hidden" }}>
 
-            {/* Category tabs — only render once items are loaded */}
+            {/* Category tabs */}
             {!loadingMenu && menuItems.length > 0 && (
               <div style={{ padding: "10px 14px", borderBottom: "1px solid #1c1c28", display: "flex", gap: "6px", overflowX: "auto", flexShrink: 0 }}>
                 {categories.map((c) => (
@@ -257,7 +323,6 @@ export default function NewOrderDrawer({
             {/* Items grid */}
             <div style={{ flex: 1, overflowY: "auto", padding: "14px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: "10px", alignContent: "start" }}>
 
-              {/* Loading state */}
               {loadingMenu && (
                 <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: "80px", gap: "16px" }}>
                   <div style={{ fontSize: "36px", animation: "spin 1s linear infinite" }}>⏳</div>
@@ -265,7 +330,6 @@ export default function NewOrderDrawer({
                 </div>
               )}
 
-              {/* Fetch error */}
               {!loadingMenu && fetchError && (
                 <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "60px" }}>
                   <div style={{ fontSize: "36px", marginBottom: "12px" }}>⚠️</div>
@@ -277,7 +341,6 @@ export default function NewOrderDrawer({
                 </div>
               )}
 
-              {/* Empty after load */}
               {!loadingMenu && !fetchError && filtered.length === 0 && (
                 <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "60px", color: "#334155", fontSize: "13px" }}>
                   <div style={{ fontSize: "36px", marginBottom: "12px" }}>🍽️</div>
@@ -285,10 +348,11 @@ export default function NewOrderDrawer({
                 </div>
               )}
 
-              {/* Menu cards */}
               {!loadingMenu && !fetchError && filtered.map((item) => {
-                const inCart   = cart.find((c) => c.id === item.id);
-                const soldOut  = item.out_of_stock === true;
+                const inCartQty = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+                const inCart    = inCartQty > 0;
+                const soldOut   = item.out_of_stock === true;
+                const hasMods   = item.modifiers && item.modifiers.length > 0;
                 return (
                   <button
                     key={item.id}
@@ -305,31 +369,18 @@ export default function NewOrderDrawer({
                     }}
                   >
                     {soldOut && (
-                      <div style={{
-                        position: "absolute", top: "6px", right: "6px",
-                        background: "rgba(239,68,68,0.15)", color: "#ef4444",
-                        borderRadius: "6px", padding: "2px 6px",
-                        fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)",
-                      }}>نفد</div>
+                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(239,68,68,0.15)", color: "#ef4444", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</div>
                     )}
                     {!soldOut && item.max_qty != null && item.max_qty <= 10 && (
-                      <div style={{
-                        position: "absolute", top: "6px", right: "6px",
-                        background: "rgba(245,158,11,0.15)", color: "#f59e0b",
-                        borderRadius: "6px", padding: "2px 6px",
-                        fontSize: "9px", fontWeight: "700", border: "1px solid rgba(245,158,11,0.3)",
-                      }}>متبقي {item.max_qty}</div>
+                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(245,158,11,0.3)" }}>متبقي {item.max_qty}</div>
                     )}
                     {inCart && !soldOut && (
-                      <div style={{
-                        position: "absolute", top: "7px", left: "7px",
-                        background: "#f59e0b", color: "#000",
-                        borderRadius: "50%", width: "22px", height: "22px",
-                        fontSize: "11px", fontWeight: "900",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {inCart.qty}
+                      <div style={{ position: "absolute", top: "7px", left: "7px", background: "#f59e0b", color: "#000", borderRadius: "50%", width: "22px", height: "22px", fontSize: "11px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {inCartQty}
                       </div>
+                    )}
+                    {hasMods && !soldOut && (
+                      <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(99,102,241,0.2)", color: "#818cf8", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>تعديلات</div>
                     )}
                     <div style={{ fontSize: "28px", lineHeight: 1 }}>{emoji(item.category)}</div>
                     <div style={{ color: soldOut ? "#64748b" : "#f1f5f9", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
@@ -382,28 +433,38 @@ export default function NewOrderDrawer({
                   {cart.map((c, idx) => {
                     const menuItem = menuItems.find(m => m.id === c.id);
                     const maxQty   = menuItem?.max_qty;
-                    const atMax    = maxQty != null && c.qty >= maxQty;
+                    const totalQtyForItem = cart.filter(x => x.id === c.id).reduce((s, x) => s + x.qty, 0);
+                    const atMax    = maxQty != null && totalQtyForItem >= maxQty;
                     return (
                       <div
-                        key={c.id}
+                        key={c.key}
                         style={{
-                          display: "flex", alignItems: "center", gap: "8px",
+                          display: "flex", alignItems: "flex-start", gap: "8px",
                           padding: "10px 0",
                           borderBottom: idx < cart.length - 1 ? "1px solid #1c1c28" : "none",
                         }}
                       >
-                        <div style={{ fontSize: "20px", flexShrink: 0, width: "28px", textAlign: "center" }}>
+                        <div style={{ fontSize: "20px", flexShrink: 0, width: "28px", textAlign: "center", marginTop: "2px" }}>
                           {emoji(c.category)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                          <div style={{ color: "#f59e0b", fontSize: "11px", marginTop: "1px" }}>
+                          {c.mods.length > 0 && (
+                            <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "3px" }}>
+                              {c.mods.map((m, mi) => (
+                                <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
+                                  {m.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{ color: "#f59e0b", fontSize: "11px", marginTop: "3px" }}>
                             {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
                           <button
-                            onClick={() => setQty(c.id, -1)}
+                            onClick={() => setQty(c.key, -1)}
                             style={{ width: "30px", height: "30px", borderRadius: "9px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "14px" : "17px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
                           >{c.qty === 1 ? "🗑" : "−"}</button>
                           <span style={{ color: "#f1f5f9", fontSize: "15px", fontWeight: "800", minWidth: "22px", textAlign: "center" }}>{c.qty}</span>
@@ -413,7 +474,7 @@ export default function NewOrderDrawer({
                                 showStockAlert(`⚠️ الكمية المتاحة من "${c.name}" في المخزون: ${maxQty} فقط`);
                                 return;
                               }
-                              setQty(c.id, 1);
+                              setQty(c.key, 1);
                             }}
                             style={{ width: "30px", height: "30px", borderRadius: "9px", background: atMax ? "#1c1c28" : "rgba(245,158,11,0.15)", border: `1px solid ${atMax ? "#252535" : "transparent"}`, color: atMax ? "#334155" : "#f59e0b", cursor: atMax ? "not-allowed" : "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
                           >+</button>
@@ -463,7 +524,6 @@ export default function NewOrderDrawer({
                 }}
               />
 
-
               {orderError && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>
                   ⚠️ {orderError}
@@ -476,7 +536,6 @@ export default function NewOrderDrawer({
                 </div>
               )}
 
-              {/* ── Button 1: kitchen only (no payment) ── */}
               <button
                 onClick={() => doSubmit()}
                 disabled={sending || cart.length === 0 || success}
@@ -494,7 +553,6 @@ export default function NewOrderDrawer({
                 {sending ? "⏳ جاري الإرسال..." : success ? "✅ تم!" : "🍳 إرسال للمطبخ فقط"}
               </button>
 
-              {/* ── Button 2: pay + send to kitchen ── */}
               <button
                 onClick={doPayAndSend}
                 disabled={sending || cart.length === 0 || success}
@@ -516,6 +574,16 @@ export default function NewOrderDrawer({
         </div>
       </div>
     </div>
+
+    {/* Modifier selector overlay */}
+    {modifierItem && (
+      <ModifierSelector
+        item={{ name: modifierItem.name, price: modifierItem.price }}
+        groups={modifierItem.modifiers ?? []}
+        onConfirm={(mods) => addItemWithMods(modifierItem, mods)}
+        onClose={() => setModifierItem(null)}
+      />
+    )}
 
     {pendingBillOrder && (
       <BillModal

@@ -84,6 +84,26 @@ class TableLayoutElement(Base):
     label = Column(String, nullable=True)
 
 
+class ModifierGroup(Base):
+    __tablename__ = "modifier_groups"
+
+    id = Column(Integer, primary_key=True)
+    menu_item_id = Column(Integer)
+    name = Column(String)         # e.g. "تعديلات اللحم"
+    max_selections = Column(Integer, default=1)  # how many options customer can pick
+
+
+class ModifierOption(Base):
+    __tablename__ = "modifier_options"
+
+    id = Column(Integer, primary_key=True)
+    group_id = Column(Integer)
+    name = Column(String)         # e.g. "لحم مضاعف"
+    price_delta = Column(Float, default=0)         # extra cost (can be 0)
+    inventory_item_id = Column(Integer, nullable=True)  # which inventory item affected
+    quantity_delta = Column(Float, default=0)      # +1=add more (deduct more), -1=remove (restore)
+
+
 def create_tables():
     Base.metadata.create_all(engine)
     # Safe migration: add new columns if they don't exist (works on both SQLite and PostgreSQL)
