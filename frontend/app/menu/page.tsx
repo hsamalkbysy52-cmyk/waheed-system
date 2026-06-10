@@ -139,24 +139,27 @@ function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => voi
 
 /* ─── Modifier Modal ─── */
 function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => void }) {
-  const [invItems,  setInvItems]  = useState<InvItem[]>([]);
+  const [recipe,    setRecipe]    = useState<RecipeRow[]>([]);
   const [groups,    setGroups]    = useState<ModGroup[]>([]);
   const [loading,   setLoading]   = useState(true);
-  // new group form
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupMax,  setNewGroupMax]  = useState("1");
   const [addingGroup,  setAddingGroup]  = useState(false);
-  // new option form per group
-  const [optForms, setOptForms] = useState<Record<number, { name: string; price_delta: string; inv_id: string; qty_delta: string }>>({});
+  const [optForms, setOptForms] = useState<Record<number, { ingredient_inv_id: string; type: "add" | "remove"; price_delta: string; name: string }>>({});
   const [addingOpt, setAddingOpt] = useState<Record<number, boolean>>({});
 
   const loadData = () => {
     setLoading(true);
     Promise.all([
-      fetch(`${API}/inventory`).then(r => r.json()),
+      fetch(`${API}/inventory/recipe/${menuItem.id}`).then(r => r.json()),
       fetch(`${API}/menu/${menuItem.id}/modifiers/groups`).then(r => r.json()),
-    ]).then(([invData, modData]) => {
-      setInvItems(invData.items || []);
+    ]).then(([recipeData, modData]) => {
+      setRecipe((recipeData.recipe || []).map((r: { inventory_item_id: number; inventory_name: string; unit: string; amount: number }) => ({
+        inventory_item_id: r.inventory_item_id,
+        name: r.inventory_name,
+        unit: r.unit,
+        amount: r.amount,
+      })));
       setGroups(modData.groups || []);
     }).finally(() => setLoading(false));
   };
@@ -183,12 +186,23 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   };
 
   const initOptForm = (groupId: number) => {
-    setOptForms(p => ({ ...p, [groupId]: { name: "", price_delta: "0", inv_id: "", qty_delta: "0" } }));
+    setOptForms(p => ({ ...p, [groupId]: { ingredient_inv_id: "", type: "add", price_delta: "0", name: "" } }));
+  };
+
+  const setOptIngredient = (groupId: number, invId: string, type?: "add" | "remove") => {
+    const rec = recipe.find(r => r.inventory_item_id === parseInt(invId));
+    const currentType = type ?? optForms[groupId]?.type ?? "add";
+    const autoName = rec ? (currentType === "add" ? `إضافة ${rec.name}` : `بدون ${rec.name}`) : "";
+    setOptForms(p => ({
+      ...p,
+      [groupId]: { ...p[groupId], ingredient_inv_id: invId, type: currentType, name: autoName },
+    }));
   };
 
   const createOption = async (groupId: number) => {
     const f = optForms[groupId];
-    if (!f || !f.name.trim()) return;
+    if (!f || !f.name.trim() || !f.ingredient_inv_id) return;
+    const rec = recipe.find(r => r.inventory_item_id === parseInt(f.ingredient_inv_id));
     setAddingOpt(p => ({ ...p, [groupId]: true }));
     try {
       await fetch(`${API}/modifiers/groups/${groupId}/options`, {
@@ -197,8 +211,8 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
         body: JSON.stringify({
           name: f.name.trim(),
           price_delta: parseFloat(f.price_delta) || 0,
-          inventory_item_id: f.inv_id ? parseInt(f.inv_id) : null,
-          quantity_delta: parseFloat(f.qty_delta) || 0,
+          inventory_item_id: parseInt(f.ingredient_inv_id),
+          quantity_delta: rec ? (f.type === "add" ? rec.amount : -rec.amount) : 0,
         }),
       });
       setOptForms(p => { const n = { ...p }; delete n[groupId]; return n; });
@@ -209,6 +223,11 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   const deleteOption = async (optionId: number) => {
     await fetch(`${API}/modifiers/options/${optionId}`, { method: "DELETE" });
     loadData();
+  };
+
+  const getIngredientName = (invId: number | null) => {
+    if (!invId) return null;
+    return recipe.find(r => r.inventory_item_id === invId)?.name ?? `#${invId}`;
   };
 
   const inputStyle: React.CSSProperties = {
@@ -225,7 +244,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🎛️ تعديلات: {menuItem.name}</div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>أضف مجموعات التعديلات والخيارات</div>
+            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>الخيارات مبنية على مكونات الوصفة</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
         </div>
@@ -234,6 +253,12 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
           {loading ? (
             <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>⏳ جاري التحميل...</div>
           ) : (<>
+
+            {recipe.length === 0 && (
+              <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "10px", padding: "10px 14px", marginBottom: "16px", color: "#f59e0b", fontSize: "12px" }}>
+                ⚠️ لا توجد وصفة لهذا الصنف. أضف مكونات الوصفة أولاً لتتمكن من إنشاء خيارات التعديل.
+              </div>
+            )}
 
             {/* Create new group */}
             <div style={{ marginBottom: "20px", background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
@@ -287,7 +312,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                       >🗑️ حذف</button>
                     </div>
 
-                    {/* Options */}
+                    {/* Options list */}
                     <div style={{ padding: "10px 14px" }}>
                       {group.options.length === 0 ? (
                         <div style={{ color: "#334155", fontSize: "11px", marginBottom: "10px" }}>لا توجد خيارات بعد</div>
@@ -296,13 +321,17 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                           <div key={opt.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #252535" }}>
                             <div>
                               <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600" }}>{opt.name}</div>
-                              <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px" }}>
-                                {opt.price_delta !== 0 && <span style={{ color: opt.price_delta > 0 ? "#f59e0b" : "#22c55e" }}>
-                                  {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
-                                </span>}
-                                {opt.inventory_item_id && <span style={{ marginRight: opt.price_delta !== 0 ? "8px" : "0" }}>
-                                  مخزون #{opt.inventory_item_id} ({opt.quantity_delta > 0 ? "+" : ""}{opt.quantity_delta})
-                                </span>}
+                              <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
+                                {opt.price_delta !== 0 && (
+                                  <span style={{ color: opt.price_delta > 0 ? "#f59e0b" : "#22c55e" }}>
+                                    {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
+                                  </span>
+                                )}
+                                {opt.inventory_item_id && (
+                                  <span style={{ color: opt.quantity_delta > 0 ? "#ef4444" : "#22c55e" }}>
+                                    {opt.quantity_delta > 0 ? "⬆️ إضافة" : "⬇️ حذف"} {getIngredientName(opt.inventory_item_id)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <button
@@ -316,46 +345,78 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                       {/* Add option form */}
                       {optForm ? (
                         <div style={{ marginTop: "10px", padding: "10px", background: "#111118", borderRadius: "10px", border: "1px solid #252535" }}>
-                          <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "8px", fontWeight: "700" }}>إضافة خيار جديد</div>
-                          <input
-                            value={optForm.name}
-                            onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], name: e.target.value } }))}
-                            placeholder="اسم الخيار"
-                            style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
-                          />
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
+                          <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "8px", fontWeight: "700" }}>إضافة خيار من مكونات الوصفة</div>
+
+                          {recipe.length === 0 ? (
+                            <div style={{ color: "#f59e0b", fontSize: "11px", marginBottom: "8px" }}>⚠️ أضف مكونات للوصفة أولاً</div>
+                          ) : (<>
+                            <select
+                              value={optForm.ingredient_inv_id}
+                              onChange={e => setOptIngredient(group.id, e.target.value)}
+                              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
+                            >
+                              <option value="">اختر مكوّن من الوصفة...</option>
+                              {recipe.map(r => (
+                                <option key={r.inventory_item_id} value={r.inventory_item_id}>
+                                  {r.name} ({r.amount} {r.unit})
+                                </option>
+                              ))}
+                            </select>
+
+                            <div style={{ display: "flex", gap: "6px", marginBottom: "6px" }}>
+                              <button
+                                onClick={() => setOptIngredient(group.id, optForm.ingredient_inv_id, "remove")}
+                                style={{
+                                  flex: 1, padding: "7px",
+                                  background: optForm.type === "remove" ? "rgba(239,68,68,0.15)" : "#1c1c28",
+                                  color: optForm.type === "remove" ? "#ef4444" : "#64748b",
+                                  border: `1px solid ${optForm.type === "remove" ? "rgba(239,68,68,0.3)" : "#252535"}`,
+                                  borderRadius: "8px", cursor: "pointer", fontSize: "12px",
+                                  fontWeight: optForm.type === "remove" ? "700" : "400",
+                                }}
+                              >🚫 بدون (حذف)</button>
+                              <button
+                                onClick={() => setOptIngredient(group.id, optForm.ingredient_inv_id, "add")}
+                                style={{
+                                  flex: 1, padding: "7px",
+                                  background: optForm.type === "add" ? "rgba(34,197,94,0.15)" : "#1c1c28",
+                                  color: optForm.type === "add" ? "#22c55e" : "#64748b",
+                                  border: `1px solid ${optForm.type === "add" ? "rgba(34,197,94,0.3)" : "#252535"}`,
+                                  borderRadius: "8px", cursor: "pointer", fontSize: "12px",
+                                  fontWeight: optForm.type === "add" ? "700" : "400",
+                                }}
+                              >➕ مضاعفة (إضافة)</button>
+                            </div>
+
+                            <input
+                              value={optForm.name}
+                              onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], name: e.target.value } }))}
+                              placeholder="اسم الخيار (تلقائي — يمكن تعديله)"
+                              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
+                            />
+
                             <input
                               type="number" step="100"
                               value={optForm.price_delta}
                               onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], price_delta: e.target.value } }))}
                               placeholder="فرق السعر (0)"
                               title="فرق السعر بالدينار"
-                              style={inputStyle}
+                              style={{ ...inputStyle, width: "100%", marginBottom: "8px" }}
                             />
-                            <input
-                              type="number" step="0.5"
-                              value={optForm.qty_delta}
-                              onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], qty_delta: e.target.value } }))}
-                              placeholder="تغيير المخزون (0)"
-                              title="تغيير كمية المخزون: موجب=خصم، سالب=إرجاع"
-                              style={inputStyle}
-                            />
-                          </div>
-                          <select
-                            value={optForm.inv_id}
-                            onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], inv_id: e.target.value } }))}
-                            style={{ ...inputStyle, width: "100%", marginBottom: "8px" }}
-                          >
-                            <option value="">بدون ربط مخزون</option>
-                            {invItems.map(i => (
-                              <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
-                            ))}
-                          </select>
+                          </>)}
+
                           <div style={{ display: "flex", gap: "6px" }}>
                             <button
                               onClick={() => createOption(group.id)}
-                              disabled={addingOpt[group.id] || !optForm.name.trim()}
-                              style={{ flex: 2, padding: "8px", background: optForm.name.trim() ? "rgba(34,197,94,0.15)" : "#252535", color: optForm.name.trim() ? "#22c55e" : "#334155", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "8px", cursor: optForm.name.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700" }}
+                              disabled={addingOpt[group.id] || !optForm.name.trim() || !optForm.ingredient_inv_id}
+                              style={{
+                                flex: 2, padding: "8px",
+                                background: (optForm.name.trim() && optForm.ingredient_inv_id) ? "rgba(34,197,94,0.15)" : "#252535",
+                                color: (optForm.name.trim() && optForm.ingredient_inv_id) ? "#22c55e" : "#334155",
+                                border: "1px solid rgba(34,197,94,0.3)", borderRadius: "8px",
+                                cursor: (optForm.name.trim() && optForm.ingredient_inv_id) ? "pointer" : "not-allowed",
+                                fontSize: "12px", fontWeight: "700",
+                              }}
                             >{addingOpt[group.id] ? "⏳" : "✅ حفظ الخيار"}</button>
                             <button
                               onClick={() => setOptForms(p => { const n = { ...p }; delete n[group.id]; return n; })}
