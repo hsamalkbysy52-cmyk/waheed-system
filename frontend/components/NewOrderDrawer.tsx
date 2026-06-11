@@ -242,6 +242,14 @@ export default function NewOrderDrawer({
     setTimeout(() => { onSuccess(); onClose(); }, 1400);
   };
 
+  const cancelPendingOrder = async () => {
+    if (!pendingBillOrder) return;
+    try {
+      await fetch(`${API}/orders/${pendingBillOrder.id}`, { method: "DELETE" });
+    } catch { /* silent — order will stay unpaid, cashier can handle from payments page */ }
+    setPendingBillOrder(null);
+  };
+
   /* ══════════════════════════════ RENDER ══════════════════════════════ */
   return (
     <>
@@ -589,7 +597,7 @@ export default function NewOrderDrawer({
       <BillModal
         order={pendingBillOrder}
         payOnly
-        onClose={finishAfterPay}
+        onClose={cancelPendingOrder}
         onPaid={finishAfterPay}
       />
     )}
