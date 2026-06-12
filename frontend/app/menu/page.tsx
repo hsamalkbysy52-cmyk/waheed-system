@@ -147,6 +147,16 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   const [addingGroup,  setAddingGroup]  = useState(false);
   const [optForms, setOptForms] = useState<Record<number, { ingredient_inv_id: string; type: "add" | "remove"; price_delta: string; name: string }>>({});
   const [addingOpt, setAddingOpt] = useState<Record<number, boolean>>({});
+  // edit states
+  const [editGroupId,   setEditGroupId]   = useState<number | null>(null);
+  const [editGroupForm, setEditGroupForm] = useState<{ name: string; max_selections: string }>({ name: "", max_selections: "1" });
+  const [savingGroup,   setSavingGroup]   = useState(false);
+  const [editOptId,   setEditOptId]   = useState<number | null>(null);
+  const [editOptForm, setEditOptForm] = useState<{ name: string; price_delta: string }>({ name: "", price_delta: "0" });
+  const [savingOpt,   setSavingOpt]   = useState(false);
+  // drag states
+  const [dragGroupIdx, setDragGroupIdx] = useState<number | null>(null);
+  const [dragOptState, setDragOptState] = useState<{ groupId: number; optIdx: number } | null>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -225,6 +235,79 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     loadData();
   };
 
+  const openEditGroup = (group: ModGroup) => {
+    setEditGroupId(group.id);
+    setEditGroupForm({ name: group.name, max_selections: String(group.max_selections) });
+  };
+
+  const saveGroupEdit = async () => {
+    if (!editGroupId) return;
+    setSavingGroup(true);
+    try {
+      await fetch(`${API}/modifiers/groups/${editGroupId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editGroupForm.name.trim(), max_selections: parseInt(editGroupForm.max_selections) || 1 }),
+      });
+      setEditGroupId(null);
+      loadData();
+    } finally { setSavingGroup(false); }
+  };
+
+  const openEditOpt = (opt: ModOption) => {
+    setEditOptId(opt.id);
+    setEditOptForm({ name: opt.name, price_delta: String(opt.price_delta) });
+  };
+
+  const saveOptEdit = async () => {
+    if (!editOptId) return;
+    setSavingOpt(true);
+    try {
+      await fetch(`${API}/modifiers/options/${editOptId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editOptForm.name.trim(), price_delta: parseFloat(editOptForm.price_delta) || 0 }),
+      });
+      setEditOptId(null);
+      loadData();
+    } finally { setSavingOpt(false); }
+  };
+
+  const handleGroupDrop = (toIdx: number) => {
+    if (dragGroupIdx === null || dragGroupIdx === toIdx) { setDragGroupIdx(null); return; }
+    const reordered = [...groups];
+    const [moved] = reordered.splice(dragGroupIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    setGroups(reordered);
+    setDragGroupIdx(null);
+    fetch(`${API}/menu/${menuItem.id}/modifiers/groups/reorder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: reordered.map(g => g.id) }),
+    });
+  };
+
+  const handleOptDrop = (groupId: number, toOptIdx: number) => {
+    if (!dragOptState || dragOptState.groupId !== groupId || dragOptState.optIdx === toOptIdx) { setDragOptState(null); return; }
+    const reordered = groups.map(g => {
+      if (g.id !== groupId) return g;
+      const opts = [...g.options];
+      const [moved] = opts.splice(dragOptState.optIdx, 1);
+      opts.splice(toOptIdx, 0, moved);
+      return { ...g, options: opts };
+    });
+    setGroups(reordered);
+    setDragOptState(null);
+    const grp = reordered.find(g => g.id === groupId);
+    if (grp) {
+      fetch(`${API}/modifiers/groups/${groupId}/options/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: grp.options.map(o => o.id) }),
+      });
+    }
+  };
+
   const getIngredientName = (invId: number | null) => {
     if (!invId) return null;
     return recipe.find(r => r.inventory_item_id === invId)?.name ?? `#${invId}`;
@@ -293,23 +376,57 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
             {groups.length === 0 ? (
               <div style={{ textAlign: "center", color: "#334155", padding: "20px 0", fontSize: "12px" }}>لا توجد مجموعات تعديلات بعد</div>
             ) : (
-              groups.map((group) => {
+              groups.map((group, idx) => {
                 const optForm = optForms[group.id];
+                const isDraggingThisGroup = dragGroupIdx === idx;
                 return (
-                  <div key={group.id} style={{ marginBottom: "16px", background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
+                  <div
+                    key={group.id}
+                    draggable
+                    onDragStart={() => setDragGroupIdx(idx)}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={() => handleGroupDrop(idx)}
+                    onDragEnd={() => setDragGroupIdx(null)}
+                    style={{ marginBottom: "16px", background: "#1c1c28", border: `1px solid ${isDraggingThisGroup ? "rgba(245,158,11,0.5)" : "#252535"}`, borderRadius: "12px", overflow: "hidden", opacity: isDraggingThisGroup ? 0.5 : 1, transition: "opacity 0.15s, border-color 0.15s" }}
+                  >
 
                     {/* Group header */}
                     <div style={{ padding: "12px 14px", borderBottom: "1px solid #252535", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(245,158,11,0.03)" }}>
-                      <div>
-                        <span style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "13px" }}>{group.name}</span>
-                        <span style={{ color: "#64748b", fontSize: "11px", marginRight: "8px" }}>
-                          (حتى {group.max_selections} {group.max_selections === 1 ? "اختيار" : "اختيارات"})
-                        </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+                        <span style={{ color: "#334155", cursor: "grab", fontSize: "18px", flexShrink: 0, userSelect: "none" }}>≡</span>
+                        {editGroupId === group.id ? (
+                          <div style={{ display: "flex", gap: "6px", flex: 1, alignItems: "center" }}>
+                            <input
+                              value={editGroupForm.name}
+                              onChange={e => setEditGroupForm(f => ({ ...f, name: e.target.value }))}
+                              style={{ ...inputStyle, flex: 3 }}
+                              autoFocus
+                            />
+                            <input
+                              type="number" min="1" max="10"
+                              value={editGroupForm.max_selections}
+                              onChange={e => setEditGroupForm(f => ({ ...f, max_selections: e.target.value }))}
+                              style={{ ...inputStyle, width: "56px" }}
+                            />
+                            <button onClick={saveGroupEdit} disabled={savingGroup} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{savingGroup ? "⏳" : "✅"}</button>
+                            <button onClick={() => setEditGroupId(null)} style={{ padding: "5px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
+                          </div>
+                        ) : (
+                          <>
+                            <span style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "13px" }}>{group.name}</span>
+                            <span style={{ color: "#64748b", fontSize: "11px" }}>
+                              (حتى {group.max_selections} {group.max_selections === 1 ? "اختيار" : "اختيارات"})
+                            </span>
+                            <button onClick={() => openEditGroup(group)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "13px", padding: "2px 4px", flexShrink: 0 }}>✏️</button>
+                          </>
+                        )}
                       </div>
-                      <button
-                        onClick={() => deleteGroup(group.id)}
-                        style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "7px", padding: "4px 10px", cursor: "pointer", fontSize: "11px" }}
-                      >🗑️ حذف</button>
+                      {editGroupId !== group.id && (
+                        <button
+                          onClick={() => deleteGroup(group.id)}
+                          style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "7px", padding: "4px 10px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}
+                        >🗑️</button>
+                      )}
                     </div>
 
                     {/* Options list */}
@@ -317,29 +434,65 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                       {group.options.length === 0 ? (
                         <div style={{ color: "#334155", fontSize: "11px", marginBottom: "10px" }}>لا توجد خيارات بعد</div>
                       ) : (
-                        group.options.map((opt) => (
-                          <div key={opt.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #252535" }}>
-                            <div>
-                              <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600" }}>{opt.name}</div>
-                              <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
-                                {opt.price_delta !== 0 && (
-                                  <span style={{ color: opt.price_delta > 0 ? "#f59e0b" : "#22c55e" }}>
-                                    {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
-                                  </span>
-                                )}
-                                {opt.inventory_item_id && (
-                                  <span style={{ color: opt.quantity_delta > 0 ? "#ef4444" : "#22c55e" }}>
-                                    {opt.quantity_delta > 0 ? "⬆️ إضافة" : "⬇️ حذف"} {getIngredientName(opt.inventory_item_id)}
-                                  </span>
+                        group.options.map((opt, optIdx) => {
+                          const isDraggingThisOpt = dragOptState?.groupId === group.id && dragOptState?.optIdx === optIdx;
+                          return (
+                            <div
+                              key={opt.id}
+                              draggable
+                              onDragStart={e => { e.stopPropagation(); setDragOptState({ groupId: group.id, optIdx }); }}
+                              onDragOver={e => e.preventDefault()}
+                              onDrop={e => { e.stopPropagation(); handleOptDrop(group.id, optIdx); }}
+                              onDragEnd={() => setDragOptState(null)}
+                              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #252535", opacity: isDraggingThisOpt ? 0.4 : 1, transition: "opacity 0.15s" }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
+                                <span style={{ color: "#252535", cursor: "grab", fontSize: "15px", flexShrink: 0, userSelect: "none" }}>≡</span>
+                                {editOptId === opt.id ? (
+                                  <div style={{ display: "flex", gap: "6px", flex: 1, alignItems: "center" }}>
+                                    <input
+                                      value={editOptForm.name}
+                                      onChange={e => setEditOptForm(f => ({ ...f, name: e.target.value }))}
+                                      style={{ ...inputStyle, flex: 2 }}
+                                      autoFocus
+                                    />
+                                    <input
+                                      type="number" step="100"
+                                      value={editOptForm.price_delta}
+                                      onChange={e => setEditOptForm(f => ({ ...f, price_delta: e.target.value }))}
+                                      placeholder="فرق السعر"
+                                      style={{ ...inputStyle, width: "80px" }}
+                                    />
+                                    <button onClick={saveOptEdit} disabled={savingOpt} style={{ padding: "4px 8px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>{savingOpt ? "⏳" : "✅"}</button>
+                                    <button onClick={() => setEditOptId(null)} style={{ padding: "4px 6px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "6px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}>✕</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600" }}>{opt.name}</div>
+                                    <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
+                                      {opt.price_delta !== 0 && (
+                                        <span style={{ color: opt.price_delta > 0 ? "#f59e0b" : "#22c55e" }}>
+                                          {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
+                                        </span>
+                                      )}
+                                      {opt.inventory_item_id && (
+                                        <span style={{ color: opt.quantity_delta > 0 ? "#ef4444" : "#22c55e" }}>
+                                          {opt.quantity_delta > 0 ? "⬆️ إضافة" : "⬇️ حذف"} {getIngredientName(opt.inventory_item_id)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
+                              {editOptId !== opt.id && (
+                                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                                  <button onClick={() => openEditOpt(opt)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "13px", padding: "2px 4px" }}>✏️</button>
+                                  <button onClick={() => deleteOption(opt.id)} style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "6px", padding: "3px 8px", cursor: "pointer", fontSize: "11px" }}>🗑️</button>
+                                </div>
+                              )}
                             </div>
-                            <button
-                              onClick={() => deleteOption(opt.id)}
-                              style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "6px", padding: "3px 8px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}
-                            >🗑️</button>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
 
                       {/* Add option form */}

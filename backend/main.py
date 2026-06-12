@@ -50,10 +50,10 @@ def home():
 
 def _get_item_modifiers(menu_item_id: int, db: Session) -> list:
     """Returns modifier groups with their options for a given menu item."""
-    groups = db.query(ModifierGroup).filter(ModifierGroup.menu_item_id == menu_item_id).all()
+    groups = db.query(ModifierGroup).filter(ModifierGroup.menu_item_id == menu_item_id).order_by(ModifierGroup.sort_order).all()
     result = []
     for g in groups:
-        options = db.query(ModifierOption).filter(ModifierOption.group_id == g.id).all()
+        options = db.query(ModifierOption).filter(ModifierOption.group_id == g.id).order_by(ModifierOption.sort_order).all()
         result.append({
             "id": g.id,
             "name": g.name,
@@ -175,6 +175,58 @@ def delete_modifier_option(option_id: int, db: Session = Depends(get_db)):
     db.query(ModifierOption).filter(ModifierOption.id == option_id).delete()
     db.commit()
     return {"message": "تم حذف الخيار"}
+
+
+class ModifierGroupEditPayload(BaseModel):
+    name: str
+    max_selections: int = 1
+
+
+@app.put("/modifiers/groups/{group_id}")
+def edit_modifier_group(group_id: int, payload: ModifierGroupEditPayload, db: Session = Depends(get_db)):
+    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+    if not group:
+        return {"error": "not found"}
+    group.name = payload.name
+    group.max_selections = payload.max_selections
+    db.commit()
+    return {"message": "تم تعديل المجموعة"}
+
+
+class ModifierOptionEditPayload(BaseModel):
+    name: str
+    price_delta: float = 0
+
+
+@app.put("/modifiers/options/{option_id}")
+def edit_modifier_option(option_id: int, payload: ModifierOptionEditPayload, db: Session = Depends(get_db)):
+    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+    if not option:
+        return {"error": "not found"}
+    option.name = payload.name
+    option.price_delta = payload.price_delta
+    db.commit()
+    return {"message": "تم تعديل الخيار"}
+
+
+class ReorderPayload(BaseModel):
+    order: List[int]
+
+
+@app.put("/menu/{item_id}/modifiers/groups/reorder")
+def reorder_modifier_groups(item_id: int, payload: ReorderPayload, db: Session = Depends(get_db)):
+    for i, gid in enumerate(payload.order):
+        db.query(ModifierGroup).filter(ModifierGroup.id == gid).update({"sort_order": i})
+    db.commit()
+    return {"message": "تم ترتيب المجموعات"}
+
+
+@app.put("/modifiers/groups/{group_id}/options/reorder")
+def reorder_modifier_options(group_id: int, payload: ReorderPayload, db: Session = Depends(get_db)):
+    for i, oid in enumerate(payload.order):
+        db.query(ModifierOption).filter(ModifierOption.id == oid).update({"sort_order": i})
+    db.commit()
+    return {"message": "تم ترتيب الخيارات"}
 
 
 @app.put("/menu/{item_id}/toggle")

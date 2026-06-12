@@ -89,8 +89,9 @@ class ModifierGroup(Base):
 
     id = Column(Integer, primary_key=True)
     menu_item_id = Column(Integer)
-    name = Column(String)         # e.g. "تعديلات اللحم"
-    max_selections = Column(Integer, default=1)  # how many options customer can pick
+    name = Column(String)
+    max_selections = Column(Integer, default=1)
+    sort_order = Column(Integer, default=0)
 
 
 class ModifierOption(Base):
@@ -98,10 +99,11 @@ class ModifierOption(Base):
 
     id = Column(Integer, primary_key=True)
     group_id = Column(Integer)
-    name = Column(String)         # e.g. "لحم مضاعف"
-    price_delta = Column(Float, default=0)         # extra cost (can be 0)
-    inventory_item_id = Column(Integer, nullable=True)  # which inventory item affected
-    quantity_delta = Column(Float, default=0)      # +1=add more (deduct more), -1=remove (restore)
+    name = Column(String)
+    price_delta = Column(Float, default=0)
+    inventory_item_id = Column(Integer, nullable=True)
+    quantity_delta = Column(Float, default=0)
+    sort_order = Column(Integer, default=0)
 
 
 def create_tables():
@@ -114,6 +116,8 @@ def create_tables():
             "ALTER TABLE orders ADD COLUMN notes TEXT",
             "ALTER TABLE menu_items ADD COLUMN description TEXT",
             "ALTER TABLE orders ADD COLUMN payment_method VARCHAR(10)",
+            "ALTER TABLE modifier_groups ADD COLUMN sort_order INTEGER DEFAULT 0",
+            "ALTER TABLE modifier_options ADD COLUMN sort_order INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(text(sql))
