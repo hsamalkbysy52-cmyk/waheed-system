@@ -25,6 +25,7 @@ class MenuItem(Base):
     category = Column(String)
     is_available = Column(Boolean, default=True)
     description = Column(String, nullable=True)
+    parent_id = Column(Integer, nullable=True)   # set = this item is a variant of parent dish
 
 
 class Order(Base):
@@ -118,6 +119,7 @@ def create_tables():
             "ALTER TABLE orders ADD COLUMN payment_method VARCHAR(10)",
             "ALTER TABLE modifier_groups ADD COLUMN sort_order INTEGER DEFAULT 0",
             "ALTER TABLE modifier_options ADD COLUMN sort_order INTEGER DEFAULT 0",
+            "ALTER TABLE menu_items ADD COLUMN parent_id INTEGER",
         ]:
             try:
                 conn.execute(text(sql))

@@ -14,7 +14,9 @@ type RawItem = {
   available?: boolean;
   is_available?: boolean;
   max_qty?: number | null;
+  out_of_stock?: boolean;
   modifiers?: ModGroup[];
+  variants?: RawItem[];
 };
 type MenuItem = RawItem & { available: boolean; max_qty?: number | null };
 type CartLine = {
@@ -239,6 +241,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [notes, setNotes]         = useState("");
   const [stockAlert, setStockAlert] = useState("");
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
+  const [variantPick, setVariantPick] = useState<MenuItem | null>(null);
 
   /* fetch menu */
   const loadMenu = useCallback(() => {
@@ -261,7 +264,13 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         const raw: RawItem[] = d.menu || [];
         if (raw.length === 0) throw new Error(`API returned 0 items — check Railway /menu`);
         const items: MenuItem[] = raw
-          .map((i) => ({ ...i, available: i.available ?? i.is_available ?? true }))
+          .map((i) => ({
+            ...i,
+            available: i.available ?? i.is_available ?? true,
+            variants: (i.variants || [])
+              .map((v) => ({ ...v, available: v.available ?? v.is_available ?? true }))
+              .filter((v) => v.available !== false),
+          }))
           .filter((i) => i.available !== false);
         setMenuItems(items);
       })
@@ -292,7 +301,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
     if (delta > 0) {
       const line = cart.find(c => c.key === key);
       if (line) {
-        const item = menuItems.find(m => m.id === line.id);
+        const item = menuItems.find(m => m.id === line.id)
+          ?? menuItems.flatMap(m => m.variants || []).find(v => v.id === line.id);
         const totalQtyForItem = cart.filter(c => c.id === line.id).reduce((s, c) => s + c.qty, 0);
         if (item?.max_qty != null && totalQtyForItem >= item.max_qty) {
           showStockMsg(item.name);
@@ -310,6 +320,11 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   };
 
   const addItem = (item: MenuItem) => {
+    // If item has variants, show variant picker first
+    if (item.variants && item.variants.length > 0) {
+      setVariantPick(item);
+      return;
+    }
     // If item has modifier groups, show ModifierSelector first
     if (item.modifiers && item.modifiers.length > 0) {
       setModifierItem(item);
@@ -502,9 +517,14 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                 </div>
               ) : (
                 filtered.map((item) => {
-                  const totalQtyForItem = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
-                  const line = cart.find((c) => c.id === item.id);
+                  const hasVariants = !!(item.variants && item.variants.length > 0);
+                  const cartIds = hasVariants ? item.variants!.map(v => v.id) : [item.id];
+                  const totalQtyForItem = cart.filter(c => cartIds.includes(c.id)).reduce((s, c) => s + c.qty, 0);
+                  const line = hasVariants ? undefined : cart.find((c) => c.id === item.id);
                   const hasMods = item.modifiers && item.modifiers.length > 0;
+                  const displayPrice = hasVariants
+                    ? Math.min(...item.variants!.map(v => v.price))
+                    : item.price;
                   return (
                     <div
                       key={item.id}
@@ -530,7 +550,12 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>
                           {item.name}
-                          {hasMods && (
+                          {hasVariants && (
+                            <span style={{ marginRight: "6px", background: "rgba(34,197,94,0.15)", color: "#4ade80", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontWeight: "600" }}>
+                              {item.variants!.length} أنواع
+                            </span>
+                          )}
+                          {hasMods && !hasVariants && (
                             <span style={{ marginRight: "6px", background: "rgba(99,102,241,0.15)", color: "#818cf8", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontWeight: "600" }}>
                               تعديلات
                             </span>
@@ -542,7 +567,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                           </div>
                         )}
                         <div style={{ color: "#f59e0b", fontWeight: "800", fontSize: "14px" }}>
-                          {item.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                          {hasVariants && <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>من </span>}
+                          {displayPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
                         </div>
                       </div>
 
@@ -639,6 +665,67 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           notes={notes}
           onNotesChange={setNotes}
         />
+      )}
+
+      {/* ── variant picker ── */}
+      {variantPick && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setVariantPick(null); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 550,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex", flexDirection: "column", justifyContent: "flex-end",
+          }}
+        >
+          <div style={{
+            background: "#111118", borderRadius: "24px 24px 0 0",
+            border: "1px solid #252535", borderBottom: "none",
+            maxHeight: "70dvh", display: "flex", flexDirection: "column",
+            direction: "rtl", maxWidth: "480px", margin: "0 auto", width: "100%",
+            boxShadow: "0 -20px 60px rgba(0,0,0,0.8)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "#252535" }} />
+            </div>
+            <div style={{ padding: "12px 20px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1c1c28" }}>
+              <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>
+                {ce(variantPick.category)} اختر نوع {variantPick.name}
+              </div>
+              <button onClick={() => setVariantPick(null)} style={{ background: "#1c1c28", border: "none", color: "#64748b", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px" }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "12px 16px 28px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {variantPick.variants!.map((v) => {
+                const soldOut = v.out_of_stock === true;
+                return (
+                  <button
+                    key={v.id}
+                    disabled={soldOut}
+                    onClick={() => {
+                      const variant: MenuItem = { ...v, available: v.available ?? true };
+                      setVariantPick(null);
+                      addItem(variant);
+                    }}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "14px 16px", borderRadius: "14px",
+                      background: soldOut ? "#0d0d14" : "#1c1c28",
+                      border: "1px solid #252535",
+                      color: soldOut ? "#475569" : "#f1f5f9",
+                      cursor: soldOut ? "not-allowed" : "pointer",
+                      fontSize: "14px", fontWeight: "700", direction: "rtl",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <span>{v.name}{soldOut && " (نفد)"}</span>
+                    <span style={{ color: soldOut ? "#475569" : "#f59e0b", fontWeight: "800" }}>
+                      {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── modifier selector ── */}

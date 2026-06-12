@@ -28,6 +28,7 @@ type RawItem = {
   out_of_stock?: boolean;
   max_qty?: number | null;
   modifiers?: ModGroup[];
+  variants?: RawItem[];
 };
 
 type CartLine = {
@@ -62,6 +63,7 @@ export default function NewOrderDrawer({
   const [stockAlert, setStockAlert] = useState("");
   const [pendingBillOrder, setPendingBillOrder] = useState<OrderForBill | null>(null);
   const [modifierItem, setModifierItem] = useState<RawItem | null>(null);
+  const [variantPick, setVariantPick] = useState<RawItem | null>(null);
   const cartRef                 = useRef<HTMLDivElement>(null);
 
   const showStockAlert = (msg: string) => {
@@ -84,6 +86,9 @@ export default function NewOrderDrawer({
           const items: RawItem[] = (d.menu || d.items || d || []).map((i: RawItem) => ({
             ...i,
             available: i.available ?? i.is_available ?? true,
+            variants: (i.variants || [])
+              .map((v: RawItem) => ({ ...v, available: v.available ?? v.is_available ?? true }))
+              .filter((v: RawItem) => v.available !== false && v.available !== 0),
           })).filter((i: RawItem) => i.available !== false && i.available !== 0)
             .sort((a: RawItem, b: RawItem) => (a.out_of_stock ? 1 : 0) - (b.out_of_stock ? 1 : 0));
           setMenuItems(items);
@@ -105,6 +110,11 @@ export default function NewOrderDrawer({
 
   /* ── cart helpers ── */
   const addItem = (item: RawItem) => {
+    // If item has variants, show variant picker first
+    if (item.variants && item.variants.length > 0) {
+      setVariantPick(item);
+      return;
+    }
     // If item has modifier groups, show ModifierSelector first
     if (item.modifiers && item.modifiers.length > 0) {
       setModifierItem(item);
@@ -357,10 +367,15 @@ export default function NewOrderDrawer({
               )}
 
               {!loadingMenu && !fetchError && filtered.map((item) => {
-                const inCartQty = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+                const hasVariants = (item.variants?.length ?? 0) > 0;
+                const cartIds   = hasVariants ? item.variants!.map((v) => v.id) : [item.id];
+                const inCartQty = cart.filter((c) => cartIds.includes(c.id)).reduce((s, c) => s + c.qty, 0);
                 const inCart    = inCartQty > 0;
-                const soldOut   = item.out_of_stock === true;
+                const soldOut   = hasVariants
+                  ? item.variants!.every((v) => v.out_of_stock === true)
+                  : item.out_of_stock === true;
                 const hasMods   = item.modifiers && item.modifiers.length > 0;
+                const minPrice  = hasVariants ? Math.min(...item.variants!.map((v) => v.price)) : item.price;
                 return (
                   <button
                     key={item.id}
@@ -387,13 +402,17 @@ export default function NewOrderDrawer({
                         {inCartQty}
                       </div>
                     )}
-                    {hasMods && !soldOut && (
+                    {hasMods && !soldOut && !hasVariants && (
                       <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(99,102,241,0.2)", color: "#818cf8", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>تعديلات</div>
+                    )}
+                    {hasVariants && !soldOut && (
+                      <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>{item.variants!.length} أنواع</div>
                     )}
                     <div style={{ fontSize: "28px", lineHeight: 1 }}>{emoji(item.category)}</div>
                     <div style={{ color: soldOut ? "#64748b" : "#f1f5f9", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
                     <div style={{ color: soldOut ? "#334155" : "#f59e0b", fontSize: "12px", fontWeight: "700" }}>
-                      {item.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                      {hasVariants && <span style={{ fontSize: "9px", fontWeight: "400", color: "#64748b" }}>من </span>}
+                      {minPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
                     </div>
                   </button>
                 );
@@ -582,6 +601,51 @@ export default function NewOrderDrawer({
         </div>
       </div>
     </div>
+
+    {/* Variant picker overlay */}
+    {variantPick && (
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+        onMouseDown={(e) => { if (e.target === e.currentTarget) setVariantPick(null); }}
+      >
+        <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "380px", direction: "rtl", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid #252535", background: "rgba(34,197,94,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "15px" }}>{emoji(variantPick.category)} {variantPick.name}</div>
+              <div style={{ color: "#64748b", fontSize: "11px", marginTop: "2px" }}>اختر النوع</div>
+            </div>
+            <button onClick={() => setVariantPick(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px" }}>✕</button>
+          </div>
+          <div style={{ padding: "14px 20px", maxHeight: "55vh", overflowY: "auto" }}>
+            {variantPick.variants!.map((v) => {
+              const vSoldOut = v.out_of_stock === true;
+              return (
+                <button
+                  key={v.id}
+                  disabled={vSoldOut}
+                  onClick={() => { setVariantPick(null); addItem(v); }}
+                  style={{
+                    width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "13px 16px", marginBottom: "8px",
+                    background: vSoldOut ? "#16161f" : "#1c1c28",
+                    border: `1px solid ${vSoldOut ? "#1c1c28" : "#252535"}`,
+                    borderRadius: "12px", cursor: vSoldOut ? "not-allowed" : "pointer",
+                    opacity: vSoldOut ? 0.45 : 1, direction: "rtl",
+                  }}
+                >
+                  <span style={{ color: vSoldOut ? "#64748b" : "#f1f5f9", fontSize: "13px", fontWeight: "700" }}>
+                    {v.name} {vSoldOut && <span style={{ color: "#ef4444", fontSize: "10px" }}>(نفد)</span>}
+                  </span>
+                  <span style={{ color: vSoldOut ? "#334155" : "#f59e0b", fontSize: "13px", fontWeight: "800" }}>
+                    {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Modifier selector overlay */}
     {modifierItem && (

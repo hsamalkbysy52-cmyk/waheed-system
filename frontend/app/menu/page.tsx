@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const API = "https://waheed-system-production.up.railway.app";
 
-type Item    = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string; modifiers?: ModGroup[] };
+type Item    = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string; modifiers?: ModGroup[]; parent_id?: number | null; variants?: Item[] };
 type InvItem = { id: number; name: string; unit: string };
 type RecipeRow = { inventory_item_id: number; name: string; unit: string; amount: number };
 type ModOption = { id: number; name: string; price_delta: number; inventory_item_id: number | null; quantity_delta: number };
@@ -602,6 +602,172 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   );
 }
 
+/* ─── Variants Modal ─── */
+function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModifiers }: {
+  menuItem: Item;
+  onClose: () => void;
+  onChanged: () => void;
+  onOpenRecipe: (item: Item) => void;
+  onOpenModifiers: (item: Item) => void;
+}) {
+  const [variants, setVariants] = useState<Item[]>(menuItem.variants ?? []);
+  const [newName,  setNewName]  = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [adding,   setAdding]   = useState(false);
+  const [editId,   setEditId]   = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", price: "" });
+  const [saving,   setSaving]   = useState(false);
+
+  const inputStyle: React.CSSProperties = {
+    padding: "8px 10px", background: "#0a0a0f", border: "1px solid #252535",
+    borderRadius: "8px", color: "#f1f5f9", fontSize: "12px", outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const addVariant = async () => {
+    if (!newName.trim() || !newPrice) return;
+    setAdding(true);
+    try {
+      const r = await fetch(`${API}/menu/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), price: parseFloat(newPrice), category: menuItem.category, parent_id: menuItem.id }),
+      });
+      const d = await r.json();
+      setVariants(p => [...p, { id: d.id, name: newName.trim(), price: parseFloat(newPrice), category: menuItem.category, available: true }]);
+      setNewName(""); setNewPrice("");
+      onChanged();
+    } finally { setAdding(false); }
+  };
+
+  const saveEdit = async () => {
+    if (!editId || !editForm.name.trim() || !editForm.price) return;
+    setSaving(true);
+    try {
+      await fetch(`${API}/menu/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editForm.name.trim(), price: parseFloat(editForm.price), category: menuItem.category }),
+      });
+      setVariants(p => p.map(v => v.id === editId ? { ...v, name: editForm.name.trim(), price: parseFloat(editForm.price) } : v));
+      setEditId(null);
+      onChanged();
+    } finally { setSaving(false); }
+  };
+
+  const deleteVariant = async (id: number) => {
+    await fetch(`${API}/menu/${id}`, { method: "DELETE" });
+    setVariants(p => p.filter(v => v.id !== id));
+    onChanged();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1900, padding: "16px" }}>
+      <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "480px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🧬 أنواع: {menuItem.name}</div>
+            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>كل نوع له سعره ووصفته الخاصة بالمخزون</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
+        </div>
+
+        <div style={{ overflowY: "auto", flex: 1, padding: "18px 22px" }}>
+
+          {/* Add variant */}
+          <div style={{ marginBottom: "18px", background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
+            <div style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "700", marginBottom: "10px" }}>+ إضافة نوع جديد</div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="اسم النوع (مثال: مارغريتا)"
+                style={{ ...inputStyle, flex: 2 }}
+              />
+              <input
+                type="number" step="250" min="0"
+                value={newPrice}
+                onChange={e => setNewPrice(e.target.value)}
+                placeholder="السعر"
+                style={{ ...inputStyle, width: "90px" }}
+              />
+              <button
+                onClick={addVariant}
+                disabled={adding || !newName.trim() || !newPrice}
+                style={{ padding: "8px 14px", background: (newName.trim() && newPrice) ? "rgba(34,197,94,0.15)" : "#252535", color: (newName.trim() && newPrice) ? "#22c55e" : "#334155", border: `1px solid ${(newName.trim() && newPrice) ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "8px", cursor: (newName.trim() && newPrice) ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}
+              >{adding ? "⏳" : "أضف"}</button>
+            </div>
+          </div>
+
+          {/* Variants list */}
+          {variants.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#334155", padding: "24px 0", fontSize: "13px" }}>
+              لا توجد أنواع بعد — الصنف يُباع كما هو
+            </div>
+          ) : (
+            <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
+              {variants.map((v, i) => (
+                <div key={v.id} style={{ padding: "12px 14px", borderBottom: i < variants.length - 1 ? "1px solid #252535" : "none" }}>
+                  {editId === v.id ? (
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <input
+                        value={editForm.name}
+                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        style={{ ...inputStyle, flex: 2 }}
+                        autoFocus
+                      />
+                      <input
+                        type="number" step="250"
+                        value={editForm.price}
+                        onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
+                        style={{ ...inputStyle, width: "80px" }}
+                      />
+                      <button onClick={saveEdit} disabled={saving} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{saving ? "⏳" : "✅"}</button>
+                      <button onClick={() => setEditId(null)} style={{ padding: "5px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "700" }}>{v.name}</div>
+                        <div style={{ color: "#f59e0b", fontSize: "13px", fontWeight: "800" }}>
+                          {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button onClick={() => { setEditId(v.id); setEditForm({ name: v.name, price: String(v.price) }); }}
+                          style={{ flex: 1, padding: "6px", background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
+                        >✏️ تعديل</button>
+                        <button onClick={() => onOpenRecipe(v)}
+                          style={{ flex: 1, padding: "6px", background: "rgba(245,158,11,0.08)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
+                        >🔗 وصفة</button>
+                        <button onClick={() => onOpenModifiers(v)}
+                          style={{ flex: 1, padding: "6px", background: "rgba(99,102,241,0.08)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
+                        >🎛️ تعديلات</button>
+                        <button onClick={() => deleteVariant(v.id)}
+                          style={{ padding: "6px 10px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", cursor: "pointer", fontSize: "11px" }}
+                        >🗑️</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "14px 22px", borderTop: "1px solid #252535", flexShrink: 0 }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "#1c1c28", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+            ✕ إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MenuPage() {
   const [items, setItems]       = useState<Item[]>([]);
   const [filter, setFilter]     = useState("الكل");
@@ -615,6 +781,7 @@ export default function MenuPage() {
   const [deleting, setDeleting]   = useState(false);
   const [recipeItem, setRecipeItem]       = useState<Item | null>(null);
   const [modifierItem, setModifierItem]   = useState<Item | null>(null);
+  const [variantsItem, setVariantsItem]   = useState<Item | null>(null);
 
   const fetchMenu = useCallback(async () => {
     try {
@@ -834,6 +1001,11 @@ export default function MenuPage() {
               >🎛️ التعديلات</button>
 
               <button
+                onClick={() => setVariantsItem(item)}
+                style={{ width: "100%", padding: "7px", background: "rgba(34,197,94,0.08)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
+              >🧬 الأنواع{(item.variants?.length ?? 0) > 0 ? ` (${item.variants!.length})` : ""}</button>
+
+              <button
                 onClick={() => toggleAvailable(item)}
                 style={{
                   width: "100%", padding: "8px",
@@ -855,6 +1027,17 @@ export default function MenuPage() {
 
       {/* Modifier modal */}
       {modifierItem && <ModifierModal menuItem={modifierItem} onClose={() => setModifierItem(null)} />}
+
+      {/* Variants modal */}
+      {variantsItem && (
+        <VariantsModal
+          menuItem={variantsItem}
+          onClose={() => setVariantsItem(null)}
+          onChanged={fetchMenu}
+          onOpenRecipe={setRecipeItem}
+          onOpenModifiers={setModifierItem}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {deleteId && (

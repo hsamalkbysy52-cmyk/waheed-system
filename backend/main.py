@@ -72,17 +72,26 @@ def _get_item_modifiers(menu_item_id: int, db: Session) -> list:
     return result
 
 
+def _serialize_menu_item(i, db: Session) -> dict:
+    return {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
+            "is_available": i.is_available, "description": i.description or "",
+            "parent_id": i.parent_id,
+            "out_of_stock": _is_out_of_stock(i.id, db),
+            "max_qty": _get_max_qty(i.id, db),
+            "modifiers": _get_item_modifiers(i.id, db)}
+
+
 @app.get("/menu")
 def get_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
-    return {"menu": [
-        {"id": i.id, "name": i.name, "price": i.price, "category": i.category,
-         "is_available": i.is_available, "description": i.description or "",
-         "out_of_stock": _is_out_of_stock(i.id, db),
-         "max_qty": _get_max_qty(i.id, db),
-         "modifiers": _get_item_modifiers(i.id, db)}
-        for i in items
-    ]}
+    parents = [i for i in items if not i.parent_id]
+    children = [i for i in items if i.parent_id]
+    menu = []
+    for p in parents:
+        d = _serialize_menu_item(p, db)
+        d["variants"] = [_serialize_menu_item(c, db) for c in children if c.parent_id == p.id]
+        menu.append(d)
+    return {"menu": menu}
 
 
 class MenuItemPayload(BaseModel):
@@ -90,11 +99,13 @@ class MenuItemPayload(BaseModel):
     price: float
     category: str
     description: str = ""
+    parent_id: Optional[int] = None
 
 
 @app.post("/menu/add")
 def add_item(payload: MenuItemPayload, db: Session = Depends(get_db)):
-    item = MenuItem(name=payload.name, price=payload.price, category=payload.category, description=payload.description or None)
+    item = MenuItem(name=payload.name, price=payload.price, category=payload.category,
+                    description=payload.description or None, parent_id=payload.parent_id)
     db.add(item)
     db.commit()
     return {"message": f"تم إضافة {payload.name}", "id": item.id}
@@ -118,6 +129,7 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
         return {"error": "الصنف غير موجود"}
+    db.query(MenuItem).filter(MenuItem.parent_id == item_id).delete()
     db.delete(item)
     db.commit()
     return {"message": "تم حذف الصنف"}
