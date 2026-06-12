@@ -566,6 +566,40 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                             {item.description}
                           </div>
                         )}
+                        {/* variants preview */}
+                        {hasVariants && (
+                          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", margin: "2px 0 4px" }}>
+                            {item.variants!.map((v) => (
+                              <span key={v.id} style={{
+                                background: v.out_of_stock ? "rgba(100,116,139,0.1)" : "rgba(34,197,94,0.08)",
+                                border: `1px solid ${v.out_of_stock ? "#252535" : "rgba(34,197,94,0.25)"}`,
+                                color: v.out_of_stock ? "#475569" : "#86efac",
+                                borderRadius: "6px", padding: "2px 7px", fontSize: "10px", fontWeight: "600",
+                                textDecoration: v.out_of_stock ? "line-through" : "none",
+                              }}>
+                                {v.name} <span style={{ color: v.out_of_stock ? "#475569" : "#4ade80", fontWeight: "800" }}>{v.price.toLocaleString()}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {/* modifiers preview */}
+                        {hasMods && !hasVariants && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", margin: "2px 0 4px" }}>
+                            {item.modifiers!.map((g) => (
+                              <div key={g.id} style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+                                <span style={{ color: "#64748b", fontSize: "10px", fontWeight: "700", flexShrink: 0 }}>{g.name}:</span>
+                                {g.options.map((o) => (
+                                  <span key={o.id} style={{
+                                    background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
+                                    color: "#a5b4fc", borderRadius: "6px", padding: "1px 6px", fontSize: "10px",
+                                  }}>
+                                    {o.name}{o.price_delta > 0 && <span style={{ color: "#818cf8", fontWeight: "700" }}> +{o.price_delta.toLocaleString()}</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ color: "#f59e0b", fontWeight: "800", fontSize: "14px" }}>
                           {hasVariants && <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>من </span>}
                           {displayPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
@@ -716,7 +750,14 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       fontFamily: "inherit",
                     }}
                   >
-                    <span>{v.name}{soldOut && " (نفد)"}</span>
+                    <span>
+                      {v.name}{soldOut && " (نفد)"}
+                      {!soldOut && v.modifiers && v.modifiers.length > 0 && (
+                        <span style={{ marginRight: "6px", background: "rgba(99,102,241,0.15)", color: "#818cf8", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontWeight: "600" }}>
+                          تعديلات
+                        </span>
+                      )}
+                    </span>
                     <span style={{ color: soldOut ? "#475569" : "#f59e0b", fontWeight: "800" }}>
                       {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
                     </span>
