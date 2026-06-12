@@ -65,6 +65,7 @@ export default function NewOrderDrawer({
   const [modifierItem, setModifierItem] = useState<RawItem | null>(null);
   const [variantPick, setVariantPick] = useState<RawItem | null>(null);
   const cartRef                 = useRef<HTMLDivElement>(null);
+  const paidRef                 = useRef(false);
 
   const showStockAlert = (msg: string) => {
     setStockAlert(msg);
@@ -238,6 +239,7 @@ export default function NewOrderDrawer({
         return;
       }
       const d = await r.json();
+      paidRef.current = false;
       setPendingBillOrder({ id: d.order_id, table_number: table, total_price: total, notes, items: expandedItems });
     } catch {
       setOrderError("تعذر الاتصال بالسيرفر — تحقق من الشبكة");
@@ -247,13 +249,16 @@ export default function NewOrderDrawer({
   };
 
   const finishAfterPay = () => {
+    // BillModal's success button calls onPaid() then onClose() — flag so
+    // cancelPendingOrder doesn't delete the order that was just paid
+    paidRef.current = true;
     setPendingBillOrder(null);
     setSuccess(true);
     setTimeout(() => { onSuccess(); onClose(); }, 1400);
   };
 
   const cancelPendingOrder = async () => {
-    if (!pendingBillOrder) return;
+    if (!pendingBillOrder || paidRef.current) return;
     try {
       await fetch(`${API}/orders/${pendingBillOrder.id}`, { method: "DELETE" });
     } catch { /* silent — order will stay unpaid, cashier can handle from payments page */ }
