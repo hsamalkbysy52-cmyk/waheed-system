@@ -1,13 +1,11 @@
-const SHELL_CACHE = 'waheed-shell-v1';
-const STATIC_CACHE = 'waheed-static-v1';
+const SHELL_CACHE = 'waheed-shell-v2';
+const STATIC_CACHE = 'waheed-static-v2';
 const ALL_CACHES = [SHELL_CACHE, STATIC_CACHE];
 
-// Install: activate immediately without waiting
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// Activate: delete old caches from previous versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -27,8 +25,16 @@ self.addEventListener('fetch', (event) => {
   // Only handle GET from same origin
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // API routes: network only — offline API support is Phase 2
+  // API routes: network only
   if (url.pathname.startsWith('/api/')) return;
+
+  // Next.js App Router internals — never intercept these.
+  // Includes RSC payloads, prefetch data, router state, HMR, etc.
+  if (url.pathname.startsWith('/_next/') && !url.pathname.startsWith('/_next/static/')) return;
+
+  // RSC navigation requests sent by Next.js App Router client-side navigation.
+  // Intercepting these would serve wrong cached content and break tab switching.
+  if (request.headers.get('RSC') || request.headers.get('Next-Router-State-Tree') || request.headers.get('Next-Router-Prefetch')) return;
 
   // /_next/static/: cache-first (filenames are hashed = immutable)
   if (url.pathname.startsWith('/_next/static/')) {
@@ -44,7 +50,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML pages: network-first, fall back to cached version when offline
+  // Full HTML page loads: network-first, fall back to cache when offline
   event.respondWith(
     fetch(request)
       .then((response) => {

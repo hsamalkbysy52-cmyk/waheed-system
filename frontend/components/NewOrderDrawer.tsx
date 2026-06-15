@@ -191,16 +191,21 @@ export default function NewOrderDrawer({
     const local_uuid = crypto.randomUUID();
 
     // 1. Save locally first — order is protected even if power cuts now
-    const localId = await saveLocalOrder({
-      local_uuid,
-      table_number: table,
-      total_price: total,
-      items: expandedItems,
-      cashier,
-      notes,
-      payment_method: withPayment ?? null,
-      created_at: new Date().toISOString(),
-    });
+    let localId: number | null = null;
+    try {
+      localId = await saveLocalOrder({
+        local_uuid,
+        table_number: table,
+        total_price: total,
+        items: expandedItems,
+        cashier,
+        notes,
+        payment_method: withPayment ?? null,
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // IndexedDB unavailable — continue to server sync anyway
+    }
 
     // 2. If online, try to sync to server immediately
     if (navigator.onLine) {
@@ -220,14 +225,14 @@ export default function NewOrderDrawer({
           body: JSON.stringify(body),
         });
 
-        if (r.ok) {
+        if (r.ok && localId !== null) {
           const d = await r.json();
-          await updateOrderSyncStatus(localId, "Synced", d.order_id);
-        } else {
-          await updateOrderSyncStatus(localId, "SyncFailed");
+          await updateOrderSyncStatus(localId, "Synced", d.order_id).catch(() => {});
+        } else if (!r.ok && localId !== null) {
+          await updateOrderSyncStatus(localId, "SyncFailed").catch(() => {});
         }
       } catch {
-        await updateOrderSyncStatus(localId, "SyncFailed");
+        if (localId !== null) await updateOrderSyncStatus(localId, "SyncFailed").catch(() => {});
       }
     } else {
       setSavedOffline(true);
@@ -262,16 +267,21 @@ export default function NewOrderDrawer({
     const local_uuid = crypto.randomUUID();
 
     // 1. Save locally first
-    const localId = await saveLocalOrder({
-      local_uuid,
-      table_number: table,
-      total_price: total,
-      items: expandedItems,
-      cashier,
-      notes,
-      payment_method: null,
-      created_at: new Date().toISOString(),
-    });
+    let localId: number | null = null;
+    try {
+      localId = await saveLocalOrder({
+        local_uuid,
+        table_number: table,
+        total_price: total,
+        items: expandedItems,
+        cashier,
+        notes,
+        payment_method: null,
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // IndexedDB unavailable — continue to server sync anyway
+    }
 
     // 2. Offline: order saved locally, payment will be handled after reconnect
     if (!navigator.onLine) {
@@ -291,16 +301,16 @@ export default function NewOrderDrawer({
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        await updateOrderSyncStatus(localId, "SyncFailed");
+        if (localId !== null) await updateOrderSyncStatus(localId, "SyncFailed").catch(() => {});
         setOrderError(d.detail || `فشل الإرسال (${r.status})`);
         return;
       }
       const d = await r.json();
-      await updateOrderSyncStatus(localId, "Synced", d.order_id);
+      if (localId !== null) await updateOrderSyncStatus(localId, "Synced", d.order_id).catch(() => {});
       paidRef.current = false;
       setPendingBillOrder({ id: d.order_id, table_number: table, total_price: total, notes, items: expandedItems });
     } catch {
-      await updateOrderSyncStatus(localId, "SyncFailed");
+      if (localId !== null) await updateOrderSyncStatus(localId, "SyncFailed").catch(() => {});
       setOrderError("تعذر الاتصال بالسيرفر — تحقق من الشبكة");
     } finally {
       setSending(false);
