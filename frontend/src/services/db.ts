@@ -14,6 +14,8 @@ export interface LocalOrderItem {
 export interface LocalOrder {
   /** Auto-incremented by IndexedDB. Undefined before first save. */
   localId?: number;
+  /** Client-generated UUID — used as idempotency key when syncing to server. */
+  local_uuid: string;
   table_number: number;
   total_price: number;
   items: LocalOrderItem[];

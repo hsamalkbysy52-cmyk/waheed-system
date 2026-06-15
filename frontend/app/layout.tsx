@@ -20,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router   = useRouter();
   const [user, setUser] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
 
   const hidden = HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
 
@@ -28,6 +29,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js", { scope: "/" });
     }
+    const sync = () => setIsOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -37,6 +46,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ar" dir="rtl">
       <body style={{ margin: 0, display: "flex", minHeight: "100vh", background: "#0a0a0f" }}>
+
+        {/* ── Offline banner ── */}
+        {!isOnline && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
+            background: "#f59e0b", color: "#000",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+            padding: "8px 16px", fontSize: "13px", fontWeight: "700",
+          }}>
+            <span>⚠️</span>
+            <span>أنت غير متصل — الطلبات ستُحفظ محلياً وتُرفع تلقائياً عند استعادة الاتصال</span>
+          </div>
+        )}
 
         {/* ── Sidebar ── */}
         {!hidden && (

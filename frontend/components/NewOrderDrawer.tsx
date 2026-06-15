@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BillModal, OrderForBill } from "@/components/BillModal";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
+import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
 
 const API    = "https://waheed-system-production.up.railway.app";
 const TABLES = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -60,6 +61,7 @@ export default function NewOrderDrawer({
   const [sending, setSending]   = useState(false);
   const [orderError, setOrderError] = useState("");
   const [success, setSuccess]   = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [stockAlert, setStockAlert] = useState("");
   const [pendingBillOrder, setPendingBillOrder] = useState<OrderForBill | null>(null);
   const [modifierItem, setModifierItem] = useState<RawItem | null>(null);
@@ -171,41 +173,70 @@ export default function NewOrderDrawer({
     if (!cart.length) { setOrderError("أضف صنفاً واحداً على الأقل"); return; }
     setSending(true);
     setOrderError("");
-    try {
-      const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({
-          name: c.name,
-          price: c.price,
-          category: c.category,
-          modifiers: c.mods.map((m) => ({
-            name: m.name,
-            price_delta: m.price_delta,
-            inventory_item_id: m.inventory_item_id,
-            quantity_delta: m.quantity_delta,
-          })),
-        }))
-      );
-      const cashier = localStorage.getItem("username") || "";
-      const body: Record<string, unknown> = { table_number: table, items: expandedItems, cashier, notes };
-      if (withPayment) body.payment_method = withPayment;
 
-      const r = await fetch(`${API}/orders/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        setOrderError(d.detail || `فشل الإرسال (${r.status})`);
-        return;
+    const expandedItems = cart.flatMap((c) =>
+      Array.from({ length: c.qty }, () => ({
+        name: c.name,
+        price: c.price,
+        category: c.category,
+        modifiers: c.mods.map((m) => ({
+          name: m.name,
+          price_delta: m.price_delta,
+          inventory_item_id: m.inventory_item_id,
+          quantity_delta: m.quantity_delta,
+        })),
+      }))
+    );
+    const cashier = localStorage.getItem("username") || "";
+    const local_uuid = crypto.randomUUID();
+
+    // 1. Save locally first — order is protected even if power cuts now
+    const localId = await saveLocalOrder({
+      local_uuid,
+      table_number: table,
+      total_price: total,
+      items: expandedItems,
+      cashier,
+      notes,
+      payment_method: withPayment ?? null,
+      created_at: new Date().toISOString(),
+    });
+
+    // 2. If online, try to sync to server immediately
+    if (navigator.onLine) {
+      try {
+        const body: Record<string, unknown> = {
+          table_number: table,
+          items: expandedItems,
+          cashier,
+          notes,
+          client_id: local_uuid,
+        };
+        if (withPayment) body.payment_method = withPayment;
+
+        const r = await fetch(`${API}/orders/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (r.ok) {
+          const d = await r.json();
+          await updateOrderSyncStatus(localId, "Synced", d.order_id);
+        } else {
+          await updateOrderSyncStatus(localId, "SyncFailed");
+        }
+      } catch {
+        await updateOrderSyncStatus(localId, "SyncFailed");
       }
-      setSuccess(true);
-      setTimeout(() => { onSuccess(); onClose(); }, 1400);
-    } catch {
-      setOrderError("تعذر الاتصال بالسيرفر — تحقق من الشبكة");
-    } finally {
-      setSending(false);
+    } else {
+      setSavedOffline(true);
     }
+
+    // 3. Always succeed — order is safe in local DB regardless of sync result
+    setSending(false);
+    setSuccess(true);
+    setTimeout(() => { onSuccess(); onClose(); }, 1400);
   };
 
   /* ── pay + send ── */
@@ -213,35 +244,63 @@ export default function NewOrderDrawer({
     if (!cart.length) { setOrderError("أضف صنفاً واحداً على الأقل"); return; }
     setSending(true);
     setOrderError("");
+
+    const expandedItems = cart.flatMap((c) =>
+      Array.from({ length: c.qty }, () => ({
+        name: c.name,
+        price: c.price,
+        category: c.category,
+        modifiers: c.mods.map((m) => ({
+          name: m.name,
+          price_delta: m.price_delta,
+          inventory_item_id: m.inventory_item_id,
+          quantity_delta: m.quantity_delta,
+        })),
+      }))
+    );
+    const cashier = localStorage.getItem("username") || "";
+    const local_uuid = crypto.randomUUID();
+
+    // 1. Save locally first
+    const localId = await saveLocalOrder({
+      local_uuid,
+      table_number: table,
+      total_price: total,
+      items: expandedItems,
+      cashier,
+      notes,
+      payment_method: null,
+      created_at: new Date().toISOString(),
+    });
+
+    // 2. Offline: order saved locally, payment will be handled after reconnect
+    if (!navigator.onLine) {
+      setSavedOffline(true);
+      setSending(false);
+      setSuccess(true);
+      setTimeout(() => { onSuccess(); onClose(); }, 1400);
+      return;
+    }
+
+    // 3. Online: sync to server, then open BillModal for payment
     try {
-      const expandedItems = cart.flatMap((c) =>
-        Array.from({ length: c.qty }, () => ({
-          name: c.name,
-          price: c.price,
-          category: c.category,
-          modifiers: c.mods.map((m) => ({
-            name: m.name,
-            price_delta: m.price_delta,
-            inventory_item_id: m.inventory_item_id,
-            quantity_delta: m.quantity_delta,
-          })),
-        }))
-      );
-      const cashier = localStorage.getItem("username") || "";
       const r = await fetch(`${API}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes }),
+        body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes, client_id: local_uuid }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
+        await updateOrderSyncStatus(localId, "SyncFailed");
         setOrderError(d.detail || `فشل الإرسال (${r.status})`);
         return;
       }
       const d = await r.json();
+      await updateOrderSyncStatus(localId, "Synced", d.order_id);
       paidRef.current = false;
       setPendingBillOrder({ id: d.order_id, table_number: table, total_price: total, notes, items: expandedItems });
     } catch {
+      await updateOrderSyncStatus(localId, "SyncFailed");
       setOrderError("تعذر الاتصال بالسيرفر — تحقق من الشبكة");
     } finally {
       setSending(false);
@@ -563,8 +622,8 @@ export default function NewOrderDrawer({
               )}
 
               {success && (
-                <div style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "10px", padding: "12px", color: "#22c55e", fontSize: "14px", fontWeight: "700", textAlign: "center", marginBottom: "10px" }}>
-                  ✅ تم إرسال الطلب للمطبخ!
+                <div style={{ background: savedOffline ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", border: `1px solid ${savedOffline ? "rgba(245,158,11,0.3)" : "rgba(34,197,94,0.3)"}`, borderRadius: "10px", padding: "12px", color: savedOffline ? "#f59e0b" : "#22c55e", fontSize: "14px", fontWeight: "700", textAlign: "center", marginBottom: "10px" }}>
+                  {savedOffline ? "💾 تم الحفظ محلياً — سيُرسل للمطبخ عند استعادة الاتصال" : "✅ تم إرسال الطلب للمطبخ!"}
                 </div>
               )}
 
