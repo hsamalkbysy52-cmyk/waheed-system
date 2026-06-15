@@ -6,6 +6,31 @@ import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
 
 const API    = "https://waheed-system-production.up.railway.app";
 const TABLES = Array.from({ length: 10 }, (_, i) => i + 1);
+const MENU_CACHE_KEY = "waheed_menu_v1";
+
+function processMenuItems(raw: RawItem[]): RawItem[] {
+  return raw
+    .map((i) => ({
+      ...i,
+      available: i.available ?? i.is_available ?? true,
+      variants: (i.variants || [])
+        .map((v) => ({ ...v, available: v.available ?? v.is_available ?? true }))
+        .filter((v) => v.available !== false && v.available !== 0),
+    }))
+    .filter((i) => i.available !== false && i.available !== 0)
+    .sort((a, b) => (a.out_of_stock ? 1 : 0) - (b.out_of_stock ? 1 : 0));
+}
+
+function saveMenuCache(items: RawItem[]) {
+  try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(items)); } catch {}
+}
+
+function loadMenuCache(): RawItem[] | null {
+  try {
+    const raw = localStorage.getItem(MENU_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as RawItem[]) : null;
+  } catch { return null; }
+}
 
 const CAT_EMOJI: Record<string, string> = {
   "برجر":    "🍔",
@@ -77,29 +102,60 @@ export default function NewOrderDrawer({
   /* ── fetch menu on open ── */
   useEffect(() => {
     let cancelled = false;
-    setLoadingMenu(true);
-    setFetchError("");
-    fetch(`${API}/menu`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((d) => {
+
+    const loadMenu = async () => {
+      setLoadingMenu(true);
+      setFetchError("");
+
+      // Offline: serve from localStorage cache immediately, no waiting
+      if (!navigator.onLine) {
+        const cached = loadMenuCache();
         if (!cancelled) {
-          const items: RawItem[] = (d.menu || d.items || d || []).map((i: RawItem) => ({
-            ...i,
-            available: i.available ?? i.is_available ?? true,
-            variants: (i.variants || [])
-              .map((v: RawItem) => ({ ...v, available: v.available ?? v.is_available ?? true }))
-              .filter((v: RawItem) => v.available !== false && v.available !== 0),
-          })).filter((i: RawItem) => i.available !== false && i.available !== 0)
-            .sort((a: RawItem, b: RawItem) => (a.out_of_stock ? 1 : 0) - (b.out_of_stock ? 1 : 0));
-          setMenuItems(items);
+          if (cached) {
+            setMenuItems(cached);
+          } else {
+            setFetchError("أنت غير متصل — افتح التطبيق مرة أولاً وأنت متصل لحفظ المنيو");
+          }
+          setLoadingMenu(false);
         }
-      })
-      .catch((e) => { if (!cancelled) setFetchError(String(e)); })
-      .finally(() => { if (!cancelled) setLoadingMenu(false); });
-    return () => { cancelled = true; };
+        return;
+      }
+
+      // Online: fetch with 8-second timeout, fall back to cache on failure
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      try {
+        const r = await fetch(`${API}/menu`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d = await r.json();
+        if (!cancelled) {
+          const items = processMenuItems(d.menu || d.items || d || []);
+          setMenuItems(items);
+          saveMenuCache(items); // keep cache fresh for next offline session
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          const cached = loadMenuCache();
+          if (cached) {
+            setMenuItems(cached);
+            // show soft warning, not a blocking error
+            setFetchError("⚠️ يعمل من النسخة المحفوظة — المنيو قد لا يكون محدّثاً");
+          } else {
+            setFetchError(String(e));
+          }
+        }
+      } finally {
+        if (!cancelled) setLoadingMenu(false);
+      }
+    };
+
+    loadMenu();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ── scroll cart to bottom on new item ── */
@@ -427,7 +483,17 @@ export default function NewOrderDrawer({
                   <div style={{ fontSize: "36px", marginBottom: "12px" }}>⚠️</div>
                   <div style={{ color: "#ef4444", fontSize: "13px", marginBottom: "12px" }}>{fetchError}</div>
                   <button
-                    onClick={() => { setFetchError(""); setLoadingMenu(true); fetch(`${API}/menu`).then(r=>r.json()).then(d=>{ setMenuItems((d.menu||[]).filter((i: RawItem)=>i.available!==false&&i.available!==0)); }).catch(e=>setFetchError(String(e))).finally(()=>setLoadingMenu(false)); }}
+                    onClick={() => {
+                      setFetchError("");
+                      setLoadingMenu(true);
+                      const controller = new AbortController();
+                      setTimeout(() => controller.abort(), 8000);
+                      fetch(`${API}/menu`, { signal: controller.signal })
+                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                        .then(d => { const items = processMenuItems(d.menu || d.items || d || []); setMenuItems(items); saveMenuCache(items); })
+                        .catch(e => { const cached = loadMenuCache(); if (cached) { setMenuItems(cached); } else { setFetchError(String(e)); } })
+                        .finally(() => setLoadingMenu(false));
+                    }}
                     style={{ padding: "8px 18px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", cursor: "pointer", fontSize: "12px" }}
                   >🔄 إعادة المحاولة</button>
                 </div>
