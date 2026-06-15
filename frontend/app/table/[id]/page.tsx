@@ -380,19 +380,22 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           })),
         }))
       );
-      const r = await fetch(`${RAILWAY}/orders/create`, {
+      const r = await fetch(`${RAILWAY}/orders/qr-create`, {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || null }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({})) as { detail?: string };
+        throw new Error(err.detail || `فشل الإرسال (${r.status})`);
+      }
       setOrderTotal(cartTotal);
       setCartOpen(false);
       setNotes("");
       setSuccess(true);
     } catch (e) {
-      alert(`فشل إرسال الطلب: ${e}`);
+      alert(e instanceof Error ? e.message : String(e));
     } finally {
       setPlacing(false);
     }

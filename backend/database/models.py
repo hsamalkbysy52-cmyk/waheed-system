@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, text
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -96,6 +97,23 @@ class ModifierGroup(Base):
     sort_order = Column(Integer, default=0)
 
 
+class Restaurant(Base):
+    __tablename__ = "restaurants"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, default="Waheed Restaurant")
+    last_heartbeat_at = Column(DateTime, nullable=True)
+
+
+def is_restaurant_online(db: Session) -> bool:
+    """True if a heartbeat arrived within the last 90 seconds."""
+    from datetime import datetime, timedelta
+    r = db.query(Restaurant).filter(Restaurant.id == 1).first()
+    if not r or r.last_heartbeat_at is None:
+        return False
+    return r.last_heartbeat_at >= datetime.utcnow() - timedelta(seconds=90)
+
+
 class ModifierOption(Base):
     __tablename__ = "modifier_options"
 
@@ -137,6 +155,15 @@ def create_tables():
         except Exception:
             pass
     print("DB tables ready")
+
+
+def seed_restaurant():
+    db = SessionLocal()
+    if db.query(Restaurant).count() == 0:
+        db.add(Restaurant(id=1, name="Waheed Restaurant"))
+        db.commit()
+        print("Default restaurant record seeded")
+    db.close()
 
 
 def seed_menu():

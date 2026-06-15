@@ -9,7 +9,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption
+from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -27,6 +27,7 @@ try:
     create_tables()
     create_users()
     seed_menu()
+    seed_restaurant()
 except Exception as e:
     print(f"DB init warning: {e}")
 
@@ -441,19 +442,14 @@ def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
     return False
 
 
-@app.post("/orders/create")
-def create_order(order: OrderRequest, db: Session = Depends(get_db)):
+def _create_order_record(order: OrderRequest, db: Session) -> dict:
+    """Shared order-creation logic for both cashier and QR channels."""
     from fastapi import HTTPException
 
-    # Idempotency: if this client_id was already processed, return the existing order
     if order.client_id:
         existing = db.query(Order).filter(Order.client_id == order.client_id).first()
         if existing:
-            return {
-                "message": "تم حفظ الطلب!",
-                "total": existing.total_price,
-                "order_id": existing.id,
-            }
+            return {"message": "تم حفظ الطلب!", "total": existing.total_price, "order_id": existing.id}
 
     total = sum(item.price for item in order.items)
     items_data = [
@@ -461,8 +457,6 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
         for i in order.items
     ]
 
-    # Atomic check + deduct — inventory rows are locked (SELECT FOR UPDATE on PostgreSQL)
-    # to prevent double-deduction from concurrent requests
     unavailable = _check_and_deduct_atomic(items_data, db)
     if unavailable:
         raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
@@ -479,11 +473,50 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     )
     db.add(new_order)
     db.commit()
-    return {
-        "message": "تم حفظ الطلب!",
-        "total": total,
-        "order_id": new_order.id,
-    }
+    return {"message": "تم حفظ الطلب!", "total": total, "order_id": new_order.id}
+
+
+@app.post("/orders/create")
+def create_order(order: OrderRequest, db: Session = Depends(get_db)):
+    """Cashier endpoint — no heartbeat check (cashier works offline)."""
+    return _create_order_record(order, db)
+
+
+class HeartbeatPayload(BaseModel):
+    restaurant_id: int = 1
+
+
+@app.post("/heartbeat")
+def heartbeat(payload: HeartbeatPayload, db: Session = Depends(get_db)):
+    """Cashier device calls this every 60 s to signal the restaurant is online."""
+    restaurant = db.query(Restaurant).filter(Restaurant.id == payload.restaurant_id).first()
+    if not restaurant:
+        restaurant = Restaurant(id=payload.restaurant_id, name="Waheed Restaurant")
+        db.add(restaurant)
+    restaurant.last_heartbeat_at = datetime.utcnow()
+    db.commit()
+    return {"status": "ok", "last_heartbeat_at": restaurant.last_heartbeat_at.isoformat()}
+
+
+@app.get("/restaurant/status")
+def restaurant_status(db: Session = Depends(get_db)):
+    """Public status endpoint — useful for debugging and monitoring."""
+    restaurant = db.query(Restaurant).filter(Restaurant.id == 1).first()
+    online = is_restaurant_online(db)
+    last_beat = restaurant.last_heartbeat_at.isoformat() if restaurant and restaurant.last_heartbeat_at else None
+    return {"online": online, "last_heartbeat_at": last_beat}
+
+
+@app.post("/orders/qr-create")
+def create_qr_order(order: OrderRequest, db: Session = Depends(get_db)):
+    """QR menu endpoint — rejected while cashier device is offline."""
+    from fastapi import HTTPException
+    if not is_restaurant_online(db):
+        raise HTTPException(
+            status_code=503,
+            detail="الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."
+        )
+    return _create_order_record(order, db)
 
 
 @app.put("/orders/{order_id}/ready")
@@ -789,12 +822,17 @@ def ask_report_agent(question: str, api_key: str):
 
 
 @app.post("/whatsapp")
-async def whatsapp_webhook(request: Request):
-    from agents.whatsapp_agent import process_whatsapp_message
+async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     from twilio.twiml.messaging_response import MessagingResponse
+    twiml = MessagingResponse()
+
+    if not is_restaurant_online(db):
+        twiml.message("الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة.")
+        return Response(content=str(twiml), media_type="application/xml")
+
+    from agents.whatsapp_agent import process_whatsapp_message
     form = await request.form()
     message = form.get("Body", "")
     reply = process_whatsapp_message(message, OPENAI_KEY)
-    twiml = MessagingResponse()
     twiml.message(reply)
     return Response(content=str(twiml), media_type="application/xml")
