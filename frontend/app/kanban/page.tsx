@@ -4,6 +4,7 @@ import { DndContext, DragEndEvent, useDroppable, useDraggable, closestCenter } f
 import { CSS } from "@dnd-kit/utilities";
 import NewOrderDrawer from "@/components/NewOrderDrawer";
 import { BillModal } from "@/components/BillModal";
+import { getPendingSyncOrders } from "@/src/services/db";
 
 const API = "https://waheed-system-production.up.railway.app";
 
@@ -90,16 +91,18 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
   onInvoice: () => void; isPaid: boolean;
   onComplete: () => void;
 }) {
+  const isLocal = order.id < 0;
   const [confirmDel, setConfirmDel] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: String(order.id) });
   const mins = elapsedMins(order.created_at, now);
-  const tc   = stageColor(mins, stage);
+  const tc   = isLocal ? "#f59e0b" : stageColor(mins, stage);
   const aggregated = order.items?.length ? aggregateItems(order.items) : [];
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners} {...attributes}
+      {...(isLocal ? {} : listeners)}
+      {...(isLocal ? {} : attributes)}
       style={{
         background: "#1c1c28",
         border: `1px solid ${tc}35`,
@@ -107,15 +110,33 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
         borderRadius: "14px",
         padding: "14px",
         marginBottom: "10px",
-        cursor: "grab",
+        cursor: isLocal ? "default" : "grab",
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.45 : 1,
         userSelect: "none",
       }}
     >
+      {/* Offline badge for local-only orders */}
+      {isLocal && (
+        <div style={{
+          background: "rgba(245,158,11,0.12)",
+          border: "1px solid rgba(245,158,11,0.3)",
+          borderRadius: "7px",
+          padding: "4px 8px",
+          fontSize: "11px",
+          color: "#f59e0b",
+          fontWeight: "700",
+          marginBottom: "8px",
+          textAlign: "center",
+          letterSpacing: "0.3px",
+        }}>
+          ⏳ محفوظ محلياً — بانتظار المزامنة
+        </div>
+      )}
+
       {/* 1. Order number */}
       <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "15px", marginBottom: "2px" }}>
-        طلب #{order.id}
+        {isLocal ? `طلب محلي #${Math.abs(order.id)}` : `طلب #${order.id}`}
       </div>
 
       {/* 2. Table number + time ago */}
@@ -199,8 +220,8 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
         </div>
       ) : null}
 
-      {/* Next/Prev buttons */}
-      <div style={{ display: "flex", gap: "6px", marginTop: "12px" }}>
+      {/* Next/Prev buttons — server orders only */}
+      {!isLocal && <div style={{ display: "flex", gap: "6px", marginTop: "12px" }}>
         {stage !== "preparing" && (
           <button
             onPointerDown={e => e.stopPropagation()}
@@ -221,10 +242,10 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
             }}
           >{stage === "ready" ? "✅ تقديم" : "التالي →"}</button>
         )}
-      </div>
+      </div>}
 
-      {/* Edit / Delete — only while preparing */}
-      {stage === "preparing" && (
+      {/* Edit / Delete — only while preparing and not a local order */}
+      {stage === "preparing" && !isLocal && (
         <div style={{ display: "flex", gap: "6px", marginTop: "8px", borderTop: "1px solid #1c1c28", paddingTop: "10px" }}>
           <button
             onPointerDown={e => e.stopPropagation()}
@@ -255,8 +276,8 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
         </div>
       )}
 
-      {/* Invoice / Paid — all stages */}
-      {(() => {
+      {/* Invoice / Paid — server orders only */}
+      {!isLocal && (() => {
         const prePaid   = !!order.payment_method;
         const fullyPaid = prePaid || isPaid;
         const methodIcon = order.payment_method === "card" ? "💳" : order.payment_method === "qr" ? "📱" : "💵";
@@ -375,6 +396,23 @@ export default function KanbanPage() {
   const [deletingId, setDeletingId]         = useState<number | null>(null);
 
   const fetchOrders = useCallback(async () => {
+    // Always load local (offline) orders — works without internet
+    let localList: Order[] = [];
+    try {
+      const pending = await getPendingSyncOrders();
+      localList = pending.map(lo => ({
+        id: -(lo.localId!),
+        table_number: lo.table_number,
+        total_price: lo.total_price,
+        status: "preparing" as const,
+        created_at: lo.created_at,
+        items: lo.items.map(i => ({ name: i.name, price: i.price, category: i.category || "", modifiers: i.modifiers })),
+        cashier: lo.cashier,
+        notes: lo.notes,
+        payment_method: null,
+      }));
+    } catch {}
+
     try {
       let r: Response;
       try {
@@ -387,7 +425,7 @@ export default function KanbanPage() {
       }
       const d = await r.json();
       const list: Order[] = (d.orders || []).filter((o: Order) => o.status !== "cancelled" && o.status !== "done");
-      setOrders(list);
+      setOrders([...list, ...localList]);
       setStageMap(prev => {
         const next = { ...prev };
         list.forEach(o => {
@@ -405,6 +443,9 @@ export default function KanbanPage() {
         });
         return next;
       });
+    } catch {
+      // Server unreachable — show local orders only
+      setOrders(localList);
     } finally { setLoading(false); setWaking(false); }
   }, []);
 
@@ -437,7 +478,9 @@ export default function KanbanPage() {
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return;
-    moveTo(parseInt(String(e.active.id)), String(e.over.id) as Stage);
+    const id = parseInt(String(e.active.id));
+    if (id < 0) return; // local offline orders can't be moved to server stages
+    moveTo(id, String(e.over.id) as Stage);
   };
 
   const openEdit = async (order: Order) => {
@@ -497,7 +540,10 @@ export default function KanbanPage() {
     setStageMap(p => { const n = { ...p }; delete n[orderId]; return n; });
   };
 
-  const byStage = (s: Stage) => orders.filter(o => (stageMap[o.id] ?? "preparing") === s);
+  const byStage = (s: Stage) => orders.filter(o => {
+    if (o.id < 0) return s === "preparing"; // local orders are always in preparing
+    return (stageMap[o.id] ?? "preparing") === s;
+  });
   const active  = orders.length;
 
   return (
