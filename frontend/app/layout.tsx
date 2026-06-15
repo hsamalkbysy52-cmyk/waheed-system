@@ -3,6 +3,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import "./globals.css";
 import ChatBot from "@/components/ChatBot";
+import { useSyncEngine } from "@/src/services/useSyncEngine";
 
 const NAV = [
   { href: "/kanban",    icon: "📋", label: "لوحة الطلبات" },
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router   = useRouter();
   const [user, setUser] = useState("");
   const [isOnline, setIsOnline] = useState(true);
+  useSyncEngine();
 
   const hidden = HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
 

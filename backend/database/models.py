@@ -40,6 +40,7 @@ class Order(Base):
     cashier = Column(String(100), nullable=True)
     notes = Column(String, nullable=True)
     payment_method = Column(String(10), nullable=True)   # null=unpaid; cash/card/qr=prepaid
+    client_id = Column(String(36), nullable=True, unique=True)  # UUID sent by client for idempotency
 
 
 class CancellationLog(Base):
@@ -120,12 +121,21 @@ def create_tables():
             "ALTER TABLE modifier_groups ADD COLUMN sort_order INTEGER DEFAULT 0",
             "ALTER TABLE modifier_options ADD COLUMN sort_order INTEGER DEFAULT 0",
             "ALTER TABLE menu_items ADD COLUMN parent_id INTEGER",
+            "ALTER TABLE orders ADD COLUMN client_id VARCHAR(36)",
         ]:
             try:
                 conn.execute(text(sql))
                 conn.commit()
             except Exception:
                 pass
+        # Unique index on client_id — safe to run repeatedly (IF NOT EXISTS)
+        try:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_orders_client_id ON orders(client_id)"
+            ))
+            conn.commit()
+        except Exception:
+            pass
     print("DB tables ready")
 
 

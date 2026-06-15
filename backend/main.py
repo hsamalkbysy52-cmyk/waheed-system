@@ -264,6 +264,7 @@ class OrderRequest(BaseModel):
     cashier: str = ""
     notes: str = ""
     payment_method: Optional[str] = None   # cash / card / qr for prepaid orders
+    client_id: Optional[str] = None        # UUID from client for idempotency
 
 
 @app.get("/orders")
@@ -361,6 +362,73 @@ def _apply_modifier_inventory(items_data: list, db: Session):
                 inv.quantity = max(0.0, inv.quantity - qty_delta)
 
 
+def _check_and_deduct_atomic(items_data: list, db: Session) -> list:
+    """
+    Check inventory and deduct in one atomic pass.
+    Uses SELECT FOR UPDATE to lock rows on PostgreSQL, preventing
+    double-deduction under concurrent requests.
+    Returns a list of item names with insufficient stock (empty = all OK).
+    """
+    from collections import Counter, defaultdict
+
+    # --- Build deduction map: inventory_item_id -> total amount needed ---
+    deductions: defaultdict = defaultdict(float)
+    inv_to_names: defaultdict = defaultdict(list)
+
+    name_counts = Counter(it["name"] for it in items_data)
+    for item_name, qty in name_counts.items():
+        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        if not menu_item:
+            continue
+        recipe = db.query(RecipeIngredient).filter(
+            RecipeIngredient.menu_item_id == menu_item.id
+        ).all()
+        for ri in recipe:
+            deductions[ri.inventory_item_id] += ri.amount * qty
+            if item_name not in inv_to_names[ri.inventory_item_id]:
+                inv_to_names[ri.inventory_item_id].append(item_name)
+
+    # Include modifier inventory deductions
+    for item in items_data:
+        for mod in item.get("modifiers", []):
+            inv_id = mod.get("inventory_item_id")
+            qty_delta = mod.get("quantity_delta", 0)
+            if inv_id is not None and qty_delta > 0:
+                deductions[inv_id] += qty_delta
+
+    if not deductions:
+        return []
+
+    # --- Lock all needed rows in one query (FOR UPDATE on PostgreSQL) ---
+    inv_items = (
+        db.query(InventoryItem)
+        .filter(InventoryItem.id.in_(list(deductions.keys())))
+        .with_for_update()
+        .all()
+    )
+    inv_map = {i.id: i for i in inv_items}
+
+    # --- Check stock ---
+    unavailable = []
+    for inv_id, needed in deductions.items():
+        inv = inv_map.get(inv_id)
+        if inv and inv.quantity < needed:
+            for name in inv_to_names.get(inv_id, []):
+                if name not in unavailable:
+                    unavailable.append(name)
+
+    if unavailable:
+        return unavailable
+
+    # --- Deduct ---
+    for inv_id, amount in deductions.items():
+        inv = inv_map.get(inv_id)
+        if inv:
+            inv.quantity = max(0.0, inv.quantity - amount)
+
+    return []
+
+
 def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
     """True if any recipe ingredient is insufficient for a single serving."""
     recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
@@ -376,14 +444,29 @@ def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
 @app.post("/orders/create")
 def create_order(order: OrderRequest, db: Session = Depends(get_db)):
     from fastapi import HTTPException
+
+    # Idempotency: if this client_id was already processed, return the existing order
+    if order.client_id:
+        existing = db.query(Order).filter(Order.client_id == order.client_id).first()
+        if existing:
+            return {
+                "message": "تم حفظ الطلب!",
+                "total": existing.total_price,
+                "order_id": existing.id,
+            }
+
     total = sum(item.price for item in order.items)
     items_data = [
         {"name": i.name, "price": i.price, "category": i.category, "modifiers": i.modifiers}
         for i in order.items
     ]
-    unavailable = _check_stock(items_data, db)
+
+    # Atomic check + deduct — inventory rows are locked (SELECT FOR UPDATE on PostgreSQL)
+    # to prevent double-deduction from concurrent requests
+    unavailable = _check_and_deduct_atomic(items_data, db)
     if unavailable:
         raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
+
     new_order = Order(
         table_number=order.table_number,
         total_price=total,
@@ -392,15 +475,14 @@ def create_order(order: OrderRequest, db: Session = Depends(get_db)):
         cashier=order.cashier,
         notes=order.notes,
         payment_method=order.payment_method or None,
+        client_id=order.client_id or None,
     )
     db.add(new_order)
-    _deduct_inventory(items_data, db)
-    _apply_modifier_inventory(items_data, db)
     db.commit()
     return {
         "message": "تم حفظ الطلب!",
         "total": total,
-        "order_id": new_order.id
+        "order_id": new_order.id,
     }
 
 
