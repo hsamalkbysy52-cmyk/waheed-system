@@ -25,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     fetch("/api/warmup").catch(() => {});
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    }
   }, []);
 
   useEffect(() => {
