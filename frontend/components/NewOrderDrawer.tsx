@@ -4,9 +4,10 @@ import { BillModal, OrderForBill } from "@/components/BillModal";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
 
-const API    = "https://waheed-system-production.up.railway.app";
-const TABLES = Array.from({ length: 10 }, (_, i) => i + 1);
-const MENU_CACHE_KEY = "waheed_menu_v1";
+const API              = "https://waheed-system-production.up.railway.app";
+const MENU_CACHE_KEY   = "waheed_menu_v1";
+const TABLES_CACHE_KEY = "waheed_tables_v1";
+const TAKEAWAY         = 0; // table_number = 0 means سفري
 
 function processMenuItems(raw: RawItem[]): RawItem[] {
   return raw
@@ -81,6 +82,7 @@ export default function NewOrderDrawer({
 
   const [cart, setCart]       = useState<CartLine[]>([]);
   const [table, setTable]     = useState(1);
+  const [tableList, setTableList] = useState<number[]>([]);
   const [cat, setCat]         = useState("الكل");
   const [notes, setNotes]     = useState("");
   const [sending, setSending]   = useState(false);
@@ -156,6 +158,34 @@ export default function NewOrderDrawer({
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  /* ── load table numbers from layout (with localStorage fallback) ── */
+  useEffect(() => {
+    // Serve from cache immediately so the picker is usable offline
+    try {
+      const cached = localStorage.getItem(TABLES_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as number[];
+        if (parsed.length > 0) setTableList(parsed);
+      }
+    } catch {}
+
+    fetch(`${API}/table-layout`)
+      .then(r => r.json())
+      .then((d: { elements?: { table_number?: number }[] }) => {
+        const seen = new Set<number>();
+        const nums = (d.elements || [])
+          .map(e => e.table_number)
+          .filter((n): n is number => typeof n === "number" && n > 0 && !seen.has(n) && !!seen.add(n))
+          .sort((a, b) => a - b);
+        const list = nums.length > 0 ? nums : Array.from({ length: 20 }, (_, i) => i + 1);
+        setTableList(list);
+        try { localStorage.setItem(TABLES_CACHE_KEY, JSON.stringify(list)); } catch {}
+      })
+      .catch(() => {
+        setTableList(prev => prev.length > 0 ? prev : Array.from({ length: 20 }, (_, i) => i + 1));
+      });
   }, []);
 
   /* ── scroll cart to bottom on new item ── */
@@ -424,7 +454,7 @@ export default function NewOrderDrawer({
                 {loadingMenu
                   ? `جاري تحميل ${0} صنف...`
                   : totalItems > 0
-                    ? `${totalItems} صنف في السلة • طاولة ${table}`
+                    ? `${totalItems} صنف في السلة • ${table === TAKEAWAY ? "سفري" : `طاولة ${table}`}`
                     : `${menuItems.length} صنف متاح • اختر من المنيو`}
               </div>
             </div>
@@ -564,20 +594,36 @@ export default function NewOrderDrawer({
           <div style={{ flex: "0 0 40%", display: "flex", flexDirection: "column", background: "#0d0d14", overflow: "hidden" }}>
 
             {/* Table picker */}
-            <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
-              <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "8px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "5px" }}>
-                {TABLES.map((t) => (
+            <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
+              <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "7px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
+
+              {/* Takeaway button */}
+              <button
+                onClick={() => setTable(TAKEAWAY)}
+                style={{
+                  width: "100%", padding: "9px", borderRadius: "10px", marginBottom: "7px",
+                  background: table === TAKEAWAY ? "rgba(99,102,241,0.18)" : "#1c1c28",
+                  color: table === TAKEAWAY ? "#818cf8" : "#64748b",
+                  border: `1px solid ${table === TAKEAWAY ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                  cursor: "pointer", fontSize: "13px", fontWeight: table === TAKEAWAY ? "800" : "500",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
+                }}
+              >
+                <span>🛵</span><span>سفري</span>
+              </button>
+
+              {/* Table grid — scrollable for many tables */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "5px", maxHeight: "130px", overflowY: "auto" }}>
+                {tableList.map((t) => (
                   <button
                     key={t}
                     onClick={() => setTable(t)}
                     style={{
-                      padding: "11px 4px", borderRadius: "10px",
+                      padding: "10px 4px", borderRadius: "10px",
                       background: table === t ? "rgba(245,158,11,0.2)" : "#1c1c28",
                       color: table === t ? "#f59e0b" : "#64748b",
                       border: `1px solid ${table === t ? "rgba(245,158,11,0.55)" : "#252535"}`,
-                      cursor: "pointer", fontSize: "14px", fontWeight: table === t ? "800" : "500",
-                      transition: "all 0.12s",
+                      cursor: "pointer", fontSize: "13px", fontWeight: table === t ? "800" : "500",
                     }}
                   >{t}</button>
                 ))}

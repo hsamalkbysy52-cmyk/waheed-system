@@ -141,7 +141,9 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
 
       {/* 2. Table number + time ago */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-        <div style={{ color: "#64748b", fontSize: "12px" }}>🪑 طاولة {order.table_number}</div>
+        <div style={{ color: "#64748b", fontSize: "12px" }}>
+          {order.table_number === 0 ? "🛵 سفري" : `🪑 طاولة ${order.table_number}`}
+        </div>
         <div style={{ color: "#64748b", fontSize: "11px" }}>🕐 {timeAgo(order.created_at, now)}</div>
       </div>
 
@@ -377,6 +379,7 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
 export default function KanbanPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [stageMap, setStageMap] = useState<Record<number, Stage>>({});
+  const [tableList, setTableList] = useState<number[]>([]);
   const [now, setNow]           = useState(Date.now());
   const [loading, setLoading]   = useState(true);
   const [waking, setWaking]     = useState(false);
@@ -456,6 +459,17 @@ export default function KanbanPage() {
     const tick    = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearInterval(refresh); clearInterval(tick); };
   }, [fetchOrders]);
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("waheed_tables_v1");
+      if (cached) {
+        const parsed = JSON.parse(cached) as number[];
+        if (parsed.length > 0) { setTableList(parsed); return; }
+      }
+    } catch {}
+    setTableList(Array.from({ length: 20 }, (_, i) => i + 1));
+  }, []);
 
   const moveTo = async (orderId: number, stage: Stage) => {
     const endpoint: Record<Stage, string> = {
@@ -646,8 +660,18 @@ export default function KanbanPage() {
                   {/* Table picker */}
                   <div style={{ padding: "12px 14px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
                     <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px" }}>🪑 الطاولة</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px" }}>
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map(t => (
+                    <button onClick={() => setEditTable(0)}
+                      style={{ width: "100%", padding: "7px", borderRadius: "8px", marginBottom: "6px",
+                        background: editTable === 0 ? "rgba(99,102,241,0.18)" : "#1c1c28",
+                        color: editTable === 0 ? "#818cf8" : "#64748b",
+                        border: `1px solid ${editTable === 0 ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                        cursor: "pointer", fontSize: "12px", fontWeight: editTable === 0 ? "800" : "500",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                      }}>
+                      <span>🛵</span><span>سفري</span>
+                    </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "100px", overflowY: "auto" }}>
+                      {tableList.map(t => (
                         <button key={t} onClick={() => setEditTable(t)}
                           style={{ padding: "8px 2px", borderRadius: "8px", background: editTable === t ? "rgba(245,158,11,0.2)" : "#1c1c28", color: editTable === t ? "#f59e0b" : "#64748b", border: `1px solid ${editTable === t ? "rgba(245,158,11,0.5)" : "#252535"}`, cursor: "pointer", fontSize: "13px", fontWeight: editTable === t ? "800" : "500" }}>{t}</button>
                       ))}
