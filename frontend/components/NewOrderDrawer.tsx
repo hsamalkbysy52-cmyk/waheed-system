@@ -434,7 +434,7 @@ export default function NewOrderDrawer({
     >
       {/* ── Modal shell ── */}
       <div style={{
-        background: "#111118", border: "1px solid #252535", borderRadius: "22px",
+        background: "var(--surface)", border: "1px solid #252535", borderRadius: "22px",
         width: "100%", maxWidth: "1020px", height: "90vh",
         display: "flex", flexDirection: "column", direction: "rtl",
         overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.9)",
@@ -449,8 +449,8 @@ export default function NewOrderDrawer({
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>➕</div>
             <div>
-              <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "17px" }}>طلب جديد</div>
-              <div style={{ color: "#64748b", fontSize: "11px" }}>
+              <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "17px" }}>طلب جديد</div>
+              <div style={{ color: "var(--muted)", fontSize: "11px" }}>
                 {loadingMenu
                   ? `جاري تحميل ${0} صنف...`
                   : totalItems > 0
@@ -461,7 +461,7 @@ export default function NewOrderDrawer({
           </div>
           <button
             onClick={onClose}
-            style={{ width: "38px", height: "38px", borderRadius: "11px", background: "#1c1c28", border: "1px solid #252535", color: "#64748b", cursor: "pointer", fontSize: "17px", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: "38px", height: "38px", borderRadius: "11px", background: "var(--raised)", border: "1px solid #252535", color: "var(--muted)", cursor: "pointer", fontSize: "17px", display: "flex", alignItems: "center", justifyContent: "center" }}
           >✕</button>
         </div>
 
@@ -480,16 +480,16 @@ export default function NewOrderDrawer({
                     onClick={() => setCat(c)}
                     style={{
                       padding: "7px 14px", borderRadius: "20px", whiteSpace: "nowrap",
-                      background: cat === c ? "rgba(245,158,11,0.15)" : "#1c1c28",
-                      color: cat === c ? "#f59e0b" : "#64748b",
-                      border: `1px solid ${cat === c ? "rgba(245,158,11,0.4)" : "#252535"}`,
+                      background: cat === c ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                      color: cat === c ? "var(--gold)" : "var(--muted)",
+                      border: `1px solid ${cat === c ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
                       cursor: "pointer", fontSize: "12px", fontWeight: cat === c ? "700" : "400",
                       flexShrink: 0,
                     }}
                   >
                     {emoji(c)} {c}
                     {c !== "الكل" && (
-                      <span style={{ marginRight: "4px", color: "#64748b", fontSize: "10px" }}>
+                      <span style={{ marginRight: "4px", color: "var(--muted)", fontSize: "10px" }}>
                         ({menuItems.filter(m => m.category === c).length})
                       </span>
                     )}
@@ -504,14 +504,14 @@ export default function NewOrderDrawer({
               {loadingMenu && (
                 <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: "80px", gap: "16px" }}>
                   <div style={{ fontSize: "36px", animation: "spin 1s linear infinite" }}>⏳</div>
-                  <div style={{ color: "#64748b", fontSize: "13px" }}>جاري تحميل المنيو من السيرفر...</div>
+                  <div style={{ color: "var(--muted)", fontSize: "13px" }}>جاري تحميل المنيو من السيرفر...</div>
                 </div>
               )}
 
               {!loadingMenu && fetchError && (
                 <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "60px" }}>
                   <div style={{ fontSize: "36px", marginBottom: "12px" }}>⚠️</div>
-                  <div style={{ color: "#ef4444", fontSize: "13px", marginBottom: "12px" }}>{fetchError}</div>
+                  <div style={{ color: "var(--red)", fontSize: "13px", marginBottom: "12px" }}>{fetchError}</div>
                   <button
                     onClick={() => {
                       setFetchError("");
@@ -524,13 +524,13 @@ export default function NewOrderDrawer({
                         .catch(e => { const cached = loadMenuCache(); if (cached) { setMenuItems(cached); } else { setFetchError(String(e)); } })
                         .finally(() => setLoadingMenu(false));
                     }}
-                    style={{ padding: "8px 18px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", cursor: "pointer", fontSize: "12px" }}
+                    style={{ padding: "8px 18px", background: "rgba(245,158,11,0.15)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", cursor: "pointer", fontSize: "12px" }}
                   >🔄 إعادة المحاولة</button>
                 </div>
               )}
 
               {!loadingMenu && !fetchError && filtered.length === 0 && (
-                <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "60px", color: "#334155", fontSize: "13px" }}>
+                <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "60px", color: "var(--subtle)", fontSize: "13px" }}>
                   <div style={{ fontSize: "36px", marginBottom: "12px" }}>🍽️</div>
                   لا توجد أصناف {cat !== "الكل" ? `في فئة "${cat}"` : "متاحة"}
                 </div>
@@ -552,8 +552,8 @@ export default function NewOrderDrawer({
                     onClick={() => !soldOut && addItem(item)}
                     disabled={soldOut}
                     style={{
-                      background: soldOut ? "#16161f" : inCart ? "rgba(245,158,11,0.1)" : "#1c1c28",
-                      border: `2px solid ${soldOut ? "#1c1c28" : inCart ? "rgba(245,158,11,0.55)" : "#252535"}`,
+                      background: soldOut ? "var(--card)" : inCart ? "rgba(245,158,11,0.1)" : "var(--raised)",
+                      border: `2px solid ${soldOut ? "var(--raised)" : inCart ? "rgba(245,158,11,0.55)" : "var(--border)"}`,
                       borderRadius: "15px", padding: "14px 10px 12px",
                       cursor: soldOut ? "not-allowed" : "pointer", textAlign: "center",
                       transition: "border-color 0.15s, background 0.15s",
@@ -562,13 +562,13 @@ export default function NewOrderDrawer({
                     }}
                   >
                     {soldOut && (
-                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(239,68,68,0.15)", color: "#ef4444", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</div>
+                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(239,68,68,0.15)", color: "var(--red)", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</div>
                     )}
                     {!soldOut && item.max_qty != null && item.max_qty <= 10 && (
-                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(245,158,11,0.3)" }}>متبقي {item.max_qty}</div>
+                      <div style={{ position: "absolute", top: "6px", right: "6px", background: "rgba(245,158,11,0.15)", color: "var(--gold)", borderRadius: "6px", padding: "2px 6px", fontSize: "9px", fontWeight: "700", border: "1px solid rgba(245,158,11,0.3)" }}>متبقي {item.max_qty}</div>
                     )}
                     {inCart && !soldOut && (
-                      <div style={{ position: "absolute", top: "7px", left: "7px", background: "#f59e0b", color: "#000", borderRadius: "50%", width: "22px", height: "22px", fontSize: "11px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ position: "absolute", top: "7px", left: "7px", background: "var(--gold)", color: "#000", borderRadius: "50%", width: "22px", height: "22px", fontSize: "11px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {inCartQty}
                       </div>
                     )}
@@ -576,13 +576,13 @@ export default function NewOrderDrawer({
                       <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(99,102,241,0.2)", color: "#818cf8", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>تعديلات</div>
                     )}
                     {hasVariants && !soldOut && (
-                      <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>{item.variants!.length} أنواع</div>
+                      <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(34,197,94,0.2)", color: "var(--green)", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700" }}>{item.variants!.length} أنواع</div>
                     )}
                     <div style={{ fontSize: "28px", lineHeight: 1 }}>{emoji(item.category)}</div>
-                    <div style={{ color: soldOut ? "#64748b" : "#f1f5f9", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
-                    <div style={{ color: soldOut ? "#334155" : "#f59e0b", fontSize: "12px", fontWeight: "700" }}>
-                      {hasVariants && <span style={{ fontSize: "9px", fontWeight: "400", color: "#64748b" }}>من </span>}
-                      {minPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                    <div style={{ color: soldOut ? "var(--muted)" : "var(--text)", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
+                    <div style={{ color: soldOut ? "var(--subtle)" : "var(--gold)", fontSize: "12px", fontWeight: "700" }}>
+                      {hasVariants && <span style={{ fontSize: "9px", fontWeight: "400", color: "var(--muted)" }}>من </span>}
+                      {minPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
                     </div>
                   </button>
                 );
@@ -591,11 +591,11 @@ export default function NewOrderDrawer({
           </div>
 
           {/* ══ CART PANEL (40%) ══ */}
-          <div style={{ flex: "0 0 40%", display: "flex", flexDirection: "column", background: "#0d0d14", overflow: "hidden" }}>
+          <div style={{ flex: "0 0 40%", display: "flex", flexDirection: "column", background: "var(--card)", overflow: "hidden" }}>
 
             {/* Table picker */}
             <div style={{ padding: "10px 14px 8px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
-              <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
+              <div style={{ color: "var(--text2)", fontSize: "11px", fontWeight: "600", marginBottom: "6px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
 
               {/* Scrollable grid — سفري is first cell, then numbered tables */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "110px", overflowY: "auto" }}>
@@ -606,9 +606,9 @@ export default function NewOrderDrawer({
                   style={{
                     gridColumn: "span 2",
                     padding: "9px 4px", borderRadius: "9px",
-                    background: table === TAKEAWAY ? "rgba(99,102,241,0.2)" : "#1c1c28",
-                    color: table === TAKEAWAY ? "#818cf8" : "#64748b",
-                    border: `1px solid ${table === TAKEAWAY ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                    background: table === TAKEAWAY ? "rgba(99,102,241,0.2)" : "var(--raised)",
+                    color: table === TAKEAWAY ? "#818cf8" : "var(--muted)",
+                    border: `1px solid ${table === TAKEAWAY ? "rgba(99,102,241,0.5)" : "var(--border)"}`,
                     cursor: "pointer", fontSize: "12px", fontWeight: table === TAKEAWAY ? "800" : "500",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
                   }}
@@ -622,9 +622,9 @@ export default function NewOrderDrawer({
                     onClick={() => setTable(t)}
                     style={{
                       padding: "9px 4px", borderRadius: "9px",
-                      background: table === t ? "rgba(245,158,11,0.2)" : "#1c1c28",
-                      color: table === t ? "#f59e0b" : "#64748b",
-                      border: `1px solid ${table === t ? "rgba(245,158,11,0.55)" : "#252535"}`,
+                      background: table === t ? "rgba(245,158,11,0.2)" : "var(--raised)",
+                      color: table === t ? "var(--gold)" : "var(--muted)",
+                      border: `1px solid ${table === t ? "rgba(245,158,11,0.55)" : "var(--border)"}`,
                       cursor: "pointer", fontSize: "13px", fontWeight: table === t ? "800" : "500",
                     }}
                   >{t}</button>
@@ -637,10 +637,10 @@ export default function NewOrderDrawer({
               {cart.length === 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "10px" }}>
                   <div style={{ fontSize: "40px" }}>🛒</div>
-                  <div style={{ color: "#334155", fontSize: "13px", textAlign: "center" }}>
+                  <div style={{ color: "var(--subtle)", fontSize: "13px", textAlign: "center" }}>
                     السلة فارغة
                     <br />
-                    <span style={{ fontSize: "11px", color: "#252535" }}>اضغط على صنف من المنيو</span>
+                    <span style={{ fontSize: "11px", color: "var(--border)" }}>اضغط على صنف من المنيو</span>
                   </div>
                 </div>
               ) : (
@@ -663,26 +663,26 @@ export default function NewOrderDrawer({
                           {emoji(c.category)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                          <div style={{ color: "var(--text)", fontSize: "13px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
                           {c.mods.length > 0 && (
                             <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "3px" }}>
                               {c.mods.map((m, mi) => (
-                                <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
+                                <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "var(--gold)", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
                                   {m.name}
                                 </span>
                               ))}
                             </div>
                           )}
-                          <div style={{ color: "#f59e0b", fontSize: "11px", marginTop: "3px" }}>
-                            {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
+                          <div style={{ color: "var(--gold)", fontSize: "11px", marginTop: "3px" }}>
+                            {(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
                           <button
                             onClick={() => setQty(c.key, -1)}
-                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "14px" : "17px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
+                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "var(--border)", border: "none", color: c.qty === 1 ? "var(--red)" : "var(--text2)", cursor: "pointer", fontSize: c.qty === 1 ? "14px" : "17px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
                           >{c.qty === 1 ? "🗑" : "−"}</button>
-                          <span style={{ color: "#f1f5f9", fontSize: "15px", fontWeight: "800", minWidth: "22px", textAlign: "center" }}>{c.qty}</span>
+                          <span style={{ color: "var(--text)", fontSize: "15px", fontWeight: "800", minWidth: "22px", textAlign: "center" }}>{c.qty}</span>
                           <button
                             onClick={() => {
                               if (atMax) {
@@ -691,7 +691,7 @@ export default function NewOrderDrawer({
                               }
                               setQty(c.key, 1);
                             }}
-                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: atMax ? "#1c1c28" : "rgba(245,158,11,0.15)", border: `1px solid ${atMax ? "#252535" : "transparent"}`, color: atMax ? "#334155" : "#f59e0b", cursor: atMax ? "not-allowed" : "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
+                            style={{ width: "30px", height: "30px", borderRadius: "9px", background: atMax ? "var(--raised)" : "rgba(245,158,11,0.15)", border: `1px solid ${atMax ? "var(--border)" : "transparent"}`, color: atMax ? "var(--subtle)" : "var(--gold)", cursor: atMax ? "not-allowed" : "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" }}
                           >+</button>
                         </div>
                       </div>
@@ -710,16 +710,16 @@ export default function NewOrderDrawer({
                   background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)",
                   marginBottom: "12px",
                 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "13px" }}>الإجمالي</span>
-                  <span style={{ color: "#f59e0b", fontSize: "22px", fontWeight: "900" }}>
+                  <span style={{ color: "var(--text2)", fontSize: "13px" }}>الإجمالي</span>
+                  <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "900" }}>
                     {total.toLocaleString()}
-                    <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b", marginRight: "4px" }}>د.ع</span>
+                    <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)", marginRight: "4px" }}>د.ع</span>
                   </span>
                 </div>
               )}
 
               {stockAlert && (
-                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", fontWeight: "600", marginBottom: "10px" }}>
+                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "9px 12px", color: "var(--red)", fontSize: "12px", fontWeight: "600", marginBottom: "10px" }}>
                   {stockAlert}
                 </div>
               )}
@@ -731,8 +731,8 @@ export default function NewOrderDrawer({
                 rows={2}
                 style={{
                   width: "100%", boxSizing: "border-box",
-                  background: "#1c1c28", border: "1px solid #252535",
-                  borderRadius: "10px", color: "#f1f5f9",
+                  background: "var(--raised)", border: "1px solid #252535",
+                  borderRadius: "10px", color: "var(--text)",
                   padding: "9px 12px", fontSize: "12px",
                   resize: "none", outline: "none", direction: "rtl",
                   fontFamily: "inherit", marginBottom: "10px",
@@ -740,13 +740,13 @@ export default function NewOrderDrawer({
               />
 
               {orderError && (
-                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>
+                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "9px 12px", color: "var(--red)", fontSize: "12px", marginBottom: "10px" }}>
                   ⚠️ {orderError}
                 </div>
               )}
 
               {success && (
-                <div style={{ background: savedOffline ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", border: `1px solid ${savedOffline ? "rgba(245,158,11,0.3)" : "rgba(34,197,94,0.3)"}`, borderRadius: "10px", padding: "12px", color: savedOffline ? "#f59e0b" : "#22c55e", fontSize: "14px", fontWeight: "700", textAlign: "center", marginBottom: "10px" }}>
+                <div style={{ background: savedOffline ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", border: `1px solid ${savedOffline ? "rgba(245,158,11,0.3)" : "rgba(34,197,94,0.3)"}`, borderRadius: "10px", padding: "12px", color: savedOffline ? "var(--gold)" : "var(--green)", fontSize: "14px", fontWeight: "700", textAlign: "center", marginBottom: "10px" }}>
                   {savedOffline ? "💾 تم الحفظ محلياً — سيُرسل للمطبخ عند استعادة الاتصال" : "✅ تم إرسال الطلب للمطبخ!"}
                 </div>
               )}
@@ -756,9 +756,9 @@ export default function NewOrderDrawer({
                 disabled={sending || cart.length === 0 || success}
                 style={{
                   width: "100%", padding: "13px 12px", marginBottom: "8px",
-                  background: (sending || cart.length === 0 || success) ? "#1c1c28" : "rgba(245,158,11,0.12)",
-                  color: (sending || cart.length === 0 || success) ? "#64748b" : "#f59e0b",
-                  border: `1px solid ${(sending || cart.length === 0 || success) ? "#252535" : "rgba(245,158,11,0.35)"}`,
+                  background: (sending || cart.length === 0 || success) ? "var(--raised)" : "rgba(245,158,11,0.12)",
+                  color: (sending || cart.length === 0 || success) ? "var(--muted)" : "var(--gold)",
+                  border: `1px solid ${(sending || cart.length === 0 || success) ? "var(--border)" : "rgba(245,158,11,0.35)"}`,
                   borderRadius: "14px",
                   cursor: (sending || cart.length === 0 || success) ? "not-allowed" : "pointer",
                   fontSize: "14px", fontWeight: "700",
@@ -773,8 +773,8 @@ export default function NewOrderDrawer({
                 disabled={sending || cart.length === 0 || success}
                 style={{
                   width: "100%", padding: "15px 12px",
-                  background: (sending || cart.length === 0 || success) ? "#1c1c28" : "linear-gradient(135deg,#22c55e,#16a34a)",
-                  color: (sending || cart.length === 0 || success) ? "#64748b" : "#000",
+                  background: (sending || cart.length === 0 || success) ? "var(--raised)" : "linear-gradient(135deg,#22c55e,#16a34a)",
+                  color: (sending || cart.length === 0 || success) ? "var(--muted)" : "#000",
                   border: "none", borderRadius: "14px",
                   cursor: (sending || cart.length === 0 || success) ? "not-allowed" : "pointer",
                   fontSize: "15px", fontWeight: "900",
@@ -796,13 +796,13 @@ export default function NewOrderDrawer({
         style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
         onMouseDown={(e) => { if (e.target === e.currentTarget) setVariantPick(null); }}
       >
-        <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "380px", direction: "rtl", overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "380px", direction: "rtl", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #252535", background: "rgba(34,197,94,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "15px" }}>{emoji(variantPick.category)} {variantPick.name}</div>
-              <div style={{ color: "#64748b", fontSize: "11px", marginTop: "2px" }}>اختر النوع</div>
+              <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "15px" }}>{emoji(variantPick.category)} {variantPick.name}</div>
+              <div style={{ color: "var(--muted)", fontSize: "11px", marginTop: "2px" }}>اختر النوع</div>
             </div>
-            <button onClick={() => setVariantPick(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px" }}>✕</button>
+            <button onClick={() => setVariantPick(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "20px" }}>✕</button>
           </div>
           <div style={{ padding: "14px 20px", maxHeight: "55vh", overflowY: "auto" }}>
             {variantPick.variants!.map((v) => {
@@ -815,17 +815,17 @@ export default function NewOrderDrawer({
                   style={{
                     width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
                     padding: "13px 16px", marginBottom: "8px",
-                    background: vSoldOut ? "#16161f" : "#1c1c28",
-                    border: `1px solid ${vSoldOut ? "#1c1c28" : "#252535"}`,
+                    background: vSoldOut ? "var(--card)" : "var(--raised)",
+                    border: `1px solid ${vSoldOut ? "var(--raised)" : "var(--border)"}`,
                     borderRadius: "12px", cursor: vSoldOut ? "not-allowed" : "pointer",
                     opacity: vSoldOut ? 0.45 : 1, direction: "rtl",
                   }}
                 >
-                  <span style={{ color: vSoldOut ? "#64748b" : "#f1f5f9", fontSize: "13px", fontWeight: "700" }}>
-                    {v.name} {vSoldOut && <span style={{ color: "#ef4444", fontSize: "10px" }}>(نفد)</span>}
+                  <span style={{ color: vSoldOut ? "var(--muted)" : "var(--text)", fontSize: "13px", fontWeight: "700" }}>
+                    {v.name} {vSoldOut && <span style={{ color: "var(--red)", fontSize: "10px" }}>(نفد)</span>}
                   </span>
-                  <span style={{ color: vSoldOut ? "#334155" : "#f59e0b", fontSize: "13px", fontWeight: "800" }}>
-                    {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                  <span style={{ color: vSoldOut ? "var(--subtle)" : "var(--gold)", fontSize: "13px", fontWeight: "800" }}>
+                    {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
                   </span>
                 </button>
               );

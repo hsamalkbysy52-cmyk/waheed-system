@@ -6,7 +6,7 @@ export default function Home() {
   const router = useRouter();
   useEffect(() => { router.replace("/kanban"); }, [router]);
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "#64748b", fontSize: "14px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "var(--muted)", fontSize: "14px" }}>
       ⏳ جاري التوجيه...
     </div>
   );

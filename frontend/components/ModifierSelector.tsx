@@ -88,7 +88,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: "#111118", border: "1px solid #252535", borderRadius: "22px",
+        background: "var(--surface)", border: "1px solid #252535", borderRadius: "22px",
         width: "100%", maxWidth: "460px", maxHeight: "88vh",
         display: "flex", flexDirection: "column", direction: "rtl",
         overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.95)",
@@ -101,17 +101,17 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
           flexShrink: 0,
         }}>
           <div>
-            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>
+            <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>
               🎛️ خيارات: {item.name}
             </div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>
+            <div style={{ color: "var(--muted)", fontSize: "12px", marginTop: "3px" }}>
               السعر الأساسي: {item.price.toLocaleString()} د.ع
             </div>
           </div>
           <button
             onClick={onClose}
             style={{
-              background: "none", border: "none", color: "#64748b",
+              background: "none", border: "none", color: "var(--muted)",
               cursor: "pointer", fontSize: "22px",
             }}
           >✕</button>
@@ -120,7 +120,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
         {/* Groups */}
         <div style={{ overflowY: "auto", flex: 1, padding: "16px 22px" }}>
           {groups.length === 0 && (
-            <div style={{ color: "#64748b", textAlign: "center", padding: "32px 0", fontSize: "13px" }}>
+            <div style={{ color: "var(--muted)", textAlign: "center", padding: "32px 0", fontSize: "13px" }}>
               لا توجد تعديلات متاحة
             </div>
           )}
@@ -130,12 +130,12 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
             return (
               <div key={group.id} style={{ marginBottom: "20px" }}>
                 <div style={{
-                  color: "#94a3b8", fontSize: "12px", fontWeight: "700",
+                  color: "var(--text2)", fontSize: "12px", fontWeight: "700",
                   marginBottom: "10px", letterSpacing: "0.5px",
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                 }}>
                   <span>{group.name}</span>
-                  <span style={{ color: "#64748b", fontWeight: "400", fontSize: "11px" }}>
+                  <span style={{ color: "var(--muted)", fontWeight: "400", fontSize: "11px" }}>
                     {isRadio ? "اختر واحداً" : `اختر حتى ${group.max_selections}`}
                   </span>
                 </div>
@@ -149,8 +149,8 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           padding: "11px 14px", borderRadius: "12px", cursor: "pointer",
-                          background: isOn ? "rgba(245,158,11,0.12)" : "#1c1c28",
-                          border: `1.5px solid ${isOn ? "rgba(245,158,11,0.55)" : "#252535"}`,
+                          background: isOn ? "rgba(245,158,11,0.12)" : "var(--raised)",
+                          border: `1.5px solid ${isOn ? "rgba(245,158,11,0.55)" : "var(--border)"}`,
                           transition: "all 0.12s",
                           textAlign: "right",
                         }}
@@ -158,8 +158,8 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           <div style={{
                             width: "20px", height: "20px", borderRadius: isRadio ? "50%" : "6px",
-                            border: `2px solid ${isOn ? "#f59e0b" : "#334155"}`,
-                            background: isOn ? "#f59e0b" : "transparent",
+                            border: `2px solid ${isOn ? "var(--gold)" : "var(--subtle)"}`,
+                            background: isOn ? "var(--gold)" : "transparent",
                             flexShrink: 0,
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}>
@@ -171,13 +171,13 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
                               }} />
                             )}
                           </div>
-                          <span style={{ color: isOn ? "#f1f5f9" : "#94a3b8", fontSize: "13px", fontWeight: isOn ? "600" : "400" }}>
+                          <span style={{ color: isOn ? "var(--text)" : "var(--text2)", fontSize: "13px", fontWeight: isOn ? "600" : "400" }}>
                             {option.name}
                           </span>
                         </div>
                         {option.price_delta !== 0 && (
                           <span style={{
-                            color: option.price_delta > 0 ? "#f59e0b" : "#22c55e",
+                            color: option.price_delta > 0 ? "var(--gold)" : "var(--green)",
                             fontSize: "12px", fontWeight: "700", flexShrink: 0,
                           }}>
                             {formatDelta(option.price_delta)}
@@ -201,9 +201,9 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
               background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)",
               marginBottom: "12px",
             }}>
-              <span style={{ color: "#94a3b8", fontSize: "13px" }}>إجمالي التعديلات</span>
+              <span style={{ color: "var(--text2)", fontSize: "13px" }}>إجمالي التعديلات</span>
               <span style={{
-                color: totalDelta > 0 ? "#f59e0b" : "#22c55e",
+                color: totalDelta > 0 ? "var(--gold)" : "var(--green)",
                 fontSize: "14px", fontWeight: "700",
               }}>
                 {totalDelta > 0 ? "+" : ""}{totalDelta.toLocaleString()} د.ع

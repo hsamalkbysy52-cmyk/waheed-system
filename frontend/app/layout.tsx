@@ -23,10 +23,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router   = useRouter();
   const [user, setUser] = useState("");
   const [isOnline, setIsOnline] = useState(true);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   useSyncEngine();
   useHeartbeat();
 
   const hidden = HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
+  const isDark = theme === "dark";
+
+  useEffect(() => {
+    const saved = localStorage.getItem("waheed_theme");
+    if (saved === "light" || saved === "dark") setTheme(saved);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("waheed_theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     fetch("/api/warmup").catch(() => {});
@@ -49,13 +61,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="ar" dir="rtl">
-      <body style={{ margin: 0, display: "flex", minHeight: "100vh", background: "#0a0a0f" }}>
+      <body style={{ margin: 0, display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
 
         {/* ── Offline banner ── */}
         {!isOnline && (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
-            background: "#f59e0b", color: "#000",
+            background: "var(--gold)", color: "#000",
             display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
             padding: "8px 16px", fontSize: "13px", fontWeight: "700",
           }}>
@@ -68,19 +80,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {!hidden && (
           <aside style={{
             width: "220px", flexShrink: 0,
-            background: "#111118",
-            borderLeft: "1px solid #252535",
+            background: "var(--surface)",
+            borderLeft: "1px solid var(--border)",
             display: "flex", flexDirection: "column",
             position: "fixed", right: 0, top: 0, bottom: 0,
             zIndex: 50,
           }}>
             {/* Logo */}
-            <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid #252535" }}>
+            <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "32px" }}>🍔</span>
                 <div>
-                  <div style={{ color: "#f59e0b", fontWeight: "800", fontSize: "18px", lineHeight: 1 }}>Waheed</div>
-                  <div style={{ color: "#64748b", fontSize: "10px", letterSpacing: "1px", marginTop: "2px" }}>RESTAURANT OS</div>
+                  <div style={{ color: "var(--gold)", fontWeight: "800", fontSize: "18px", lineHeight: 1 }}>Waheed</div>
+                  <div style={{ color: "var(--muted)", fontSize: "10px", letterSpacing: "1px", marginTop: "2px" }}>RESTAURANT OS</div>
                 </div>
               </div>
             </div>
@@ -94,30 +106,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     width: "100%", display: "flex", alignItems: "center", gap: "12px",
                     padding: "11px 14px", marginBottom: "4px", borderRadius: "12px",
                     background: active ? "rgba(245,158,11,0.12)" : "transparent",
-                    color: active ? "#f59e0b" : "#64748b",
+                    color: active ? "var(--gold)" : "var(--muted)",
                     border: `1px solid ${active ? "rgba(245,158,11,0.25)" : "transparent"}`,
                     cursor: "pointer", fontSize: "14px", fontWeight: active ? "700" : "400",
                     textAlign: "right",
                   }}>
                     <span style={{ fontSize: "18px", flexShrink: 0 }}>{icon}</span>
                     <span>{label}</span>
-                    {active && <span style={{ marginRight: "auto", width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />}
+                    {active && <span style={{ marginRight: "auto", width: "6px", height: "6px", borderRadius: "50%", background: "var(--gold)", flexShrink: 0 }} />}
                   </button>
                 );
               })}
             </nav>
 
-            {/* User + Logout */}
-            <div style={{ padding: "14px 10px", borderTop: "1px solid #252535" }}>
+            {/* User + Theme Toggle + Logout */}
+            <div style={{ padding: "14px 10px", borderTop: "1px solid var(--border)" }}>
               {user && (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", marginBottom: "8px" }}>
                   <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", flexShrink: 0 }}>👤</span>
-                  <span style={{ color: "#94a3b8", fontSize: "13px" }}>{user}</span>
+                  <span style={{ color: "var(--text2)", fontSize: "13px" }}>{user}</span>
                 </div>
               )}
+              {/* Theme toggle */}
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                style={{
+                  width: "100%", padding: "10px 14px", borderRadius: "12px", marginBottom: "8px",
+                  background: isDark ? "rgba(99,102,241,0.1)" : "rgba(245,158,11,0.1)",
+                  color: isDark ? "#818cf8" : "var(--gold)",
+                  border: `1px solid ${isDark ? "rgba(99,102,241,0.25)" : "rgba(245,158,11,0.25)"}`,
+                  cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                  display: "flex", alignItems: "center", gap: "8px",
+                }}
+              >
+                <span>{isDark ? "☀️" : "🌙"}</span>
+                <span>{isDark ? "وضع النهار" : "وضع الليل"}</span>
+              </button>
               <button onClick={() => { localStorage.clear(); router.push("/login"); }} style={{
                 width: "100%", padding: "10px 14px", borderRadius: "12px",
-                background: "rgba(239,68,68,0.1)", color: "#ef4444",
+                background: "rgba(239,68,68,0.1)", color: "var(--red)",
                 border: "1px solid rgba(239,68,68,0.25)",
                 cursor: "pointer", fontSize: "13px", fontWeight: "600",
                 display: "flex", alignItems: "center", gap: "8px",

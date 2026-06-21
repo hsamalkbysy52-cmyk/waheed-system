@@ -41,9 +41,9 @@ function elapsed(created_at: string, now: number) {
 }
 
 function urgencyColor(mins: number) {
-  if (mins < 5)  return { bg: "rgba(34,197,94,0.08)",  border: "#22c55e", badge: "rgba(34,197,94,0.15)",  text: "#22c55e",  tag: "عادي"   };
-  if (mins < 15) return { bg: "rgba(249,115,22,0.08)", border: "#f97316", badge: "rgba(249,115,22,0.15)", text: "#f97316",  tag: "عاجل"   };
-  return             { bg: "rgba(239,68,68,0.08)",  border: "#ef4444", badge: "rgba(239,68,68,0.15)",  text: "#ef4444",  tag: "⚠️ متأخر" };
+  if (mins < 5)  return { bg: "rgba(34,197,94,0.08)",  border: "var(--green)", badge: "rgba(34,197,94,0.15)",  text: "var(--green)",  tag: "عادي"   };
+  if (mins < 15) return { bg: "rgba(249,115,22,0.08)", border: "var(--orange)", badge: "rgba(249,115,22,0.15)", text: "var(--orange)",  tag: "عاجل"   };
+  return             { bg: "rgba(239,68,68,0.08)",  border: "var(--red)", badge: "rgba(239,68,68,0.15)",  text: "var(--red)",  tag: "⚠️ متأخر" };
 }
 
 export default function KitchenPage() {
@@ -85,23 +85,23 @@ export default function KitchenPage() {
   const totals = aggregateAll(orders);
 
   return (
-    <div style={{ padding: "24px", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
+    <div style={{ padding: "24px", background: "var(--bg)", minHeight: "100vh", direction: "rtl" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>🍳 شاشة المطبخ</h1>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
+          <h1 style={{ margin: 0, color: "var(--text)", fontSize: "20px", fontWeight: "700" }}>🍳 شاشة المطبخ</h1>
+          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "12px" }}>
             {loading ? "جاري التحميل..." : `${orders.length} طلب قيد التحضير${urgentCount ? ` • ${urgentCount} متأخر` : ""} • يتحدث كل 15 ثانية`}
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {urgentCount > 0 && (
-            <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "7px 14px", color: "#ef4444", fontSize: "13px", fontWeight: "700" }}>
+            <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "7px 14px", color: "var(--red)", fontSize: "13px", fontWeight: "700" }}>
               ⚠️ {urgentCount} طلب متأخر
             </div>
           )}
-          <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+          <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             🔄 تحديث
           </button>
         </div>
@@ -110,23 +110,23 @@ export default function KitchenPage() {
       {/* ── Totals summary strip ── */}
       {!loading && totals.length > 0 && (
         <div style={{
-          background: "#111118", border: "1px solid #252535",
+          background: "var(--surface)", border: "1px solid #252535",
           borderRadius: "16px", padding: "16px 20px", marginBottom: "24px",
         }}>
-          <div style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "600", marginBottom: "12px" }}>
+          <div style={{ color: "var(--text2)", fontSize: "12px", fontWeight: "600", marginBottom: "12px" }}>
             📊 إجمالي الأصناف — كل الطاولات
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {totals.map((item, i) => (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: "7px",
-                background: "#1c1c28", border: "1px solid #252535",
+                background: "var(--raised)", border: "1px solid #252535",
                 borderRadius: "12px", padding: "8px 14px",
               }}>
                 <span style={{ fontSize: "18px" }}>{catEmoji(item.name, item.category)}</span>
-                <span style={{ color: "#f1f5f9", fontSize: "14px", fontWeight: "600" }}>{item.name}</span>
+                <span style={{ color: "var(--text)", fontSize: "14px", fontWeight: "600" }}>{item.name}</span>
                 <span style={{
-                  background: "rgba(245,158,11,0.18)", color: "#f59e0b",
+                  background: "rgba(245,158,11,0.18)", color: "var(--gold)",
                   borderRadius: "8px", padding: "2px 10px",
                   fontSize: "15px", fontWeight: "800",
                 }}>×{item.qty}</span>
@@ -138,12 +138,12 @@ export default function KitchenPage() {
 
       {/* Order grid */}
       {loading ? (
-        <div style={{ textAlign: "center", color: "#64748b", paddingTop: "80px", fontSize: "16px" }}>⏳ جاري التحميل...</div>
+        <div style={{ textAlign: "center", color: "var(--muted)", paddingTop: "80px", fontSize: "16px" }}>⏳ جاري التحميل...</div>
       ) : orders.length === 0 ? (
         <div style={{ textAlign: "center", paddingTop: "100px" }}>
           <div style={{ fontSize: "56px", marginBottom: "16px" }}>✅</div>
-          <div style={{ color: "#f1f5f9", fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>المطبخ فارغ!</div>
-          <div style={{ color: "#64748b", fontSize: "13px" }}>لا توجد طلبات قيد التحضير حالياً</div>
+          <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>المطبخ فارغ!</div>
+          <div style={{ color: "var(--muted)", fontSize: "13px" }}>لا توجد طلبات قيد التحضير حالياً</div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
@@ -161,8 +161,8 @@ export default function KitchenPage() {
                 {/* Top row */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>طلب #{order.id}</div>
-                    <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "2px" }}>🪑 طاولة {order.table_number}</div>
+                    <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>طلب #{order.id}</div>
+                    <div style={{ color: "var(--text2)", fontSize: "12px", marginTop: "2px" }}>🪑 طاولة {order.table_number}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
                     <div style={{ background: u.badge, color: u.text, borderRadius: "8px", padding: "4px 10px", fontSize: "13px", fontWeight: "700" }}>
@@ -178,13 +178,13 @@ export default function KitchenPage() {
                 <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: "10px", padding: "10px 12px", flex: 1 }}>
                   {aggItems.length > 0 ? aggItems.map((item, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < aggItems.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                      <span style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600" }}>
+                      <span style={{ color: "var(--text)", fontSize: "13px", fontWeight: "600" }}>
                         {catEmoji(item.name, item.category)} {item.name}
                       </span>
-                      <span style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: "700" }}>×{item.qty}</span>
+                      <span style={{ background: "rgba(245,158,11,0.15)", color: "var(--gold)", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: "700" }}>×{item.qty}</span>
                     </div>
                   )) : (
-                    <div style={{ color: "#64748b", fontSize: "12px", textAlign: "center", padding: "6px 0" }}>لا توجد تفاصيل للأصناف</div>
+                    <div style={{ color: "var(--muted)", fontSize: "12px", textAlign: "center", padding: "6px 0" }}>لا توجد تفاصيل للأصناف</div>
                   )}
                 </div>
 
@@ -194,9 +194,9 @@ export default function KitchenPage() {
                   disabled={busy}
                   style={{
                     width: "100%", padding: "12px",
-                    background: busy ? "#252535" : "rgba(34,197,94,0.15)",
-                    color: busy ? "#64748b" : "#22c55e",
-                    border: `1px solid ${busy ? "#252535" : "rgba(34,197,94,0.35)"}`,
+                    background: busy ? "var(--border)" : "rgba(34,197,94,0.15)",
+                    color: busy ? "var(--muted)" : "var(--green)",
+                    border: `1px solid ${busy ? "var(--border)" : "rgba(34,197,94,0.35)"}`,
                     borderRadius: "12px", cursor: busy ? "not-allowed" : "pointer",
                     fontSize: "14px", fontWeight: "700",
                   }}

@@ -61,57 +61,57 @@ function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => voi
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: "16px" }}>
-      <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "460px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "460px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🔗 وصفة: {menuItem.name}</div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>اربط المكونات ومقدارها لكل وحدة</div>
+            <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>🔗 وصفة: {menuItem.name}</div>
+            <div style={{ color: "var(--muted)", fontSize: "12px", marginTop: "3px" }}>اربط المكونات ومقدارها لكل وحدة</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "22px" }}>✕</button>
         </div>
 
         <div style={{ overflowY: "auto", flex: 1, padding: "18px 22px" }}>
           {loading ? (
-            <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>⏳ جاري التحميل...</div>
+            <div style={{ textAlign: "center", color: "var(--muted)", padding: "40px 0" }}>⏳ جاري التحميل...</div>
           ) : (<>
             {/* Add ingredient */}
             <div style={{ marginBottom: "16px" }}>
-              <div style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "8px" }}>إضافة مكوّن من المخزون</div>
+              <div style={{ color: "var(--text2)", fontSize: "12px", marginBottom: "8px" }}>إضافة مكوّن من المخزون</div>
               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                 <select value={selId} onChange={e => setSelId(e.target.value === "" ? "" : parseInt(e.target.value))}
-                  style={{ flex: 2, padding: "9px 10px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: selId === "" ? "#334155" : "#f1f5f9", fontSize: "13px" }}>
+                  style={{ flex: 2, padding: "9px 10px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: selId === "" ? "var(--subtle)" : "var(--text)", fontSize: "13px" }}>
                   <option value="">اختر مادة...</option>
                   {invItems.filter(i => !recipe.find(r => r.inventory_item_id === i.id)).map(i => (
                     <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
                   ))}
                 </select>
                 <input type="number" value={amount} min="0.1" step="0.1" onChange={e => setAmount(e.target.value)} placeholder="كمية"
-                  style={{ width: "70px", padding: "9px 10px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", textAlign: "center" }} />
+                  style={{ width: "70px", padding: "9px 10px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: "var(--text)", fontSize: "13px", textAlign: "center" }} />
                 <button onClick={addIngredient} disabled={!selId}
-                  style={{ padding: "9px 14px", background: selId ? "rgba(34,197,94,0.15)" : "#1c1c28", color: selId ? "#22c55e" : "#334155", border: `1px solid ${selId ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "10px", cursor: selId ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: "700" }}>
+                  style={{ padding: "9px 14px", background: selId ? "rgba(34,197,94,0.15)" : "var(--raised)", color: selId ? "var(--green)" : "var(--subtle)", border: `1px solid ${selId ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "10px", cursor: selId ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: "700" }}>
                   + أضف
                 </button>
               </div>
               {invItems.length === 0 && (
-                <div style={{ color: "#64748b", fontSize: "11px", marginTop: "6px" }}>لا توجد مواد. أضفها أولاً من صفحة المخزون.</div>
+                <div style={{ color: "var(--muted)", fontSize: "11px", marginTop: "6px" }}>لا توجد مواد. أضفها أولاً من صفحة المخزون.</div>
               )}
             </div>
 
             {/* Current recipe list */}
             {recipe.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#334155", padding: "24px 0", fontSize: "13px" }}>لم تُربط أي مكونات بعد</div>
+              <div style={{ textAlign: "center", color: "var(--subtle)", padding: "24px 0", fontSize: "13px" }}>لم تُربط أي مكونات بعد</div>
             ) : (
-              <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
+              <div style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
                 {recipe.map((r, i) => (
                   <div key={r.inventory_item_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", borderBottom: i < recipe.length - 1 ? "1px solid #252535" : "none" }}>
                     <div>
-                      <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "600" }}>{r.name}</div>
-                      <div style={{ color: "#64748b", fontSize: "11px" }}>{r.amount} {r.unit} لكل وحدة</div>
+                      <div style={{ color: "var(--text)", fontSize: "13px", fontWeight: "600" }}>{r.name}</div>
+                      <div style={{ color: "var(--muted)", fontSize: "11px" }}>{r.amount} {r.unit} لكل وحدة</div>
                     </div>
                     <button onClick={() => setRecipe(p => p.filter(x => x.inventory_item_id !== r.inventory_item_id))}
-                      style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", padding: "4px 10px", cursor: "pointer", fontSize: "12px" }}>
+                      style={{ background: "rgba(239,68,68,0.1)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", padding: "4px 10px", cursor: "pointer", fontSize: "12px" }}>
                       🗑️
                     </button>
                   </div>
@@ -126,8 +126,8 @@ function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => voi
           <button onClick={saveRecipe} disabled={saving || loading} style={{
             width: "100%", padding: "13px", border: "none", borderRadius: "12px",
             cursor: (saving || loading) ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: "800",
-            background: saved ? "rgba(34,197,94,0.15)" : (saving || loading) ? "#252535" : "linear-gradient(135deg,#f59e0b,#d97706)",
-            color: saved ? "#22c55e" : (saving || loading) ? "#64748b" : "#000",
+            background: saved ? "rgba(34,197,94,0.15)" : (saving || loading) ? "var(--border)" : "linear-gradient(135deg,#f59e0b,#d97706)",
+            color: saved ? "var(--green)" : (saving || loading) ? "var(--muted)" : "#000",
           }}>
             {saved ? "✅ تم حفظ الوصفة!" : saving ? "⏳ جاري الحفظ..." : "💾 حفظ الوصفة"}
           </button>
@@ -314,38 +314,38 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   };
 
   const inputStyle: React.CSSProperties = {
-    padding: "8px 10px", background: "#0a0a0f", border: "1px solid #252535",
-    borderRadius: "8px", color: "#f1f5f9", fontSize: "12px", outline: "none",
+    padding: "8px 10px", background: "var(--bg)", border: "1px solid #252535",
+    borderRadius: "8px", color: "var(--text)", fontSize: "12px", outline: "none",
     boxSizing: "border-box",
   };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100, padding: "16px" }}>
-      <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "520px", maxHeight: "88vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "520px", maxHeight: "88vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🎛️ تعديلات: {menuItem.name}</div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>الخيارات مبنية على مكونات الوصفة</div>
+            <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>🎛️ تعديلات: {menuItem.name}</div>
+            <div style={{ color: "var(--muted)", fontSize: "12px", marginTop: "3px" }}>الخيارات مبنية على مكونات الوصفة</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "22px" }}>✕</button>
         </div>
 
         <div style={{ overflowY: "auto", flex: 1, padding: "18px 22px" }}>
           {loading ? (
-            <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>⏳ جاري التحميل...</div>
+            <div style={{ textAlign: "center", color: "var(--muted)", padding: "40px 0" }}>⏳ جاري التحميل...</div>
           ) : (<>
 
             {recipe.length === 0 && (
-              <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "10px", padding: "10px 14px", marginBottom: "16px", color: "#f59e0b", fontSize: "12px" }}>
+              <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "10px", padding: "10px 14px", marginBottom: "16px", color: "var(--gold)", fontSize: "12px" }}>
                 ⚠️ لا توجد وصفة لهذا الصنف. أضف مكونات الوصفة أولاً لتتمكن من إنشاء خيارات التعديل.
               </div>
             )}
 
             {/* Create new group */}
-            <div style={{ marginBottom: "20px", background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
-              <div style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "700", marginBottom: "10px" }}>+ إضافة مجموعة تعديلات جديدة</div>
+            <div style={{ marginBottom: "20px", background: "var(--raised)", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
+              <div style={{ color: "var(--text2)", fontSize: "12px", fontWeight: "700", marginBottom: "10px" }}>+ إضافة مجموعة تعديلات جديدة</div>
               <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
                 <input
                   value={newGroupName}
@@ -364,17 +364,17 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                 <button
                   onClick={createGroup}
                   disabled={addingGroup || !newGroupName.trim()}
-                  style={{ padding: "8px 14px", background: newGroupName.trim() ? "rgba(34,197,94,0.15)" : "#252535", color: newGroupName.trim() ? "#22c55e" : "#334155", border: `1px solid ${newGroupName.trim() ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "8px", cursor: newGroupName.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}
+                  style={{ padding: "8px 14px", background: newGroupName.trim() ? "rgba(34,197,94,0.15)" : "var(--border)", color: newGroupName.trim() ? "var(--green)" : "var(--subtle)", border: `1px solid ${newGroupName.trim() ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "8px", cursor: newGroupName.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}
                 >
                   {addingGroup ? "⏳" : "أضف"}
                 </button>
               </div>
-              <div style={{ color: "#64748b", fontSize: "10px" }}>الحد الأقصى = عدد الخيارات التي يمكن للعميل اختيارها (1 = اختيار واحد فقط)</div>
+              <div style={{ color: "var(--muted)", fontSize: "10px" }}>الحد الأقصى = عدد الخيارات التي يمكن للعميل اختيارها (1 = اختيار واحد فقط)</div>
             </div>
 
             {/* Existing groups */}
             {groups.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#334155", padding: "20px 0", fontSize: "12px" }}>لا توجد مجموعات تعديلات بعد</div>
+              <div style={{ textAlign: "center", color: "var(--subtle)", padding: "20px 0", fontSize: "12px" }}>لا توجد مجموعات تعديلات بعد</div>
             ) : (
               groups.map((group, idx) => {
                 const optForm = optForms[group.id];
@@ -387,13 +387,13 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => handleGroupDrop(idx)}
                     onDragEnd={() => setDragGroupIdx(null)}
-                    style={{ marginBottom: "16px", background: "#1c1c28", border: `1px solid ${isDraggingThisGroup ? "rgba(245,158,11,0.5)" : "#252535"}`, borderRadius: "12px", overflow: "hidden", opacity: isDraggingThisGroup ? 0.5 : 1, transition: "opacity 0.15s, border-color 0.15s" }}
+                    style={{ marginBottom: "16px", background: "var(--raised)", border: `1px solid ${isDraggingThisGroup ? "rgba(245,158,11,0.5)" : "var(--border)"}`, borderRadius: "12px", overflow: "hidden", opacity: isDraggingThisGroup ? 0.5 : 1, transition: "opacity 0.15s, border-color 0.15s" }}
                   >
 
                     {/* Group header */}
                     <div style={{ padding: "12px 14px", borderBottom: "1px solid #252535", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(245,158,11,0.03)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
-                        <span style={{ color: "#334155", cursor: "grab", fontSize: "18px", flexShrink: 0, userSelect: "none" }}>≡</span>
+                        <span style={{ color: "var(--subtle)", cursor: "grab", fontSize: "18px", flexShrink: 0, userSelect: "none" }}>≡</span>
                         {editGroupId === group.id ? (
                           <div style={{ display: "flex", gap: "6px", flex: 1, alignItems: "center" }}>
                             <input
@@ -408,23 +408,23 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                               onChange={e => setEditGroupForm(f => ({ ...f, max_selections: e.target.value }))}
                               style={{ ...inputStyle, width: "56px" }}
                             />
-                            <button onClick={saveGroupEdit} disabled={savingGroup} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{savingGroup ? "⏳" : "✅"}</button>
-                            <button onClick={() => setEditGroupId(null)} style={{ padding: "5px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
+                            <button onClick={saveGroupEdit} disabled={savingGroup} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "var(--green)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{savingGroup ? "⏳" : "✅"}</button>
+                            <button onClick={() => setEditGroupId(null)} style={{ padding: "5px 8px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
                           </div>
                         ) : (
                           <>
-                            <span style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "13px" }}>{group.name}</span>
-                            <span style={{ color: "#64748b", fontSize: "11px" }}>
+                            <span style={{ color: "var(--text)", fontWeight: "700", fontSize: "13px" }}>{group.name}</span>
+                            <span style={{ color: "var(--muted)", fontSize: "11px" }}>
                               (حتى {group.max_selections} {group.max_selections === 1 ? "اختيار" : "اختيارات"})
                             </span>
-                            <button onClick={() => openEditGroup(group)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "13px", padding: "2px 4px", flexShrink: 0 }}>✏️</button>
+                            <button onClick={() => openEditGroup(group)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "13px", padding: "2px 4px", flexShrink: 0 }}>✏️</button>
                           </>
                         )}
                       </div>
                       {editGroupId !== group.id && (
                         <button
                           onClick={() => deleteGroup(group.id)}
-                          style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "7px", padding: "4px 10px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}
+                          style={{ background: "rgba(239,68,68,0.1)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "7px", padding: "4px 10px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}
                         >🗑️</button>
                       )}
                     </div>
@@ -432,7 +432,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                     {/* Options list */}
                     <div style={{ padding: "10px 14px" }}>
                       {group.options.length === 0 ? (
-                        <div style={{ color: "#334155", fontSize: "11px", marginBottom: "10px" }}>لا توجد خيارات بعد</div>
+                        <div style={{ color: "var(--subtle)", fontSize: "11px", marginBottom: "10px" }}>لا توجد خيارات بعد</div>
                       ) : (
                         group.options.map((opt, optIdx) => {
                           const isDraggingThisOpt = dragOptState?.groupId === group.id && dragOptState?.optIdx === optIdx;
@@ -447,7 +447,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                               style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #252535", opacity: isDraggingThisOpt ? 0.4 : 1, transition: "opacity 0.15s" }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
-                                <span style={{ color: "#252535", cursor: "grab", fontSize: "15px", flexShrink: 0, userSelect: "none" }}>≡</span>
+                                <span style={{ color: "var(--border)", cursor: "grab", fontSize: "15px", flexShrink: 0, userSelect: "none" }}>≡</span>
                                 {editOptId === opt.id ? (
                                   <div style={{ display: "flex", gap: "6px", flex: 1, alignItems: "center" }}>
                                     <input
@@ -463,20 +463,20 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                                       placeholder="فرق السعر"
                                       style={{ ...inputStyle, width: "80px" }}
                                     />
-                                    <button onClick={saveOptEdit} disabled={savingOpt} style={{ padding: "4px 8px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>{savingOpt ? "⏳" : "✅"}</button>
-                                    <button onClick={() => setEditOptId(null)} style={{ padding: "4px 6px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "6px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}>✕</button>
+                                    <button onClick={saveOptEdit} disabled={savingOpt} style={{ padding: "4px 8px", background: "rgba(34,197,94,0.15)", color: "var(--green)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>{savingOpt ? "⏳" : "✅"}</button>
+                                    <button onClick={() => setEditOptId(null)} style={{ padding: "4px 6px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: "6px", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}>✕</button>
                                   </div>
                                 ) : (
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600" }}>{opt.name}</div>
-                                    <div style={{ color: "#64748b", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
+                                    <div style={{ color: "var(--text)", fontSize: "12px", fontWeight: "600" }}>{opt.name}</div>
+                                    <div style={{ color: "var(--muted)", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
                                       {opt.price_delta !== 0 && (
-                                        <span style={{ color: opt.price_delta > 0 ? "#f59e0b" : "#22c55e" }}>
+                                        <span style={{ color: opt.price_delta > 0 ? "var(--gold)" : "var(--green)" }}>
                                           {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
                                         </span>
                                       )}
                                       {opt.inventory_item_id && (
-                                        <span style={{ color: opt.quantity_delta > 0 ? "#ef4444" : "#22c55e" }}>
+                                        <span style={{ color: opt.quantity_delta > 0 ? "var(--red)" : "var(--green)" }}>
                                           {opt.quantity_delta > 0 ? "⬆️ إضافة" : "⬇️ حذف"} {getIngredientName(opt.inventory_item_id)}
                                         </span>
                                       )}
@@ -486,8 +486,8 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                               </div>
                               {editOptId !== opt.id && (
                                 <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                                  <button onClick={() => openEditOpt(opt)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "13px", padding: "2px 4px" }}>✏️</button>
-                                  <button onClick={() => deleteOption(opt.id)} style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "6px", padding: "3px 8px", cursor: "pointer", fontSize: "11px" }}>🗑️</button>
+                                  <button onClick={() => openEditOpt(opt)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "13px", padding: "2px 4px" }}>✏️</button>
+                                  <button onClick={() => deleteOption(opt.id)} style={{ background: "rgba(239,68,68,0.08)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "6px", padding: "3px 8px", cursor: "pointer", fontSize: "11px" }}>🗑️</button>
                                 </div>
                               )}
                             </div>
@@ -497,11 +497,11 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
 
                       {/* Add option form */}
                       {optForm ? (
-                        <div style={{ marginTop: "10px", padding: "10px", background: "#111118", borderRadius: "10px", border: "1px solid #252535" }}>
-                          <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "8px", fontWeight: "700" }}>إضافة خيار من مكونات الوصفة</div>
+                        <div style={{ marginTop: "10px", padding: "10px", background: "var(--surface)", borderRadius: "10px", border: "1px solid #252535" }}>
+                          <div style={{ color: "var(--muted)", fontSize: "11px", marginBottom: "8px", fontWeight: "700" }}>إضافة خيار من مكونات الوصفة</div>
 
                           {recipe.length === 0 ? (
-                            <div style={{ color: "#f59e0b", fontSize: "11px", marginBottom: "8px" }}>⚠️ أضف مكونات للوصفة أولاً</div>
+                            <div style={{ color: "var(--gold)", fontSize: "11px", marginBottom: "8px" }}>⚠️ أضف مكونات للوصفة أولاً</div>
                           ) : (<>
                             <select
                               value={optForm.ingredient_inv_id}
@@ -521,9 +521,9 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                                 onClick={() => setOptIngredient(group.id, optForm.ingredient_inv_id, "remove")}
                                 style={{
                                   flex: 1, padding: "7px",
-                                  background: optForm.type === "remove" ? "rgba(239,68,68,0.15)" : "#1c1c28",
-                                  color: optForm.type === "remove" ? "#ef4444" : "#64748b",
-                                  border: `1px solid ${optForm.type === "remove" ? "rgba(239,68,68,0.3)" : "#252535"}`,
+                                  background: optForm.type === "remove" ? "rgba(239,68,68,0.15)" : "var(--raised)",
+                                  color: optForm.type === "remove" ? "var(--red)" : "var(--muted)",
+                                  border: `1px solid ${optForm.type === "remove" ? "rgba(239,68,68,0.3)" : "var(--border)"}`,
                                   borderRadius: "8px", cursor: "pointer", fontSize: "12px",
                                   fontWeight: optForm.type === "remove" ? "700" : "400",
                                 }}
@@ -532,9 +532,9 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                                 onClick={() => setOptIngredient(group.id, optForm.ingredient_inv_id, "add")}
                                 style={{
                                   flex: 1, padding: "7px",
-                                  background: optForm.type === "add" ? "rgba(34,197,94,0.15)" : "#1c1c28",
-                                  color: optForm.type === "add" ? "#22c55e" : "#64748b",
-                                  border: `1px solid ${optForm.type === "add" ? "rgba(34,197,94,0.3)" : "#252535"}`,
+                                  background: optForm.type === "add" ? "rgba(34,197,94,0.15)" : "var(--raised)",
+                                  color: optForm.type === "add" ? "var(--green)" : "var(--muted)",
+                                  border: `1px solid ${optForm.type === "add" ? "rgba(34,197,94,0.3)" : "var(--border)"}`,
                                   borderRadius: "8px", cursor: "pointer", fontSize: "12px",
                                   fontWeight: optForm.type === "add" ? "700" : "400",
                                 }}
@@ -564,8 +564,8 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                               disabled={addingOpt[group.id] || !optForm.name.trim() || !optForm.ingredient_inv_id}
                               style={{
                                 flex: 2, padding: "8px",
-                                background: (optForm.name.trim() && optForm.ingredient_inv_id) ? "rgba(34,197,94,0.15)" : "#252535",
-                                color: (optForm.name.trim() && optForm.ingredient_inv_id) ? "#22c55e" : "#334155",
+                                background: (optForm.name.trim() && optForm.ingredient_inv_id) ? "rgba(34,197,94,0.15)" : "var(--border)",
+                                color: (optForm.name.trim() && optForm.ingredient_inv_id) ? "var(--green)" : "var(--subtle)",
                                 border: "1px solid rgba(34,197,94,0.3)", borderRadius: "8px",
                                 cursor: (optForm.name.trim() && optForm.ingredient_inv_id) ? "pointer" : "not-allowed",
                                 fontSize: "12px", fontWeight: "700",
@@ -573,14 +573,14 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                             >{addingOpt[group.id] ? "⏳" : "✅ حفظ الخيار"}</button>
                             <button
                               onClick={() => setOptForms(p => { const n = { ...p }; delete n[group.id]; return n; })}
-                              style={{ flex: 1, padding: "8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "8px", cursor: "pointer", fontSize: "12px" }}
+                              style={{ flex: 1, padding: "8px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: "8px", cursor: "pointer", fontSize: "12px" }}
                             >إلغاء</button>
                           </div>
                         </div>
                       ) : (
                         <button
                           onClick={() => initOptForm(group.id)}
-                          style={{ marginTop: "8px", width: "100%", padding: "8px", background: "rgba(245,158,11,0.06)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
+                          style={{ marginTop: "8px", width: "100%", padding: "8px", background: "rgba(245,158,11,0.06)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
                         >+ إضافة خيار</button>
                       )}
                     </div>
@@ -593,7 +593,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
 
         {/* Footer */}
         <div style={{ padding: "14px 22px", borderTop: "1px solid #252535", flexShrink: 0 }}>
-          <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "#1c1c28", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "var(--raised)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             ✕ إغلاق
           </button>
         </div>
@@ -619,8 +619,8 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
   const [saving,   setSaving]   = useState(false);
 
   const inputStyle: React.CSSProperties = {
-    padding: "8px 10px", background: "#0a0a0f", border: "1px solid #252535",
-    borderRadius: "8px", color: "#f1f5f9", fontSize: "12px", outline: "none",
+    padding: "8px 10px", background: "var(--bg)", border: "1px solid #252535",
+    borderRadius: "8px", color: "var(--text)", fontSize: "12px", outline: "none",
     boxSizing: "border-box",
   };
 
@@ -663,22 +663,22 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1900, padding: "16px" }}>
-      <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "480px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "480px", maxHeight: "85vh", direction: "rtl", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.04)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>🧬 أنواع: {menuItem.name}</div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "3px" }}>كل نوع له سعره ووصفته الخاصة بالمخزون</div>
+            <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>🧬 أنواع: {menuItem.name}</div>
+            <div style={{ color: "var(--muted)", fontSize: "12px", marginTop: "3px" }}>كل نوع له سعره ووصفته الخاصة بالمخزون</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "22px" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "22px" }}>✕</button>
         </div>
 
         <div style={{ overflowY: "auto", flex: 1, padding: "18px 22px" }}>
 
           {/* Add variant */}
-          <div style={{ marginBottom: "18px", background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
-            <div style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "700", marginBottom: "10px" }}>+ إضافة نوع جديد</div>
+          <div style={{ marginBottom: "18px", background: "var(--raised)", border: "1px solid #252535", borderRadius: "12px", padding: "14px" }}>
+            <div style={{ color: "var(--text2)", fontSize: "12px", fontWeight: "700", marginBottom: "10px" }}>+ إضافة نوع جديد</div>
             <div style={{ display: "flex", gap: "8px" }}>
               <input
                 value={newName}
@@ -696,18 +696,18 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
               <button
                 onClick={addVariant}
                 disabled={adding || !newName.trim() || !newPrice}
-                style={{ padding: "8px 14px", background: (newName.trim() && newPrice) ? "rgba(34,197,94,0.15)" : "#252535", color: (newName.trim() && newPrice) ? "#22c55e" : "#334155", border: `1px solid ${(newName.trim() && newPrice) ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "8px", cursor: (newName.trim() && newPrice) ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}
+                style={{ padding: "8px 14px", background: (newName.trim() && newPrice) ? "rgba(34,197,94,0.15)" : "var(--border)", color: (newName.trim() && newPrice) ? "var(--green)" : "var(--subtle)", border: `1px solid ${(newName.trim() && newPrice) ? "rgba(34,197,94,0.3)" : "transparent"}`, borderRadius: "8px", cursor: (newName.trim() && newPrice) ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}
               >{adding ? "⏳" : "أضف"}</button>
             </div>
           </div>
 
           {/* Variants list */}
           {variants.length === 0 ? (
-            <div style={{ textAlign: "center", color: "#334155", padding: "24px 0", fontSize: "13px" }}>
+            <div style={{ textAlign: "center", color: "var(--subtle)", padding: "24px 0", fontSize: "13px" }}>
               لا توجد أنواع بعد — الصنف يُباع كما هو
             </div>
           ) : (
-            <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
+            <div style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: "12px", overflow: "hidden" }}>
               {variants.map((v, i) => (
                 <div key={v.id} style={{ padding: "12px 14px", borderBottom: i < variants.length - 1 ? "1px solid #252535" : "none" }}>
                   {editId === v.id ? (
@@ -724,15 +724,15 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
                         onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
                         style={{ ...inputStyle, width: "80px" }}
                       />
-                      <button onClick={saveEdit} disabled={saving} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{saving ? "⏳" : "✅"}</button>
-                      <button onClick={() => setEditId(null)} style={{ padding: "5px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
+                      <button onClick={saveEdit} disabled={saving} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.15)", color: "var(--green)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "700", flexShrink: 0 }}>{saving ? "⏳" : "✅"}</button>
+                      <button onClick={() => setEditId(null)} style={{ padding: "5px 8px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: "7px", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}>✕</button>
                     </div>
                   ) : (
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                        <div style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "700" }}>{v.name}</div>
-                        <div style={{ color: "#f59e0b", fontSize: "13px", fontWeight: "800" }}>
-                          {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                        <div style={{ color: "var(--text)", fontSize: "13px", fontWeight: "700" }}>{v.name}</div>
+                        <div style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "800" }}>
+                          {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: "6px" }}>
@@ -740,13 +740,13 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
                           style={{ flex: 1, padding: "6px", background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
                         >✏️ تعديل</button>
                         <button onClick={() => onOpenRecipe(v)}
-                          style={{ flex: 1, padding: "6px", background: "rgba(245,158,11,0.08)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
+                          style={{ flex: 1, padding: "6px", background: "rgba(245,158,11,0.08)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
                         >🔗 وصفة</button>
                         <button onClick={() => onOpenModifiers(v)}
                           style={{ flex: 1, padding: "6px", background: "rgba(99,102,241,0.08)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
                         >🎛️ تعديلات</button>
                         <button onClick={() => deleteVariant(v.id)}
-                          style={{ padding: "6px 10px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", cursor: "pointer", fontSize: "11px" }}
+                          style={{ padding: "6px 10px", background: "rgba(239,68,68,0.08)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", cursor: "pointer", fontSize: "11px" }}
                         >🗑️</button>
                       </div>
                     </>
@@ -759,7 +759,7 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
 
         {/* Footer */}
         <div style={{ padding: "14px 22px", borderTop: "1px solid #252535", flexShrink: 0 }}>
-          <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "#1c1c28", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "var(--raised)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             ✕ إغلاق
           </button>
         </div>
@@ -860,19 +860,19 @@ export default function MenuPage() {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
+    <div style={{ padding: "24px", background: "var(--bg)", minHeight: "100vh", direction: "rtl" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>🍽️ إدارة المنيو</h1>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
+          <h1 style={{ margin: 0, color: "var(--text)", fontSize: "20px", fontWeight: "700" }}>🍽️ إدارة المنيو</h1>
+          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "12px" }}>
             {loading ? "جاري التحميل..." : `${items.length} صنف • ${items.filter((i) => i.available).length} متاح`}
           </p>
         </div>
         <button
           onClick={showForm ? closeForm : openAdd}
-          style={{ padding: "10px 20px", background: showForm ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.12)", color: showForm ? "#ef4444" : "#22c55e", border: `1px solid ${showForm ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}`, borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "700" }}
+          style={{ padding: "10px 20px", background: showForm ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.12)", color: showForm ? "var(--red)" : "var(--green)", border: `1px solid ${showForm ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}`, borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "700" }}
         >
           {showForm ? "✕ إلغاء" : "+ إضافة صنف"}
         </button>
@@ -880,55 +880,55 @@ export default function MenuPage() {
 
       {/* Add/Edit form */}
       {showForm && (
-        <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "16px", padding: "20px", marginBottom: "20px" }}>
-          <h3 style={{ margin: "0 0 16px", color: "#f1f5f9", fontSize: "15px", fontWeight: "700" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "16px", padding: "20px", marginBottom: "20px" }}>
+          <h3 style={{ margin: "0 0 16px", color: "var(--text)", fontSize: "15px", fontWeight: "700" }}>
             {editId ? "✏️ تعديل الصنف" : "إضافة صنف جديد"}
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
             <div>
-              <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>اسم الصنف *</label>
+              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>اسم الصنف *</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="مثال: برجر كلاسيك"
-                style={{ width: "100%", padding: "10px 12px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: "var(--text)", fontSize: "13px", boxSizing: "border-box" }}
               />
             </div>
             <div>
-              <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>السعر (د.ع) *</label>
+              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>السعر (د.ع) *</label>
               <input
                 type="number" value={form.price}
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                 placeholder="مثال: 5000"
-                style={{ width: "100%", padding: "10px 12px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: "var(--text)", fontSize: "13px", boxSizing: "border-box" }}
               />
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
             <div>
-              <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>الفئة</label>
+              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>الفئة</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                style={{ width: "100%", padding: "10px 12px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: "var(--text)", fontSize: "13px", boxSizing: "border-box" }}
               >
                 {CATS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>الوصف (اختياري)</label>
+              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>الوصف (اختياري)</label>
               <input
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="وصف مختصر..."
-                style={{ width: "100%", padding: "10px 12px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "10px", color: "#f1f5f9", fontSize: "13px", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "10px", color: "var(--text)", fontSize: "13px", boxSizing: "border-box" }}
               />
             </div>
           </div>
-          {error && <div style={{ color: "#ef4444", fontSize: "12px", marginBottom: "10px" }}>{error}</div>}
+          {error && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "10px" }}>{error}</div>}
           <button
             onClick={saveItem} disabled={saving}
-            style={{ padding: "11px 28px", background: saving ? "#252535" : "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: saving ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: "700" }}
+            style={{ padding: "11px 28px", background: saving ? "var(--border)" : "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: saving ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: "700" }}
           >
             {saving ? "⏳ جاري الحفظ..." : editId ? "💾 حفظ التعديلات" : "✅ إضافة الصنف"}
           </button>
@@ -940,9 +940,9 @@ export default function MenuPage() {
         {categories.map((c) => (
           <button key={c} onClick={() => setFilter(c)} style={{
             padding: "7px 16px", borderRadius: "20px",
-            background: filter === c ? "rgba(245,158,11,0.15)" : "#111118",
-            color: filter === c ? "#f59e0b" : "#64748b",
-            border: `1px solid ${filter === c ? "rgba(245,158,11,0.4)" : "#252535"}`,
+            background: filter === c ? "rgba(245,158,11,0.15)" : "var(--surface)",
+            color: filter === c ? "var(--gold)" : "var(--muted)",
+            border: `1px solid ${filter === c ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
             cursor: "pointer", fontSize: "12px", fontWeight: filter === c ? "700" : "400",
           }}>
             {c} {c !== "الكل" && `(${items.filter((i) => i.category === c).length})`}
@@ -952,31 +952,31 @@ export default function MenuPage() {
 
       {/* Items grid */}
       {loading ? (
-        <div style={{ textAlign: "center", color: "#64748b", paddingTop: "80px", fontSize: "16px" }}>⏳ جاري التحميل...</div>
+        <div style={{ textAlign: "center", color: "var(--muted)", paddingTop: "80px", fontSize: "16px" }}>⏳ جاري التحميل...</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", paddingTop: "80px" }}>
           <div style={{ fontSize: "48px", marginBottom: "14px" }}>🍽️</div>
-          <div style={{ color: "#94a3b8", fontSize: "15px" }}>لا توجد أصناف في هذه الفئة</div>
+          <div style={{ color: "var(--text2)", fontSize: "15px" }}>لا توجد أصناف في هذه الفئة</div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "14px" }}>
           {filtered.map((item) => (
             <div key={item.id} style={{
-              background: "#111118", border: `1px solid ${item.available ? "#252535" : "rgba(239,68,68,0.2)"}`,
+              background: "var(--surface)", border: `1px solid ${item.available ? "var(--border)" : "rgba(239,68,68,0.2)"}`,
               borderRadius: "14px", padding: "16px", opacity: item.available ? 1 : 0.65,
               transition: "opacity 0.2s",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>{item.name}</div>
-                  <div style={{ color: "#64748b", fontSize: "11px" }}>{item.category}</div>
+                  <div style={{ color: "var(--text)", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>{item.name}</div>
+                  <div style={{ color: "var(--muted)", fontSize: "11px" }}>{item.category}</div>
                 </div>
-                <div style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", borderRadius: "8px", padding: "4px 10px", fontSize: "13px", fontWeight: "800", flexShrink: 0, marginRight: "8px" }}>
+                <div style={{ background: "rgba(245,158,11,0.12)", color: "var(--gold)", borderRadius: "8px", padding: "4px 10px", fontSize: "13px", fontWeight: "800", flexShrink: 0, marginRight: "8px" }}>
                   {item.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400" }}>د.ع</span>
                 </div>
               </div>
               {item.description && (
-                <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "10px", lineHeight: "1.5" }}>{item.description}</div>
+                <div style={{ color: "var(--muted)", fontSize: "11px", marginBottom: "10px", lineHeight: "1.5" }}>{item.description}</div>
               )}
 
               {/* Action buttons */}
@@ -987,12 +987,12 @@ export default function MenuPage() {
                 >✏️ تعديل</button>
                 <button
                   onClick={() => setDeleteId(item.id)}
-                  style={{ padding: "7px 12px", background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
+                  style={{ padding: "7px 12px", background: "rgba(239,68,68,0.1)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
                 >🗑️</button>
               </div>
               <button
                 onClick={() => setRecipeItem(item)}
-                style={{ width: "100%", padding: "7px", background: "rgba(245,158,11,0.08)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
+                style={{ width: "100%", padding: "7px", background: "rgba(245,158,11,0.08)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
               >🔗 وصفة المكونات</button>
 
               <button
@@ -1002,7 +1002,7 @@ export default function MenuPage() {
 
               <button
                 onClick={() => setVariantsItem(item)}
-                style={{ width: "100%", padding: "7px", background: "rgba(34,197,94,0.08)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
+                style={{ width: "100%", padding: "7px", background: "rgba(34,197,94,0.08)", color: "var(--green)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}
               >🧬 الأنواع{(item.variants?.length ?? 0) > 0 ? ` (${item.variants!.length})` : ""}</button>
 
               <button
@@ -1010,7 +1010,7 @@ export default function MenuPage() {
                 style={{
                   width: "100%", padding: "8px",
                   background: item.available ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-                  color: item.available ? "#22c55e" : "#ef4444",
+                  color: item.available ? "var(--green)" : "var(--red)",
                   border: `1px solid ${item.available ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
                   borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600",
                 }}
@@ -1042,13 +1042,13 @@ export default function MenuPage() {
       {/* Delete confirmation modal */}
       {deleteId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", padding: "28px", width: "300px", textAlign: "center" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", padding: "28px", width: "300px", textAlign: "center" }}>
             <div style={{ fontSize: "40px", marginBottom: "14px" }}>🗑️</div>
-            <h3 style={{ margin: "0 0 10px", color: "#f1f5f9", fontSize: "16px" }}>حذف الصنف؟</h3>
-            <p style={{ margin: "0 0 22px", color: "#64748b", fontSize: "13px" }}>هذه العملية لا يمكن التراجع عنها</p>
+            <h3 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: "16px" }}>حذف الصنف؟</h3>
+            <p style={{ margin: "0 0 22px", color: "var(--muted)", fontSize: "13px" }}>هذه العملية لا يمكن التراجع عنها</p>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: "11px", background: "#1c1c28", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px" }}>إلغاء</button>
-              <button onClick={deleteItem} disabled={deleting} style={{ flex: 1, padding: "11px", background: deleting ? "#252535" : "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", cursor: deleting ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "700" }}>
+              <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: "11px", background: "var(--raised)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px" }}>إلغاء</button>
+              <button onClick={deleteItem} disabled={deleting} style={{ flex: 1, padding: "11px", background: deleting ? "var(--border)" : "rgba(239,68,68,0.15)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", cursor: deleting ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "700" }}>
                 {deleting ? "⏳..." : "✅ نعم، احذف"}
               </button>
             </div>

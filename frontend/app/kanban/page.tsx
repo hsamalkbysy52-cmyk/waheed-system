@@ -104,7 +104,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
       {...(isLocal ? {} : listeners)}
       {...(isLocal ? {} : attributes)}
       style={{
-        background: "#1c1c28",
+        background: "var(--raised)",
         border: `1px solid ${tc}35`,
         borderRight: `4px solid ${tc}`,
         borderRadius: "14px",
@@ -124,7 +124,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
           borderRadius: "7px",
           padding: "4px 8px",
           fontSize: "11px",
-          color: "#f59e0b",
+          color: "var(--gold)",
           fontWeight: "700",
           marginBottom: "8px",
           textAlign: "center",
@@ -135,22 +135,22 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
       )}
 
       {/* 1. Order number */}
-      <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "15px", marginBottom: "2px" }}>
+      <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "15px", marginBottom: "2px" }}>
         {isLocal ? `طلب محلي #${Math.abs(order.id)}` : `طلب #${order.id}`}
       </div>
 
       {/* 2. Table number + time ago */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-        <div style={{ color: "#64748b", fontSize: "12px" }}>
+        <div style={{ color: "var(--muted)", fontSize: "12px" }}>
           {order.table_number === 0 ? "🛵 سفري" : `🪑 طاولة ${order.table_number}`}
         </div>
-        <div style={{ color: "#64748b", fontSize: "11px" }}>🕐 {timeAgo(order.created_at, now)}</div>
+        <div style={{ color: "var(--muted)", fontSize: "11px" }}>🕐 {timeAgo(order.created_at, now)}</div>
       </div>
 
       {/* 3. Items */}
       <div style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid #252535",
+        background: "var(--inner)",
+        border: "1px solid var(--border)",
         borderRadius: "10px",
         padding: "8px 10px",
         marginBottom: "10px",
@@ -158,15 +158,15 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
         {aggregated.length > 0 ? aggregated.map((item, i) => (
           <div key={i} style={{
             padding: "4px 0",
-            borderBottom: i < aggregated.length - 1 ? "1px solid #1e2030" : "none",
+            borderBottom: i < aggregated.length - 1 ? "1px solid var(--border)" : "none",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ color: "#e2e8f0", fontSize: "13px" }}>
+              <span style={{ color: "var(--text2)", fontSize: "13px" }}>
                 {catEmoji(item.category)} {item.name}
                 {item.qty > 1 && (
                   <span style={{
                     background: "rgba(245,158,11,0.18)",
-                    color: "#f59e0b",
+                    color: "var(--gold)",
                     borderRadius: "5px",
                     padding: "1px 6px",
                     fontSize: "11px",
@@ -177,20 +177,20 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                   </span>
                 )}
               </span>
-              <span style={{ color: "#94a3b8", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
+              <span style={{ color: "var(--text2)", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
                 {(item.price * item.qty).toLocaleString()} <span style={{ fontSize: "10px" }}>د.ع</span>
               </span>
             </div>
             {item.mods.length > 0 && (
               <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "2px" }}>
                 {item.mods.map((m, mi) => (
-                  <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>{m}</span>
+                  <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "var(--gold)", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>{m}</span>
                 ))}
               </div>
             )}
           </div>
         )) : (
-          <div style={{ color: "#334155", fontSize: "12px", textAlign: "center", padding: "4px 0" }}>
+          <div style={{ color: "var(--subtle)", fontSize: "12px", textAlign: "center", padding: "4px 0" }}>
             — طلب قديم —
           </div>
         )}
@@ -198,13 +198,13 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
 
       {/* 4. Total price */}
       <div style={{
-        color: "#f59e0b",
+        color: "var(--gold)",
         fontSize: "20px",
         fontWeight: "800",
         marginBottom: "10px",
       }}>
         {order.total_price.toLocaleString()}
-        <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b", marginRight: "4px" }}>د.ع</span>
+        <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)", marginRight: "4px" }}>د.ع</span>
       </div>
 
       {/* 5. Extra notes */}
@@ -215,7 +215,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
           borderRadius: "9px",
           padding: "8px 12px",
           fontSize: "13px",
-          color: "#fbbf24",
+          color: "var(--gold)",
           lineHeight: "1.5",
         }}>
           📝 {order.notes}
@@ -228,7 +228,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
           <button
             onPointerDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onPrev(); }}
-            style={{ flex: 1, padding: "7px", background: "rgba(100,116,139,0.15)", color: "#94a3b8", border: "1px solid #252535", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
+            style={{ flex: 1, padding: "7px", background: "rgba(100,116,139,0.15)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
           >← رجوع</button>
         )}
         {stage !== "served" && (
@@ -238,7 +238,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
             style={{
               flex: 2, padding: "7px",
               background: stage === "ready" ? "rgba(34,197,94,0.15)" : "rgba(245,158,11,0.12)",
-              color: stage === "ready" ? "#22c55e" : "#f59e0b",
+              color: stage === "ready" ? "var(--green)" : "var(--gold)",
               border: `1px solid ${stage === "ready" ? "rgba(34,197,94,0.25)" : "rgba(245,158,11,0.25)"}`,
               borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "600",
             }}
@@ -260,19 +260,19 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                 onPointerDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); onDelete(); }}
                 disabled={isDeleting}
-                style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "9px", cursor: isDeleting ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: "700" }}
+                style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.15)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "9px", cursor: isDeleting ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: "700" }}
               >{isDeleting ? "⏳" : "تأكيد"}</button>
               <button
                 onPointerDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); setConfirmDel(false); }}
-                style={{ padding: "7px 8px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: "9px", cursor: "pointer", fontSize: "11px" }}
+                style={{ padding: "7px 8px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: "9px", cursor: "pointer", fontSize: "11px" }}
               >لا</button>
             </div>
           ) : (
             <button
               onPointerDown={e => e.stopPropagation()}
               onClick={e => { e.stopPropagation(); setConfirmDel(true); }}
-              style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
+              style={{ flex: 1, padding: "7px", background: "rgba(239,68,68,0.08)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "9px", cursor: "pointer", fontSize: "12px" }}
             >🗑️ حذف</button>
           )}
         </div>
@@ -293,7 +293,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                   borderRadius: "9px", padding: "8px",
                 }}>
                   <span style={{ fontSize: "15px" }}>✅</span>
-                  <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "700" }}>تم الدفع</span>
+                  <span style={{ color: "var(--green)", fontSize: "13px", fontWeight: "700" }}>تم الدفع</span>
                   {prePaid && <span style={{ fontSize: "14px" }}>{methodIcon}</span>}
                 </div>
                 {/* Prepaid served order: let cashier close it */}
@@ -303,7 +303,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                     onClick={e => { e.stopPropagation(); onComplete(); }}
                     style={{
                       width: "100%", padding: "7px",
-                      background: "rgba(100,116,139,0.12)", color: "#94a3b8",
+                      background: "rgba(100,116,139,0.12)", color: "var(--text2)",
                       border: "1px solid #252535", borderRadius: "9px",
                       cursor: "pointer", fontSize: "12px", fontWeight: "600",
                     }}
@@ -317,7 +317,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                 style={{
                   width: "100%", padding: "8px",
                   background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
-                  color: "#f59e0b",
+                  color: "var(--gold)",
                   border: "1px solid rgba(245,158,11,0.35)",
                   borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
                 }}
@@ -352,7 +352,7 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
           <button
             onClick={onMaximize}
             title="تكبير"
-            style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(255,255,255,0.05)", border: "1px solid #252535", color: "#475569", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+            style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(255,255,255,0.05)", border: "1px solid #252535", color: "var(--text2)", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
           >⛶</button>
         </div>
       </div>
@@ -375,7 +375,7 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
             onComplete={() => onComplete(o.id)} />
         ))}
         {!orders.length && (
-          <div style={{ textAlign: "center", color: "#334155", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
+          <div style={{ textAlign: "center", color: "var(--subtle)", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
         )}
       </div>
     </div>
@@ -570,11 +570,11 @@ export default function KanbanPage() {
   const active  = orders.length;
 
   return (
-    <div style={{ padding: "24px 24px 0", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
+    <div style={{ padding: "24px 24px 0", background: "var(--bg)", minHeight: "100vh", direction: "rtl" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>📋 لوحة الطلبات</h1>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
+          <h1 style={{ margin: 0, color: "var(--text)", fontSize: "20px", fontWeight: "700" }}>📋 لوحة الطلبات</h1>
+          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "12px" }}>
             {waking ? "الخادم يستيقظ، لحظة..." : loading ? "جاري التحميل..." : `${active} طلب نشط • يتحدث كل 30 ثانية`}
           </p>
         </div>
@@ -591,7 +591,7 @@ export default function KanbanPage() {
           >
             ➕ طلب جديد
           </button>
-          <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+          <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             🔄 تحديث
           </button>
         </div>
@@ -613,7 +613,7 @@ export default function KanbanPage() {
           const stage = STAGES.find(s => s.id === maxedStage)!;
           const stageOrders = byStage(maxedStage);
           return (
-            <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "#0a0a0f", direction: "rtl", display: "flex", flexDirection: "column" }}>
+            <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column" }}>
               {/* Header */}
               <div style={{ padding: "16px 24px", borderBottom: "1px solid #1c1c28", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -622,13 +622,13 @@ export default function KanbanPage() {
                 </div>
                 <button
                   onClick={() => setMaxedStage(null)}
-                  style={{ padding: "9px 18px", background: "rgba(100,116,139,0.12)", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}
+                  style={{ padding: "9px 18px", background: "rgba(100,116,139,0.12)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}
                 >⊡ تصغير</button>
               </div>
               {/* Grid of cards */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px", alignContent: "start" }}>
                 {stageOrders.length === 0 && (
-                  <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#334155", paddingTop: "60px", fontSize: "14px" }}>لا يوجد طلبات</div>
+                  <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--subtle)", paddingTop: "60px", fontSize: "14px" }}>لا يوجد طلبات</div>
                 )}
                 {stageOrders.map(o => (
                   <Card key={o.id} order={o} stage={maxedStage} now={now}
@@ -665,33 +665,33 @@ export default function KanbanPage() {
           <div onClick={() => !savingEdit && setEditOrderId(null)}
             style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background: "#111118", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "860px", maxHeight: "88vh", display: "flex", flexDirection: "column", direction: "rtl", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.9)" }}>
+              style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", width: "100%", maxWidth: "860px", maxHeight: "88vh", display: "flex", flexDirection: "column", direction: "rtl", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.9)" }}>
 
               {/* Header */}
               <div style={{ padding: "16px 20px", borderBottom: "1px solid #252535", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-                <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>✏️ تعديل طلب #{editOrderId}</div>
-                <button onClick={() => setEditOrderId(null)} style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#1c1c28", border: "1px solid #252535", color: "#64748b", cursor: "pointer", fontSize: "16px" }}>✕</button>
+                <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>✏️ تعديل طلب #{editOrderId}</div>
+                <button onClick={() => setEditOrderId(null)} style={{ width: "34px", height: "34px", borderRadius: "10px", background: "var(--raised)", border: "1px solid #252535", color: "var(--muted)", cursor: "pointer", fontSize: "16px" }}>✕</button>
               </div>
 
               <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
                 {/* Left — add from menu */}
                 <div style={{ flex: "0 0 55%", display: "flex", flexDirection: "column", borderLeft: "1px solid #1c1c28", overflow: "hidden" }}>
-                  <div style={{ padding: "10px 14px", color: "#64748b", fontSize: "11px", fontWeight: "700", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>إضافة أصناف</div>
+                  <div style={{ padding: "10px 14px", color: "var(--muted)", fontSize: "11px", fontWeight: "700", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>إضافة أصناف</div>
                   <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: "8px", alignContent: "start" }}>
                     {loadingEditMenu ? (
-                      <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "40px", color: "#64748b" }}>⏳ تحميل...</div>
+                      <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "40px", color: "var(--muted)" }}>⏳ تحميل...</div>
                     ) : editMenu.map(item => {
                       const inCart = editCart.find(c => c.name === item.name);
                       const sold = item.out_of_stock === true;
                       return (
                         <button key={item.id} onClick={() => addToCart(item)} disabled={sold}
-                          style={{ background: sold ? "#16161f" : inCart ? "rgba(245,158,11,0.1)" : "#1c1c28", border: `1px solid ${sold ? "#1c1c28" : inCart ? "rgba(245,158,11,0.45)" : "#252535"}`, borderRadius: "12px", padding: "10px 8px", cursor: sold ? "not-allowed" : "pointer", textAlign: "center", opacity: sold ? 0.4 : 1, position: "relative" }}>
-                          {sold && <span style={{ position: "absolute", top: "5px", right: "5px", background: "rgba(239,68,68,0.15)", color: "#ef4444", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</span>}
-                          {inCart && !sold && <span style={{ position: "absolute", top: "5px", left: "5px", background: "#f59e0b", color: "#000", borderRadius: "50%", width: "18px", height: "18px", fontSize: "10px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>{inCart.qty}</span>}
+                          style={{ background: sold ? "var(--card)" : inCart ? "rgba(245,158,11,0.1)" : "var(--raised)", border: `1px solid ${sold ? "var(--raised)" : inCart ? "rgba(245,158,11,0.45)" : "var(--border)"}`, borderRadius: "12px", padding: "10px 8px", cursor: sold ? "not-allowed" : "pointer", textAlign: "center", opacity: sold ? 0.4 : 1, position: "relative" }}>
+                          {sold && <span style={{ position: "absolute", top: "5px", right: "5px", background: "rgba(239,68,68,0.15)", color: "var(--red)", borderRadius: "4px", padding: "1px 5px", fontSize: "8px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.3)" }}>نفد</span>}
+                          {inCart && !sold && <span style={{ position: "absolute", top: "5px", left: "5px", background: "var(--gold)", color: "#000", borderRadius: "50%", width: "18px", height: "18px", fontSize: "10px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>{inCart.qty}</span>}
                           <div style={{ fontSize: "22px", marginBottom: "4px" }}>{catEmoji(item.category)}</div>
-                          <div style={{ color: "#f1f5f9", fontSize: "11px", fontWeight: "600" }}>{item.name}</div>
-                          <div style={{ color: "#f59e0b", fontSize: "11px", fontWeight: "700", marginTop: "2px" }}>{item.price.toLocaleString()}</div>
+                          <div style={{ color: "var(--text)", fontSize: "11px", fontWeight: "600" }}>{item.name}</div>
+                          <div style={{ color: "var(--gold)", fontSize: "11px", fontWeight: "700", marginTop: "2px" }}>{item.price.toLocaleString()}</div>
                         </button>
                       );
                     })}
@@ -699,23 +699,23 @@ export default function KanbanPage() {
                 </div>
 
                 {/* Right — cart + options */}
-                <div style={{ flex: "0 0 45%", display: "flex", flexDirection: "column", background: "#0d0d14", overflow: "hidden" }}>
+                <div style={{ flex: "0 0 45%", display: "flex", flexDirection: "column", background: "var(--card)", overflow: "hidden" }}>
 
                   {/* Table picker */}
                   <div style={{ padding: "12px 14px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
-                    <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px" }}>🪑 الطاولة</div>
+                    <div style={{ color: "var(--text2)", fontSize: "11px", fontWeight: "600", marginBottom: "6px" }}>🪑 الطاولة</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "108px", overflowY: "auto" }}>
                       <button onClick={() => setEditTable(0)}
                         style={{ gridColumn: "span 2", padding: "8px 2px", borderRadius: "8px",
-                          background: editTable === 0 ? "rgba(99,102,241,0.18)" : "#1c1c28",
-                          color: editTable === 0 ? "#818cf8" : "#64748b",
-                          border: `1px solid ${editTable === 0 ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                          background: editTable === 0 ? "rgba(99,102,241,0.18)" : "var(--raised)",
+                          color: editTable === 0 ? "#818cf8" : "var(--muted)",
+                          border: `1px solid ${editTable === 0 ? "rgba(99,102,241,0.5)" : "var(--border)"}`,
                           cursor: "pointer", fontSize: "12px", fontWeight: editTable === 0 ? "800" : "500",
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
                         }}>🛵 سفري</button>
                       {tableList.map(t => (
                         <button key={t} onClick={() => setEditTable(t)}
-                          style={{ padding: "8px 2px", borderRadius: "8px", background: editTable === t ? "rgba(245,158,11,0.2)" : "#1c1c28", color: editTable === t ? "#f59e0b" : "#64748b", border: `1px solid ${editTable === t ? "rgba(245,158,11,0.5)" : "#252535"}`, cursor: "pointer", fontSize: "13px", fontWeight: editTable === t ? "800" : "500" }}>{t}</button>
+                          style={{ padding: "8px 2px", borderRadius: "8px", background: editTable === t ? "rgba(245,158,11,0.2)" : "var(--raised)", color: editTable === t ? "var(--gold)" : "var(--muted)", border: `1px solid ${editTable === t ? "rgba(245,158,11,0.5)" : "var(--border)"}`, cursor: "pointer", fontSize: "13px", fontWeight: editTable === t ? "800" : "500" }}>{t}</button>
                       ))}
                     </div>
                   </div>
@@ -723,18 +723,18 @@ export default function KanbanPage() {
                   {/* Cart items */}
                   <div style={{ flex: 1, overflowY: "auto", padding: "8px 14px" }}>
                     {editCart.length === 0
-                      ? <div style={{ textAlign: "center", color: "#334155", paddingTop: "40px", fontSize: "12px" }}>السلة فارغة</div>
+                      ? <div style={{ textAlign: "center", color: "var(--subtle)", paddingTop: "40px", fontSize: "12px" }}>السلة فارغة</div>
                       : editCart.map(c => (
                         <div key={c.name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #1c1c28" }}>
                           <div style={{ fontSize: "18px", flexShrink: 0 }}>{catEmoji(c.category)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: "#f1f5f9", fontSize: "12px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                            <div style={{ color: "#f59e0b", fontSize: "11px" }}>{(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span></div>
+                            <div style={{ color: "var(--text)", fontSize: "12px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                            <div style={{ color: "var(--gold)", fontSize: "11px" }}>{(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span></div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
-                            <button onClick={() => setEditQty(c.name, -1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "#252535", border: "none", color: c.qty === 1 ? "#ef4444" : "#94a3b8", cursor: "pointer", fontSize: c.qty === 1 ? "12px" : "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>{c.qty === 1 ? "🗑" : "−"}</button>
-                            <span style={{ color: "#f1f5f9", fontSize: "13px", fontWeight: "800", minWidth: "18px", textAlign: "center" }}>{c.qty}</span>
-                            <button onClick={() => setEditQty(c.name, 1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(245,158,11,0.15)", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                            <button onClick={() => setEditQty(c.name, -1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "var(--border)", border: "none", color: c.qty === 1 ? "var(--red)" : "var(--text2)", cursor: "pointer", fontSize: c.qty === 1 ? "12px" : "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>{c.qty === 1 ? "🗑" : "−"}</button>
+                            <span style={{ color: "var(--text)", fontSize: "13px", fontWeight: "800", minWidth: "18px", textAlign: "center" }}>{c.qty}</span>
+                            <button onClick={() => setEditQty(c.name, 1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(245,158,11,0.15)", border: "none", color: "var(--gold)", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                           </div>
                         </div>
                       ))}
@@ -744,17 +744,17 @@ export default function KanbanPage() {
                   <div style={{ padding: "12px 14px", borderTop: "1px solid #1c1c28", flexShrink: 0 }}>
                     {editCart.length > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: "10px" }}>
-                        <span style={{ color: "#94a3b8", fontSize: "12px" }}>الإجمالي</span>
-                        <span style={{ color: "#f59e0b", fontSize: "18px", fontWeight: "900" }}>{editTotal.toLocaleString()} <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "400" }}>د.ع</span></span>
+                        <span style={{ color: "var(--text2)", fontSize: "12px" }}>الإجمالي</span>
+                        <span style={{ color: "var(--gold)", fontSize: "18px", fontWeight: "900" }}>{editTotal.toLocaleString()} <span style={{ fontSize: "11px", color: "var(--muted)", fontWeight: "400" }}>د.ع</span></span>
                       </div>
                     )}
                     <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="ملاحظات..." rows={2}
-                      style={{ width: "100%", boxSizing: "border-box", background: "#1c1c28", border: "1px solid #252535", borderRadius: "8px", color: "#f1f5f9", padding: "7px 10px", fontSize: "11px", resize: "none", outline: "none", direction: "rtl", fontFamily: "inherit", marginBottom: "8px" }} />
-                    {editError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "8px", padding: "7px 10px", color: "#ef4444", fontSize: "11px", marginBottom: "8px" }}>⚠️ {editError}</div>}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--raised)", border: "1px solid #252535", borderRadius: "8px", color: "var(--text)", padding: "7px 10px", fontSize: "11px", resize: "none", outline: "none", direction: "rtl", fontFamily: "inherit", marginBottom: "8px" }} />
+                    {editError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "8px", padding: "7px 10px", color: "var(--red)", fontSize: "11px", marginBottom: "8px" }}>⚠️ {editError}</div>}
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <button onClick={() => setEditOrderId(null)} style={{ flex: 1, padding: "11px", background: "rgba(100,116,139,0.1)", color: "#94a3b8", border: "1px solid #252535", borderRadius: "11px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>إلغاء</button>
+                      <button onClick={() => setEditOrderId(null)} style={{ flex: 1, padding: "11px", background: "rgba(100,116,139,0.1)", color: "var(--text2)", border: "1px solid #252535", borderRadius: "11px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>إلغاء</button>
                       <button onClick={saveEdit} disabled={savingEdit || editCart.length === 0}
-                        style={{ flex: 2, padding: "11px", background: savingEdit || editCart.length === 0 ? "#1c1c28" : "linear-gradient(135deg,#f59e0b,#d97706)", color: savingEdit || editCart.length === 0 ? "#64748b" : "#000", border: "none", borderRadius: "11px", cursor: savingEdit || editCart.length === 0 ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "800" }}>
+                        style={{ flex: 2, padding: "11px", background: savingEdit || editCart.length === 0 ? "var(--raised)" : "linear-gradient(135deg,#f59e0b,#d97706)", color: savingEdit || editCart.length === 0 ? "var(--muted)" : "#000", border: "none", borderRadius: "11px", cursor: savingEdit || editCart.length === 0 ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "800" }}>
                         {savingEdit ? "⏳ جاري الحفظ..." : "💾 حفظ التعديلات"}
                       </button>
                     </div>

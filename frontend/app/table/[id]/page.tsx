@@ -43,10 +43,10 @@ function QtyButton({ onClick, children, variant = "neutral" }: {
 }) {
   const bg =
     variant === "add"    ? "rgba(245,158,11,0.2)"  :
-    variant === "remove" ? "rgba(239,68,68,0.12)"  : "#1c1c28";
+    variant === "remove" ? "rgba(239,68,68,0.12)"  : "var(--raised)";
   const color =
-    variant === "add"    ? "#f59e0b" :
-    variant === "remove" ? "#ef4444" : "#94a3b8";
+    variant === "add"    ? "var(--gold)" :
+    variant === "remove" ? "var(--red)" : "var(--text2)";
   return (
     <button
       onClick={onClick}
@@ -67,25 +67,25 @@ function SuccessScreen({ tableId, total, onReset }: {
 }) {
   return (
     <div style={{
-      minHeight: "100dvh", background: "#0a0a0f",
+      minHeight: "100dvh", background: "var(--bg)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "32px 24px", textAlign: "center", direction: "rtl",
     }}>
       <div style={{ fontSize: "80px", marginBottom: "20px", animation: "none" }}>✅</div>
-      <h2 style={{ color: "#22c55e", fontSize: "24px", fontWeight: "900", margin: "0 0 8px" }}>
+      <h2 style={{ color: "var(--green)", fontSize: "24px", fontWeight: "900", margin: "0 0 8px" }}>
         تم إرسال طلبك!
       </h2>
-      <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 6px" }}>طاولة {tableId}</p>
+      <p style={{ color: "var(--muted)", fontSize: "14px", margin: "0 0 6px" }}>طاولة {tableId}</p>
       <div style={{
         background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
         borderRadius: "16px", padding: "16px 28px", margin: "20px 0",
       }}>
-        <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>المبلغ الإجمالي</div>
-        <div style={{ color: "#22c55e", fontSize: "28px", fontWeight: "900" }}>
+        <div style={{ color: "var(--muted)", fontSize: "12px", marginBottom: "4px" }}>المبلغ الإجمالي</div>
+        <div style={{ color: "var(--green)", fontSize: "28px", fontWeight: "900" }}>
           {total.toLocaleString()} <span style={{ fontSize: "14px", fontWeight: "400" }}>د.ع</span>
         </div>
       </div>
-      <p style={{ color: "#64748b", fontSize: "13px", margin: "0 0 28px", maxWidth: "280px", lineHeight: "1.6" }}>
+      <p style={{ color: "var(--muted)", fontSize: "13px", margin: "0 0 28px", maxWidth: "280px", lineHeight: "1.6" }}>
         طلبك على الطريق! سيصلك في أقرب وقت 🚀
       </p>
       <button
@@ -122,7 +122,7 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
       />
       {/* sheet */}
       <div style={{
-        position: "relative", background: "#111118",
+        position: "relative", background: "var(--surface)",
         borderRadius: "24px 24px 0 0", border: "1px solid #252535",
         borderBottom: "none", maxHeight: "82dvh",
         display: "flex", flexDirection: "column", direction: "rtl",
@@ -130,13 +130,13 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
       }}>
         {/* drag handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
-          <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "#252535" }} />
+          <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "var(--border)" }} />
         </div>
 
         {/* header */}
         <div style={{ padding: "12px 20px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1c1c28" }}>
-          <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "17px" }}>🛒 طلبك</div>
-          <button onClick={onClose} style={{ background: "#1c1c28", border: "none", color: "#64748b", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px" }}>✕</button>
+          <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "17px" }}>🛒 طلبك</div>
+          <button onClick={onClose} style={{ background: "var(--raised)", border: "none", color: "var(--muted)", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px" }}>✕</button>
         </div>
 
         {/* items */}
@@ -149,25 +149,25 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
             }}>
               <div style={{ fontSize: "24px", flexShrink: 0, marginTop: "2px" }}>{ce(c.category)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px" }}>{c.name}</div>
+                <div style={{ color: "var(--text)", fontWeight: "700", fontSize: "14px" }}>{c.name}</div>
                 {c.mods.length > 0 && (
                   <div style={{ display: "flex", gap: "3px", flexWrap: "wrap", marginTop: "3px" }}>
                     {c.mods.map((m, mi) => (
-                      <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
+                      <span key={mi} style={{ background: "rgba(245,158,11,0.1)", color: "var(--gold)", borderRadius: "4px", padding: "1px 5px", fontSize: "10px" }}>
                         {m.name}
                       </span>
                     ))}
                   </div>
                 )}
-                <div style={{ color: "#f59e0b", fontSize: "12px", marginTop: "3px" }}>
-                  {(c.price * c.qty).toLocaleString()} <span style={{ color: "#64748b" }}>د.ع</span>
+                <div style={{ color: "var(--gold)", fontSize: "12px", marginTop: "3px" }}>
+                  {(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                 <QtyButton variant="remove" onClick={() => onChangeQty(c.key, -1)}>
                   {c.qty === 1 ? "🗑" : "−"}
                 </QtyButton>
-                <span style={{ color: "#f1f5f9", fontWeight: "800", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{c.qty}</span>
+                <span style={{ color: "var(--text)", fontWeight: "800", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{c.qty}</span>
                 <QtyButton variant="add" onClick={() => onChangeQty(c.key, 1)}>+</QtyButton>
               </div>
             </div>
@@ -182,9 +182,9 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
             background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.15)",
             marginBottom: "14px",
           }}>
-            <span style={{ color: "#94a3b8", fontSize: "14px" }}>الإجمالي</span>
-            <span style={{ color: "#f59e0b", fontSize: "22px", fontWeight: "900" }}>
-              {total.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+            <span style={{ color: "var(--text2)", fontSize: "14px" }}>الإجمالي</span>
+            <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "900" }}>
+              {total.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
             </span>
           </div>
           {/* notes */}
@@ -195,23 +195,23 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
             rows={2}
             style={{
               width: "100%", boxSizing: "border-box",
-              background: "#1c1c28", border: "1px solid #252535",
-              borderRadius: "12px", color: "#f1f5f9",
+              background: "var(--raised)", border: "1px solid #252535",
+              borderRadius: "12px", color: "var(--text)",
               padding: "10px 14px", fontSize: "13px",
               resize: "none", outline: "none", direction: "rtl",
               fontFamily: "inherit", marginBottom: "12px",
               lineHeight: "1.5",
             }}
             onFocus={e => { e.target.style.borderColor = "rgba(245,158,11,0.4)"; }}
-            onBlur={e => { e.target.style.borderColor = "#252535"; }}
+            onBlur={e => { e.target.style.borderColor = "var(--border)"; }}
           />
           <button
             onClick={onPlaceOrder}
             disabled={placing}
             style={{
               width: "100%", padding: "16px",
-              background: placing ? "#1c1c28" : "linear-gradient(135deg,#f59e0b,#d97706)",
-              color: placing ? "#64748b" : "#000",
+              background: placing ? "var(--raised)" : "linear-gradient(135deg,#f59e0b,#d97706)",
+              color: placing ? "var(--muted)" : "#000",
               border: "none", borderRadius: "14px",
               fontSize: "16px", fontWeight: "900", cursor: placing ? "not-allowed" : "pointer",
               boxShadow: placing ? "none" : "0 6px 24px rgba(245,158,11,0.4)",
@@ -414,7 +414,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
 
   /* ── main render ── */
   return (
-    <div style={{ minHeight: "100dvh", background: "#0a0a0f", direction: "rtl", maxWidth: "480px", margin: "0 auto" }}>
+    <div style={{ minHeight: "100dvh", background: "var(--bg)", direction: "rtl", maxWidth: "480px", margin: "0 auto" }}>
 
       {/* ── hero header ── */}
       <div style={{
@@ -423,8 +423,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         borderBottom: "1px solid #1c1c28",
       }}>
         <div style={{ fontSize: "44px", marginBottom: "6px" }}>🍔</div>
-        <div style={{ color: "#f59e0b", fontWeight: "900", fontSize: "22px", letterSpacing: "1px" }}>Waheed</div>
-        <div style={{ color: "#64748b", fontSize: "11px", letterSpacing: "2px", marginTop: "2px" }}>RESTAURANT</div>
+        <div style={{ color: "var(--gold)", fontWeight: "900", fontSize: "22px", letterSpacing: "1px" }}>Waheed</div>
+        <div style={{ color: "var(--muted)", fontSize: "11px", letterSpacing: "2px", marginTop: "2px" }}>RESTAURANT</div>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: "6px",
           marginTop: "12px", padding: "6px 16px",
@@ -432,7 +432,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           borderRadius: "20px",
         }}>
           <span style={{ fontSize: "14px" }}>🪑</span>
-          <span style={{ color: "#f59e0b", fontWeight: "700", fontSize: "13px" }}>طاولة {tableId}</span>
+          <span style={{ color: "var(--gold)", fontWeight: "700", fontSize: "13px" }}>طاولة {tableId}</span>
         </div>
       </div>
 
@@ -443,7 +443,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         {loading && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: "16px" }}>
             <div style={{ fontSize: "36px" }}>⏳</div>
-            <div style={{ color: "#64748b", fontSize: "14px" }}>جاري تحميل المنيو...</div>
+            <div style={{ color: "var(--muted)", fontSize: "14px" }}>جاري تحميل المنيو...</div>
           </div>
         )}
 
@@ -456,11 +456,11 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                 <span style={{ fontSize: "28px" }}>🚨</span>
-                <span style={{ color: "#ef4444", fontWeight: "800", fontSize: "16px" }}>خطأ في تحميل المنيو</span>
+                <span style={{ color: "var(--red)", fontWeight: "800", fontSize: "16px" }}>خطأ في تحميل المنيو</span>
               </div>
 
               <pre style={{
-                color: "#fca5a5", fontSize: "11px", background: "#0a0a0f",
+                color: "#fca5a5", fontSize: "11px", background: "var(--bg)",
                 border: "1px solid #3f1f1f", borderRadius: "8px",
                 padding: "10px 12px", margin: "0 0 8px",
                 whiteSpace: "pre-wrap", wordBreak: "break-all",
@@ -470,7 +470,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                 {fetchErr}
               </pre>
 
-              <div style={{ color: "#64748b", fontSize: "10px", direction: "ltr", textAlign: "left", marginBottom: "16px" }}>
+              <div style={{ color: "var(--muted)", fontSize: "10px", direction: "ltr", textAlign: "left", marginBottom: "16px" }}>
                 API: {MENU_API}
               </div>
 
@@ -478,7 +478,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                 onClick={loadMenu}
                 style={{
                   width: "100%", padding: "13px",
-                  background: "rgba(245,158,11,0.15)", color: "#f59e0b",
+                  background: "rgba(245,158,11,0.15)", color: "var(--gold)",
                   border: "1px solid rgba(245,158,11,0.3)", borderRadius: "12px",
                   cursor: "pointer", fontSize: "14px", fontWeight: "700",
                 }}
@@ -500,9 +500,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                   onClick={() => setCat(c)}
                   style={{
                     padding: "8px 16px", borderRadius: "20px", whiteSpace: "nowrap", flexShrink: 0,
-                    background: cat === c ? "rgba(245,158,11,0.15)" : "#111118",
-                    color: cat === c ? "#f59e0b" : "#64748b",
-                    border: `1px solid ${cat === c ? "rgba(245,158,11,0.4)" : "#252535"}`,
+                    background: cat === c ? "rgba(245,158,11,0.15)" : "var(--surface)",
+                    color: cat === c ? "var(--gold)" : "var(--muted)",
+                    border: `1px solid ${cat === c ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
                     cursor: "pointer", fontSize: "13px", fontWeight: cat === c ? "700" : "400",
                   }}
                 >
@@ -514,7 +514,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             {/* items */}
             <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: "10px" }}>
               {filtered.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 0", color: "#334155" }}>
+                <div style={{ textAlign: "center", padding: "60px 0", color: "var(--subtle)" }}>
                   <div style={{ fontSize: "40px", marginBottom: "12px" }}>🍽️</div>
                   <div style={{ fontSize: "14px" }}>لا توجد أصناف في هذه الفئة</div>
                 </div>
@@ -532,8 +532,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                     <div
                       key={item.id}
                       style={{
-                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.05)" : "#111118",
-                        border: `1px solid ${totalQtyForItem > 0 ? "rgba(245,158,11,0.3)" : "#1c1c28"}`,
+                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.05)" : "var(--surface)",
+                        border: `1px solid ${totalQtyForItem > 0 ? "rgba(245,158,11,0.3)" : "var(--raised)"}`,
                         borderRadius: "16px", padding: "14px 16px",
                         display: "flex", alignItems: "center", gap: "12px",
                         transition: "border-color 0.15s",
@@ -542,7 +542,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       {/* icon */}
                       <div style={{
                         width: "52px", height: "52px", borderRadius: "14px", flexShrink: 0,
-                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.15)" : "#1c1c28",
+                        background: totalQtyForItem > 0 ? "rgba(245,158,11,0.15)" : "var(--raised)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "26px", transition: "background 0.15s",
                       }}>
@@ -551,7 +551,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
 
                       {/* info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>
+                        <div style={{ color: "var(--text)", fontWeight: "700", fontSize: "14px", marginBottom: "2px" }}>
                           {item.name}
                           {hasVariants && (
                             <span style={{ marginRight: "6px", background: "rgba(34,197,94,0.15)", color: "#4ade80", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontWeight: "600" }}>
@@ -565,7 +565,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                           )}
                         </div>
                         {item.description && (
-                          <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "4px", lineHeight: "1.4", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
+                          <div style={{ color: "var(--muted)", fontSize: "11px", marginBottom: "4px", lineHeight: "1.4", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
                             {item.description}
                           </div>
                         )}
@@ -575,12 +575,12 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                             {item.variants!.map((v) => (
                               <span key={v.id} style={{
                                 background: v.out_of_stock ? "rgba(100,116,139,0.1)" : "rgba(34,197,94,0.08)",
-                                border: `1px solid ${v.out_of_stock ? "#252535" : "rgba(34,197,94,0.25)"}`,
-                                color: v.out_of_stock ? "#475569" : "#86efac",
+                                border: `1px solid ${v.out_of_stock ? "var(--border)" : "rgba(34,197,94,0.25)"}`,
+                                color: v.out_of_stock ? "var(--text2)" : "#86efac",
                                 borderRadius: "6px", padding: "2px 7px", fontSize: "10px", fontWeight: "600",
                                 textDecoration: v.out_of_stock ? "line-through" : "none",
                               }}>
-                                {v.name} <span style={{ color: v.out_of_stock ? "#475569" : "#4ade80", fontWeight: "800" }}>{v.price.toLocaleString()}</span>
+                                {v.name} <span style={{ color: v.out_of_stock ? "var(--text2)" : "#4ade80", fontWeight: "800" }}>{v.price.toLocaleString()}</span>
                               </span>
                             ))}
                           </div>
@@ -590,7 +590,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px", margin: "2px 0 4px" }}>
                             {item.modifiers!.map((g) => (
                               <div key={g.id} style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
-                                <span style={{ color: "#64748b", fontSize: "10px", fontWeight: "700", flexShrink: 0 }}>{g.name}:</span>
+                                <span style={{ color: "var(--muted)", fontSize: "10px", fontWeight: "700", flexShrink: 0 }}>{g.name}:</span>
                                 {g.options.map((o) => (
                                   <span key={o.id} style={{
                                     background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
@@ -603,9 +603,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                             ))}
                           </div>
                         )}
-                        <div style={{ color: "#f59e0b", fontWeight: "800", fontSize: "14px" }}>
-                          {hasVariants && <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>من </span>}
-                          {displayPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                        <div style={{ color: "var(--gold)", fontWeight: "800", fontSize: "14px" }}>
+                          {hasVariants && <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>من </span>}
+                          {displayPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
                         </div>
                       </div>
 
@@ -615,7 +615,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                           <QtyButton variant="remove" onClick={() => changeQty(line.key, -1)}>
                             {line.qty === 1 ? "🗑" : "−"}
                           </QtyButton>
-                          <span style={{ color: "#f1f5f9", fontWeight: "900", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{line.qty}</span>
+                          <span style={{ color: "var(--text)", fontWeight: "900", minWidth: "20px", textAlign: "center", fontSize: "16px" }}>{line.qty}</span>
                           <QtyButton variant="add" onClick={() => changeQty(line.key, 1)}>+</QtyButton>
                         </div>
                       ) : (
@@ -657,7 +657,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
               <div style={{ color: "#f87171", fontWeight: "700", fontSize: "14px", marginBottom: "4px" }}>
                 عذراً، لا يمكنك طلب هذه الكمية من "{stockAlert}"
               </div>
-              <div style={{ color: "#94a3b8", fontSize: "12px", lineHeight: "1.5" }}>
+              <div style={{ color: "var(--text2)", fontSize: "12px", lineHeight: "1.5" }}>
                 الكمية المتاحة محدودة — يرجى التواصل مع الغرسون للمساعدة
               </div>
             </div>
@@ -715,20 +715,20 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           }}
         >
           <div style={{
-            background: "#111118", borderRadius: "24px 24px 0 0",
+            background: "var(--surface)", borderRadius: "24px 24px 0 0",
             border: "1px solid #252535", borderBottom: "none",
             maxHeight: "70dvh", display: "flex", flexDirection: "column",
             direction: "rtl", maxWidth: "480px", margin: "0 auto", width: "100%",
             boxShadow: "0 -20px 60px rgba(0,0,0,0.8)",
           }}>
             <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
-              <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "#252535" }} />
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "var(--border)" }} />
             </div>
             <div style={{ padding: "12px 20px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1c1c28" }}>
-              <div style={{ color: "#f1f5f9", fontWeight: "800", fontSize: "16px" }}>
+              <div style={{ color: "var(--text)", fontWeight: "800", fontSize: "16px" }}>
                 {ce(variantPick.category)} اختر نوع {variantPick.name}
               </div>
-              <button onClick={() => setVariantPick(null)} style={{ background: "#1c1c28", border: "none", color: "#64748b", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px" }}>✕</button>
+              <button onClick={() => setVariantPick(null)} style={{ background: "var(--raised)", border: "none", color: "var(--muted)", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px" }}>✕</button>
             </div>
             <div style={{ overflowY: "auto", padding: "12px 16px 28px", display: "flex", flexDirection: "column", gap: "8px" }}>
               {variantPick.variants!.map((v) => {
@@ -745,9 +745,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                     style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "14px 16px", borderRadius: "14px",
-                      background: soldOut ? "#0d0d14" : "#1c1c28",
+                      background: soldOut ? "var(--card)" : "var(--raised)",
                       border: "1px solid #252535",
-                      color: soldOut ? "#475569" : "#f1f5f9",
+                      color: soldOut ? "var(--text2)" : "var(--text)",
                       cursor: soldOut ? "not-allowed" : "pointer",
                       fontSize: "14px", fontWeight: "700", direction: "rtl",
                       fontFamily: "inherit",
@@ -761,8 +761,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                         </span>
                       )}
                     </span>
-                    <span style={{ color: soldOut ? "#475569" : "#f59e0b", fontWeight: "800" }}>
-                      {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "#64748b" }}>د.ع</span>
+                    <span style={{ color: soldOut ? "var(--text2)" : "var(--gold)", fontWeight: "800" }}>
+                      {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
                     </span>
                   </button>
                 );

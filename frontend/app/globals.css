@@ -2,21 +2,47 @@
 
 * { box-sizing: border-box; }
 
+/* ── Dark theme (default) ── */
 :root {
   --bg:      #0a0a0f;
   --surface: #111118;
   --card:    #16161f;
   --raised:  #1c1c28;
   --border:  #252535;
+  --subtle:  #334155;
+  --muted:   #64748b;
+  --text2:   #94a3b8;
+  --text:    #f1f5f9;
   --gold:    #f59e0b;
   --gold2:   #d97706;
   --green:   #22c55e;
   --red:     #ef4444;
   --orange:  #f97316;
   --blue:    #3b82f6;
-  --text:    #f1f5f9;
-  --muted:   #64748b;
+  --inner:   rgba(255,255,255,0.04);
+  --shadow:  rgba(0,0,0,0.85);
   --sidebar: 220px;
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  --bg:      #f0f4f8;
+  --surface: #ffffff;
+  --card:    #ffffff;
+  --raised:  #f1f5fb;
+  --border:  #dde3ee;
+  --subtle:  #94a3b8;
+  --muted:   #64748b;
+  --text2:   #475569;
+  --text:    #0f172a;
+  --gold:    #d97706;
+  --gold2:   #b45309;
+  --green:   #16a34a;
+  --red:     #dc2626;
+  --orange:  #ea580c;
+  --blue:    #2563eb;
+  --inner:   rgba(0,0,0,0.03);
+  --shadow:  rgba(0,0,0,0.4);
 }
 
 body {
@@ -24,6 +50,12 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* smooth variable transitions for themed surfaces */
+div, aside, nav, main, button, input, textarea, select {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }

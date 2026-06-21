@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "14px 16px",
-    background: "#0a0a1a", border: "1px solid #2a2a4a",
+    background: "var(--bg)", border: "1px solid #2a2a4a",
     borderRadius: "12px", color: "white", fontSize: "15px",
     direction: "rtl", boxSizing: "border-box",
   };
@@ -62,14 +62,14 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <div style={{ fontSize: "68px", marginBottom: "10px", filter: "drop-shadow(0 4px 12px rgba(243,156,18,0.4))" }}>🍔</div>
-          <div style={{ color: "#f39c12", fontSize: "30px", fontWeight: "800", letterSpacing: "2px" }}>WAHEED</div>
-          <div style={{ color: "#8892b0", fontSize: "13px", marginTop: "6px", letterSpacing: "1px" }}>نظام إدارة المطعم</div>
+          <div style={{ color: "var(--gold)", fontSize: "30px", fontWeight: "800", letterSpacing: "2px" }}>WAHEED</div>
+          <div style={{ color: "var(--text2)", fontSize: "13px", marginTop: "6px", letterSpacing: "1px" }}>نظام إدارة المطعم</div>
           <div style={{ width: "50px", height: "3px", background: "linear-gradient(90deg, #f39c12, #e67e22)", borderRadius: "2px", margin: "14px auto 0" }} />
         </div>
 
         {/* Username */}
         <div style={{ marginBottom: "16px" }}>
-          <label style={{ color: "#8892b0", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>اسم المستخدم</label>
+          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>اسم المستخدم</label>
           <input
             placeholder="admin"
             value={username}
@@ -80,7 +80,7 @@ export default function LoginPage() {
 
         {/* Password */}
         <div style={{ marginBottom: "28px" }}>
-          <label style={{ color: "#8892b0", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>كلمة السر</label>
+          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>كلمة السر</label>
           <input
             type="password"
             placeholder="••••••••"
@@ -96,7 +96,7 @@ export default function LoginPage() {
           <div style={{
             background: "rgba(231,76,60,0.1)", border: "1px solid rgba(231,76,60,0.3)",
             borderRadius: "12px", padding: "12px 16px", marginBottom: "20px",
-            color: "#e74c3c", fontSize: "14px", textAlign: "center",
+            color: "var(--red)", fontSize: "14px", textAlign: "center",
           }}>❌ {error}</div>
         )}
 
@@ -118,9 +118,9 @@ export default function LoginPage() {
           background: "rgba(255,255,255,0.03)", borderRadius: "14px",
           border: "1px solid #2a2a4a",
         }}>
-          <div style={{ color: "#8892b0", fontSize: "11px", marginBottom: "8px", fontWeight: "600", letterSpacing: "0.5px" }}>بيانات تجريبية</div>
-          <div style={{ color: "#a0a8c0", fontSize: "13px", marginBottom: "4px" }}>👤 admin / admin123</div>
-          <div style={{ color: "#a0a8c0", fontSize: "13px" }}>👤 cashier / cashier123</div>
+          <div style={{ color: "var(--text2)", fontSize: "11px", marginBottom: "8px", fontWeight: "600", letterSpacing: "0.5px" }}>بيانات تجريبية</div>
+          <div style={{ color: "var(--text2)", fontSize: "13px", marginBottom: "4px" }}>👤 admin / admin123</div>
+          <div style={{ color: "var(--text2)", fontSize: "13px" }}>👤 cashier / cashier123</div>
         </div>
       </div>
     </div>

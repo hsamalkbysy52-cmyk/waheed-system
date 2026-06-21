@@ -77,8 +77,8 @@ function DynamicRoundTable({ w, h, seats, occupied, editMode, selected, tableNum
   const chairSz = Math.max(10, Math.min(16, minDim * 0.16));
   const tableR  = minDim / 2 - chairSz * 1.35;
   const chairR  = tableR + chairSz * 0.75;
-  const statusC = editMode ? "#64748b" : occupied ? "#ef4444" : "#22c55e";
-  const bordC   = selected ? "#f59e0b" : editMode ? TABLE_STROKE : statusC;
+  const statusC = editMode ? "var(--muted)" : occupied ? "var(--red)" : "var(--green)";
+  const bordC   = selected ? "var(--gold)" : editMode ? TABLE_STROKE : statusC;
 
   return (
     <svg width={w} height={h} style={{ overflow: "visible", display: "block" }}>
@@ -99,7 +99,7 @@ function DynamicRoundTable({ w, h, seats, occupied, editMode, selected, tableNum
       {/* Table number */}
       {tableNumber != null && (
         <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" direction="ltr"
-          fill={editMode ? "#f1f5f9" : occupied ? "#ef4444" : "#22c55e"}
+          fill={editMode ? "var(--text)" : occupied ? "var(--red)" : "var(--green)"}
           fontSize={Math.max(9, Math.min(16, tableR * 0.62))} fontWeight="800"
           fontFamily="Arial,sans-serif">
           {tableNumber}
@@ -108,7 +108,7 @@ function DynamicRoundTable({ w, h, seats, occupied, editMode, selected, tableNum
       {/* Status dot (live only) */}
       {!editMode && (
         <circle cx={cx + tableR * 0.58} cy={cy - tableR * 0.58} r={4}
-          fill={statusC} stroke="#111118" strokeWidth={1.5} />
+          fill={statusC} stroke="var(--surface)" strokeWidth={1.5} />
       )}
       {/* Chairs */}
       {Array.from({ length: seats }, (_, i) => {
@@ -133,8 +133,8 @@ function DynamicRectangularTable({ w, h, seats, occupied, editMode, selected, ta
   const tot     = chairSz * 0.50 + chairSz * 0.42;  // sh + bh
   const half    = tot / 2;
   const layout  = getChairLayout(seats);
-  const statusC = editMode ? "#64748b" : occupied ? "#ef4444" : "#22c55e";
-  const bordC   = selected ? "#f59e0b" : editMode ? TABLE_STROKE : statusC;
+  const statusC = editMode ? "var(--muted)" : occupied ? "var(--red)" : "var(--green)";
+  const bordC   = selected ? "var(--gold)" : editMode ? TABLE_STROKE : statusC;
 
   const span = (n: number, len: number, off: number) =>
     Array.from({ length: n }, (_, i) => off + len * (i + 1) / (n + 1));
@@ -166,7 +166,7 @@ function DynamicRectangularTable({ w, h, seats, occupied, editMode, selected, ta
       {tableNumber != null && (
         <text x={tx + tw / 2} y={ty + th / 2 + 1}
           textAnchor="middle" dominantBaseline="middle" direction="ltr"
-          fill={editMode ? "#f1f5f9" : occupied ? "#ef4444" : "#22c55e"}
+          fill={editMode ? "var(--text)" : occupied ? "var(--red)" : "var(--green)"}
           fontSize={Math.max(9, Math.min(16, th * 0.38))} fontWeight="800"
           fontFamily="Arial,sans-serif">
           {tableNumber}
@@ -175,7 +175,7 @@ function DynamicRectangularTable({ w, h, seats, occupied, editMode, selected, ta
       {/* Status dot (live only) */}
       {!editMode && (
         <circle cx={tx + tw - 10} cy={ty + 10} r={4}
-          fill={statusC} stroke="#111118" strokeWidth={1.5} />
+          fill={statusC} stroke="var(--surface)" strokeWidth={1.5} />
       )}
       {/* Chairs — each side's center is half a chair away from the table edge */}
       {topXs.map((x, i)   => <Chair key={`t${i}`} cx={x}           cy={ty - half}      angleDeg={270} size={chairSz} />)}
@@ -218,8 +218,8 @@ function CanvasEl({ el, editMode, selected, occupied, onDown, onResizeDown }: {
             style={{
               position: "absolute", right: -5, bottom: -5,
               width: 14, height: 14, zIndex: 10,
-              background: selected ? "#f59e0b" : "#334155",
-              border: `1px solid ${selected ? "#d97706" : "#475569"}`,
+              background: selected ? "var(--gold)" : "var(--subtle)",
+              border: `1px solid ${selected ? "var(--gold2)" : "var(--text2)"}`,
               borderRadius: 3, cursor: "se-resize",
             }}
           />
@@ -229,8 +229,8 @@ function CanvasEl({ el, editMode, selected, occupied, onDown, onResizeDown }: {
   }
 
   /* Wall / Door */
-  const bg   = isWall ? "#2d3748" : "#1a2744";
-  const bord = selected ? "#f59e0b" : isWall ? "#4a5568" : "#3b82f6";
+  const bg   = isWall ? "var(--subtle)" : "#1a2744";
+  const bord = selected ? "var(--gold)" : isWall ? "#4a5568" : "#3b82f6";
   return (
     <div
       onMouseDown={onDown}
@@ -241,15 +241,15 @@ function CanvasEl({ el, editMode, selected, occupied, onDown, onResizeDown }: {
         cursor: editMode ? "grab" : "default", userSelect: "none", boxSizing: "border-box",
       }}
     >
-      {isWall  && <div style={{ color: "#94a3b8", fontSize: 9, opacity: 0.6 }}>جدار</div>}
+      {isWall  && <div style={{ color: "var(--text2)", fontSize: 9, opacity: 0.6 }}>جدار</div>}
       {!isWall && <div style={{ fontSize: 14 }}>🚪</div>}
       {editMode && (
         <div
           onMouseDown={e => { e.stopPropagation(); onResizeDown(e); }}
           style={{
             position: "absolute", right: -5, bottom: -5, width: 14, height: 14,
-            background: selected ? "#f59e0b" : "#334155",
-            border: `1px solid ${selected ? "#d97706" : "#475569"}`,
+            background: selected ? "var(--gold)" : "var(--subtle)",
+            border: `1px solid ${selected ? "var(--gold2)" : "var(--text2)"}`,
             borderRadius: 3, cursor: "se-resize",
           }}
         />
@@ -458,19 +458,19 @@ export default function TablesPage() {
 
   const inputSt: React.CSSProperties = {
     width: "100%", padding: "6px 8px",
-    background: "#0a0a0f", border: "1px solid #252535",
-    borderRadius: 8, color: "#f1f5f9",
+    background: "var(--bg)", border: "1px solid #252535",
+    borderRadius: 8, color: "var(--text)",
     fontSize: 12, boxSizing: "border-box",
   };
 
   return (
-    <div style={{ padding: 24, background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
+    <div style={{ padding: 24, background: "var(--bg)", minHeight: "100vh", direction: "rtl" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editMode ? 18 : 24 }}>
         <div>
-          <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>🪑 خريطة الطاولات</h1>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12 }}>
+          <h1 style={{ margin: 0, color: "var(--text)", fontSize: 20, fontWeight: 700 }}>🪑 خريطة الطاولات</h1>
+          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
             {editMode
               ? `${elements.length} عنصر • اسحب من القائمة الجانبية للإضافة`
               : loading ? "جاري التحميل..."
@@ -482,29 +482,29 @@ export default function TablesPage() {
             <button onClick={saveLayout} disabled={saving} style={{
               padding: "9px 20px", fontSize: 13, fontWeight: 700,
               cursor: saving ? "not-allowed" : "pointer", borderRadius: 12, border: "none",
-              background: saved ? "rgba(34,197,94,0.15)" : saving ? "#252535" : "linear-gradient(135deg,#f59e0b,#d97706)",
-              color: saved ? "#22c55e" : saving ? "#64748b" : "#000",
+              background: saved ? "rgba(34,197,94,0.15)" : saving ? "var(--border)" : "linear-gradient(135deg,#f59e0b,#d97706)",
+              color: saved ? "var(--green)" : saving ? "var(--muted)" : "#000",
             }}>
               {saved ? "✅ تم الحفظ" : saving ? "⏳..." : "💾 حفظ المخطط"}
             </button>
           )}
           <button
             onClick={() => setShowQuickSetup(true)}
-            style={{ padding: "9px 18px", background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+            style={{ padding: "9px 18px", background: "rgba(34,197,94,0.1)", color: "var(--green)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
           >
             ⚡ إعداد سريع
           </button>
           {elements.length > 0 && (
             confirmClear ? (
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ color: "#ef4444", fontSize: 12 }}>تأكيد المسح؟</span>
-                <button onClick={clearLayout} style={{ padding: "7px 14px", background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>نعم</button>
-                <button onClick={() => setConfirmClear(false)} style={{ padding: "7px 12px", background: "transparent", color: "#64748b", border: "1px solid #252535", borderRadius: 10, cursor: "pointer", fontSize: 12 }}>لا</button>
+                <span style={{ color: "var(--red)", fontSize: 12 }}>تأكيد المسح؟</span>
+                <button onClick={clearLayout} style={{ padding: "7px 14px", background: "rgba(239,68,68,0.15)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>نعم</button>
+                <button onClick={() => setConfirmClear(false)} style={{ padding: "7px 12px", background: "transparent", color: "var(--muted)", border: "1px solid #252535", borderRadius: 10, cursor: "pointer", fontSize: 12 }}>لا</button>
               </div>
             ) : (
               <button
                 onClick={() => setConfirmClear(true)}
-                style={{ padding: "9px 18px", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                style={{ padding: "9px 18px", background: "rgba(239,68,68,0.08)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
               >
                 🗑️ مسح المخطط
               </button>
@@ -515,14 +515,14 @@ export default function TablesPage() {
             style={{
               padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", borderRadius: 12,
               background: editMode ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
-              color: editMode ? "#ef4444" : "#f59e0b",
+              color: editMode ? "var(--red)" : "var(--gold)",
               border: `1px solid ${editMode ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.25)"}`,
             }}
           >
             {editMode ? "✕ إنهاء التعديل" : "✏️ تعديل المخطط"}
           </button>
           {!editMode && (
-            <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+            <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "var(--gold)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
               🔄 تحديث
             </button>
           )}
@@ -537,10 +537,10 @@ export default function TablesPage() {
             { label: "متاحة",             value: tableEls.length - occupiedCount,                                        color: "#22c55e", icon: "🟢" },
             { label: "الإيرادات الحالية", value: `${orders.reduce((s, o) => s + o.total_price, 0).toLocaleString()} د.ع`, color: "#f59e0b", icon: "💰" },
           ].map(s => (
-            <div key={s.label} style={{ background: "#111118", border: `1px solid ${s.color}20`, borderRadius: 14, padding: "14px 18px" }}>
+            <div key={s.label} style={{ background: "var(--surface)", border: `1px solid ${s.color}20`, borderRadius: 14, padding: "14px 18px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
               <div style={{ color: s.color, fontSize: 22, fontWeight: 800 }}>{s.value}</div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>{s.label}</div>
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -551,8 +551,8 @@ export default function TablesPage() {
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
 
           {/* Palette sidebar */}
-          <div style={{ width: 160, flexShrink: 0, background: "#111118", border: "1px solid #252535", borderRadius: 16, padding: 14, maxHeight: 640, overflowY: "auto" }}>
-            <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", marginBottom: 10 }}>عناصر</div>
+          <div style={{ width: 160, flexShrink: 0, background: "var(--surface)", border: "1px solid #252535", borderRadius: 16, padding: 14, maxHeight: 640, overflowY: "auto" }}>
+            <div style={{ color: "var(--text2)", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", marginBottom: 10 }}>عناصر</div>
             {PALETTE.map(p => (
               <div key={p.type}
                 onMouseDown={e => {
@@ -561,7 +561,7 @@ export default function TablesPage() {
                   setGhostPos({ x: e.clientX, y: e.clientY });
                   setGhostVisible(true);
                 }}
-                style={{ padding: "10px 12px", marginBottom: 7, background: "#1c1c28", border: "1px solid #252535", borderRadius: 10, cursor: "grab", userSelect: "none" }}
+                style={{ padding: "10px 12px", marginBottom: 7, background: "var(--raised)", border: "1px solid #252535", borderRadius: 10, cursor: "grab", userSelect: "none" }}
               >
                 {/* Mini preview in palette */}
                 <div style={{ width: p.dw * 0.55, height: p.dh * 0.55, margin: "0 auto 6px", overflow: "visible", pointerEvents: "none" }}>
@@ -572,29 +572,29 @@ export default function TablesPage() {
                     <DynamicRectangularTable w={p.dw * 0.55} h={p.dh * 0.55} seats={6} occupied={false} editMode={true} selected={false} />
                   )}
                   {(p.type === "wall" || p.type === "door") && (
-                    <div style={{ width: "100%", height: "100%", background: p.type === "wall" ? "#2d3748" : "#1a2744", border: "1px solid #4a5568", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "100%", height: "100%", background: p.type === "wall" ? "var(--subtle)" : "#1a2744", border: "1px solid #4a5568", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <span style={{ fontSize: 14 }}>{p.icon}</span>
                     </div>
                   )}
                 </div>
-                <div style={{ color: "#f1f5f9", fontSize: 11, fontWeight: 600, textAlign: "center" }}>{p.label}</div>
-                <div style={{ color: "#334155", fontSize: 9, marginTop: 1, textAlign: "center" }}>اسحب للوضع</div>
+                <div style={{ color: "var(--text)", fontSize: 11, fontWeight: 600, textAlign: "center" }}>{p.label}</div>
+                <div style={{ color: "var(--subtle)", fontSize: 9, marginTop: 1, textAlign: "center" }}>اسحب للوضع</div>
               </div>
             ))}
 
             {/* Properties panel */}
             <div style={{ marginTop: 14, borderTop: "1px solid #1c1c28", paddingTop: 14 }}>
-              <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", marginBottom: 10 }}>خصائص</div>
+              <div style={{ color: "var(--text2)", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", marginBottom: 10 }}>خصائص</div>
               {selectedEl ? (<>
-                <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: 9, padding: "8px 10px", marginBottom: 10 }}>
-                  <div style={{ color: "#64748b", fontSize: 9, marginBottom: 3 }}>الحجم: {selectedEl.w}×{selectedEl.h}</div>
-                  <div style={{ color: "#64748b", fontSize: 9 }}>
+                <div style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: 9, padding: "8px 10px", marginBottom: 10 }}>
+                  <div style={{ color: "var(--muted)", fontSize: 9, marginBottom: 3 }}>الحجم: {selectedEl.w}×{selectedEl.h}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 9 }}>
                     {selectedEl.type === "round_table" ? "دائرية" : selectedEl.type === "rect_table" ? "عائلية" : selectedEl.type === "wall" ? "جدار" : "باب"}
                   </div>
                 </div>
                 {(selectedEl.type === "round_table" || selectedEl.type === "rect_table") && (<>
                   <div style={{ marginBottom: 8 }}>
-                    <label style={{ color: "#64748b", fontSize: 10, display: "block", marginBottom: 3 }}>رقم الطاولة</label>
+                    <label style={{ color: "var(--muted)", fontSize: 10, display: "block", marginBottom: 3 }}>رقم الطاولة</label>
                     <input type="number" min="1" value={selectedEl.tableNumber ?? ""}
                       onChange={e => {
                         const v = parseInt(e.target.value);
@@ -604,7 +604,7 @@ export default function TablesPage() {
                     />
                   </div>
                   <div style={{ marginBottom: 10 }}>
-                    <label style={{ color: "#64748b", fontSize: 10, display: "block", marginBottom: 3 }}>السعة (أشخاص)</label>
+                    <label style={{ color: "var(--muted)", fontSize: 10, display: "block", marginBottom: 3 }}>السعة (أشخاص)</label>
                     <input type="number" min="1" max="10" value={selectedEl.capacity ?? ""}
                       onChange={e => {
                         const v = parseInt(e.target.value);
@@ -616,12 +616,12 @@ export default function TablesPage() {
                 </>)}
                 <button
                   onClick={() => { setElements(els => els.filter(el => el.id !== selected)); setSelected(null); }}
-                  style={{ width: "100%", padding: 7, background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                  style={{ width: "100%", padding: 7, background: "rgba(239,68,68,0.1)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                 >
                   🗑️ حذف
                 </button>
               </>) : (
-                <div style={{ color: "#334155", fontSize: 11, textAlign: "center", padding: "20px 0" }}>اختر عنصراً لتعديله</div>
+                <div style={{ color: "var(--subtle)", fontSize: 11, textAlign: "center", padding: "20px 0" }}>اختر عنصراً لتعديله</div>
               )}
             </div>
           </div>
@@ -633,9 +633,9 @@ export default function TablesPage() {
               onMouseDown={e => { if (e.target === e.currentTarget) setSelected(null); }}
               style={{
                 width: "100%", height: canvasH,
-                background: "#111118",
+                background: "var(--surface)",
                 position: "relative",
-                backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px)",
+                backgroundImage: "linear-gradient(var(--inner) 1px,transparent 1px),linear-gradient(90deg,var(--inner) 1px,transparent 1px)",
                 backgroundSize: `${GRID}px ${GRID}px`,
                 cursor: ghostVisible ? "crosshair" : "default",
               }}
@@ -643,7 +643,7 @@ export default function TablesPage() {
               {elements.length === 0 && (
                 <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
                   <div style={{ fontSize: 48, opacity: 0.1, marginBottom: 12 }}>🏠</div>
-                  <div style={{ color: "#252535", fontSize: 13 }}>اسحب العناصر من الشريط الجانبي</div>
+                  <div style={{ color: "var(--border)", fontSize: 13 }}>اسحب العناصر من الشريط الجانبي</div>
                 </div>
               )}
               {elements.map(el => (
@@ -668,11 +668,11 @@ export default function TablesPage() {
         /* ════ LIVE MODE ════ */
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "flex-start" }}>
           <div style={{ border: "1px solid #252535", borderRadius: 16, height: 560, overflow: "auto" }}>
-            <div ref={canvasRef} style={{ background: "#111118", position: "relative", height: canvasH, minWidth: "100%" }}>
+            <div ref={canvasRef} style={{ background: "var(--surface)", position: "relative", height: canvasH, minWidth: "100%" }}>
             {elements.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
                 <div style={{ fontSize: 48, opacity: 0.12, marginBottom: 4 }}>🏠</div>
-                <div style={{ color: "#64748b", fontSize: 14, marginBottom: 4 }}>اختر طريقة إنشاء الطاولات</div>
+                <div style={{ color: "var(--muted)", fontSize: 14, marginBottom: 4 }}>اختر طريقة إنشاء الطاولات</div>
                 <div style={{ display: "flex", gap: 14 }}>
                   {/* Quick Setup option */}
                   <div
@@ -685,14 +685,14 @@ export default function TablesPage() {
                     }}
                   >
                     <div style={{ fontSize: 36, marginBottom: 10 }}>⚡</div>
-                    <div style={{ color: "#22c55e", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>إعداد سريع</div>
-                    <div style={{ color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+                    <div style={{ color: "var(--green)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>إعداد سريع</div>
+                    <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>
                       أنشئ طاولات دائرية بعدد تختاره
                       <br />مثالي للمطاعم السريعة
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center", marginTop: 12 }}>
                       {Array.from({ length: 6 }, (_, i) => (
-                        <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: "#22c55e", opacity: 0.5 }} />
+                        <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--green)", opacity: 0.5 }} />
                       ))}
                     </div>
                   </div>
@@ -707,15 +707,15 @@ export default function TablesPage() {
                     }}
                   >
                     <div style={{ fontSize: 36, marginBottom: 10 }}>✏️</div>
-                    <div style={{ color: "#f59e0b", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>تصميم مخصص</div>
-                    <div style={{ color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+                    <div style={{ color: "var(--gold)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>تصميم مخصص</div>
+                    <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>
                       صمم مخطط المطعم بالكامل
                       <br />طاولات وجدران وأبواب
                     </div>
                     <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 12, alignItems: "center" }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#f59e0b", opacity: 0.4 }} />
-                      <div style={{ width: 30, height: 18, borderRadius: 4, background: "#f59e0b", opacity: 0.4 }} />
-                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#f59e0b", opacity: 0.4 }} />
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--gold)", opacity: 0.4 }} />
+                      <div style={{ width: 30, height: 18, borderRadius: 4, background: "var(--gold)", opacity: 0.4 }} />
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--gold)", opacity: 0.4 }} />
                     </div>
                   </div>
                 </div>
@@ -741,39 +741,39 @@ export default function TablesPage() {
           <div style={{ width: 270, flexShrink: 0 }}>
             {activeTable ? (
               occupiedTables.has(activeTable) ? (
-                <div style={{ background: "#111118", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 18, padding: 20, borderTop: "4px solid #f59e0b" }}>
-                  <div style={{ color: "#f59e0b", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>طاولة {activeTable}</div>
-                  <div style={{ color: "#94a3b8", fontSize: 11, marginBottom: 16 }}>{activeTableOrders.length} طلب نشط</div>
+                <div style={{ background: "var(--surface)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 18, padding: 20, borderTop: "4px solid #f59e0b" }}>
+                  <div style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>طاولة {activeTable}</div>
+                  <div style={{ color: "var(--text2)", fontSize: 11, marginBottom: 16 }}>{activeTableOrders.length} طلب نشط</div>
                   {activeTableOrders.map(o => (
-                    <div key={o.id} style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                    <div key={o.id} style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: 12, padding: 14, marginBottom: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ color: "#f1f5f9", fontSize: 13, fontWeight: 700 }}>طلب #{o.id}</span>
-                        <span style={{ color: "#64748b", fontSize: 11 }}>⏱ {elapsedStr(o.created_at)}</span>
+                        <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>طلب #{o.id}</span>
+                        <span style={{ color: "var(--muted)", fontSize: 11 }}>⏱ {elapsedStr(o.created_at)}</span>
                       </div>
                       {(o.items ?? []).slice(0, 4).map((it, j) => (
-                        <div key={j} style={{ color: "#94a3b8", fontSize: 12, marginBottom: 2 }}>• {it.name}</div>
+                        <div key={j} style={{ color: "var(--text2)", fontSize: 12, marginBottom: 2 }}>• {it.name}</div>
                       ))}
-                      <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
+                      <div style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
                         {o.total_price.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ background: "#111118", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
-                  <div style={{ color: "#22c55e", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>QR Code</div>
-                  <div style={{ color: "#f1f5f9", fontSize: 18, fontWeight: 800, marginBottom: 16 }}>طاولة {activeTable}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
+                  <div style={{ color: "var(--green)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>QR Code</div>
+                  <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 16 }}>طاولة {activeTable}</div>
                   {qrBase ? (<>
                     <div style={{ background: "white", padding: 14, borderRadius: 14, display: "inline-block", marginBottom: 12, boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
                       <QRCode value={`${qrBase}/table/${activeTable}`} size={160} />
                     </div>
-                    <div style={{ background: "#0a0a0f", border: "1px solid #252535", borderRadius: 10, padding: "8px 10px", marginBottom: 12, cursor: "pointer" }}
+                    <div style={{ background: "var(--bg)", border: "1px solid #252535", borderRadius: 10, padding: "8px 10px", marginBottom: 12, cursor: "pointer" }}
                       onClick={() => navigator.clipboard.writeText(`${qrBase}/table/${activeTable}`).catch(() => {})}>
-                      <div style={{ color: "#64748b", fontSize: 9, marginBottom: 3, textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
-                      <div style={{ color: "#94a3b8", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{`${qrBase}/table/${activeTable}`}</div>
+                      <div style={{ color: "var(--muted)", fontSize: 9, marginBottom: 3, textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
+                      <div style={{ color: "var(--text2)", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{`${qrBase}/table/${activeTable}`}</div>
                     </div>
                   </>) : (
-                    <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>⏳</div>
+                    <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>⏳</div>
                   )}
                   <button onClick={() => window.print()} style={{ width: "100%", padding: 11, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
                     🖨️ طباعة
@@ -781,10 +781,10 @@ export default function TablesPage() {
                 </div>
               )
             ) : (
-              <div style={{ background: "#111118", border: "1px dashed #252535", borderRadius: 18, padding: "48px 20px", textAlign: "center" }}>
+              <div style={{ background: "var(--surface)", border: "1px dashed #252535", borderRadius: 18, padding: "48px 20px", textAlign: "center" }}>
                 <div style={{ fontSize: 44, marginBottom: 14, opacity: 0.25 }}>🪑</div>
-                <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>اختر طاولة لعرض التفاصيل</p>
-                <p style={{ color: "#334155", margin: "6px 0 0", fontSize: 11 }}>🟢 متاحة  🔴 مشغولة</p>
+                <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>اختر طاولة لعرض التفاصيل</p>
+                <p style={{ color: "var(--subtle)", margin: "6px 0 0", fontSize: 11 }}>🟢 متاحة  🔴 مشغولة</p>
               </div>
             )}
           </div>
@@ -799,40 +799,40 @@ export default function TablesPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#111118", border: "1px solid #252535", borderRadius: 20, padding: "28px 28px 24px", width: 380, direction: "rtl", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
+            style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: 20, padding: "28px 28px 24px", width: 380, direction: "rtl", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
           >
-            <div style={{ color: "#f1f5f9", fontSize: 18, fontWeight: 800, marginBottom: 4 }}>⚡ إعداد سريع</div>
-            <div style={{ color: "#64748b", fontSize: 12, marginBottom: 24 }}>
+            <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 4 }}>⚡ إعداد سريع</div>
+            <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 24 }}>
               طاولات دائرية مرتبة بشكل تلقائي — مثالي للمطاعم السريعة
             </div>
 
             {/* Counter */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>عدد الطاولات</div>
+              <div style={{ color: "var(--text2)", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>عدد الطاولات</div>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
                 <button
                   onClick={() => setQuickCount(c => Math.max(1, c - 1))}
-                  style={{ width: 40, height: 40, borderRadius: "50%", background: "#1c1c28", border: "1px solid #252535", color: "#f1f5f9", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
+                  style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--raised)", border: "1px solid #252535", color: "var(--text)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
                 >−</button>
-                <div style={{ flex: 1, textAlign: "center", color: "#f59e0b", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{quickCount}</div>
+                <div style={{ flex: 1, textAlign: "center", color: "var(--gold)", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{quickCount}</div>
                 <button
                   onClick={() => setQuickCount(c => Math.min(100, c + 1))}
-                  style={{ width: 40, height: 40, borderRadius: "50%", background: "#1c1c28", border: "1px solid #252535", color: "#f1f5f9", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
+                  style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--raised)", border: "1px solid #252535", color: "var(--text)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
                 >+</button>
               </div>
               <input
                 type="range" min={1} max={100} value={quickCount}
                 onChange={e => setQuickCount(parseInt(e.target.value))}
-                style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer" }}
+                style={{ width: "100%", accentColor: "var(--gold)", cursor: "pointer" }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 10, marginTop: 2 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "var(--subtle)", fontSize: 10, marginTop: 2 }}>
                 <span>١</span><span>٥٠</span><span>١٠٠</span>
               </div>
             </div>
 
             {/* Dots preview */}
-            <div style={{ background: "#0a0a0f", border: "1px solid #1c1c28", borderRadius: 12, padding: "12px 14px", marginBottom: 22, minHeight: 58 }}>
-              <div style={{ color: "#334155", fontSize: 10, marginBottom: 8 }}>معاينة — {quickCount} طاولة</div>
+            <div style={{ background: "var(--bg)", border: "1px solid #1c1c28", borderRadius: 12, padding: "12px 14px", marginBottom: 22, minHeight: 58 }}>
+              <div style={{ color: "var(--subtle)", fontSize: 10, marginBottom: 8 }}>معاينة — {quickCount} طاولة</div>
               {(() => {
                 const dotSz = quickCount <= 30 ? 20 : quickCount <= 60 ? 14 : 10;
                 const gap   = quickCount <= 60 ? 4 : 3;
@@ -844,7 +844,7 @@ export default function TablesPage() {
                         width: dotSz, height: dotSz, borderRadius: "50%",
                         background: "rgba(34,197,94,0.25)", border: "1px solid rgba(34,197,94,0.5)",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 7, color: "#22c55e", fontWeight: 700,
+                        fontSize: 7, color: "var(--green)", fontWeight: 700,
                       }}>{showNums ? i + 1 : ""}</div>
                     ))}
                   </div>
@@ -855,7 +855,7 @@ export default function TablesPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => setShowQuickSetup(false)}
-                style={{ flex: 1, padding: 11, background: "rgba(100,116,139,0.1)", color: "#94a3b8", border: "1px solid #252535", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                style={{ flex: 1, padding: 11, background: "rgba(100,116,139,0.1)", color: "var(--text2)", border: "1px solid #252535", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
               >إلغاء</button>
               <button
                 onClick={handleQuickSetup}

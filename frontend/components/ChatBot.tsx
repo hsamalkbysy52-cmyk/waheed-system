@@ -101,7 +101,7 @@ export default function ChatBot() {
         style={{
           position: "fixed", bottom: "28px", left: "28px",
           width: "60px", height: "60px", borderRadius: "50%",
-          background: open ? "#1c1c28" : "linear-gradient(135deg,#f59e0b,#d97706)",
+          background: open ? "var(--raised)" : "linear-gradient(135deg,#f59e0b,#d97706)",
           color: "white", border: open ? "1px solid #252535" : "none",
           cursor: "pointer", fontSize: "26px", zIndex: 1000,
           boxShadow: open ? "0 4px 16px rgba(0,0,0,0.4)" : "0 8px 28px rgba(245,158,11,0.5)",
@@ -117,7 +117,7 @@ export default function ChatBot() {
         <div style={{
           position: "fixed", bottom: "104px", left: "28px",
           width: "340px", height: "520px",
-          background: "#111118", border: "1px solid #252535",
+          background: "var(--surface)", border: "1px solid #252535",
           borderRadius: "20px", zIndex: 1000,
           display: "flex", flexDirection: "column",
           boxShadow: "0 28px 70px rgba(0,0,0,0.8)",
@@ -128,20 +128,20 @@ export default function ChatBot() {
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #252535", background: "rgba(245,158,11,0.05)", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
             <span style={{ fontSize: "28px" }}>🤖</span>
             <div>
-              <div style={{ color: "#f59e0b", fontWeight: "700", fontSize: "15px" }}>مساعد Waheed</div>
-              <div style={{ color: "#64748b", fontSize: "11px" }}>مدعوم بـ GPT-4o ✨</div>
+              <div style={{ color: "var(--gold)", fontWeight: "700", fontSize: "15px" }}>مساعد Waheed</div>
+              <div style={{ color: "var(--muted)", fontSize: "11px" }}>مدعوم بـ GPT-4o ✨</div>
             </div>
           </div>
 
           {/* Messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
             {msgs.length === 0 && (
-              <div style={{ textAlign: "center", color: "#64748b", marginTop: "24px" }}>
+              <div style={{ textAlign: "center", color: "var(--muted)", marginTop: "24px" }}>
                 <div style={{ fontSize: "38px", marginBottom: "10px" }}>👋</div>
                 <p style={{ fontSize: "13px", marginBottom: "16px" }}>أهلاً! كيف أقدر أساعدك؟</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {SUGGESTIONS.map((s) => (
-                    <button key={s} onClick={() => send(s)} style={{ padding: "8px 14px", background: "#16161f", border: "1px solid #252535", borderRadius: "20px", color: "#94a3b8", cursor: "pointer", fontSize: "12px" }}>{s}</button>
+                    <button key={s} onClick={() => send(s)} style={{ padding: "8px 14px", background: "var(--card)", border: "1px solid #252535", borderRadius: "20px", color: "var(--text2)", cursor: "pointer", fontSize: "12px" }}>{s}</button>
                   ))}
                 </div>
               </div>
@@ -155,9 +155,9 @@ export default function ChatBot() {
                     <div style={{
                       maxWidth: "84%", padding: "10px 14px", borderRadius: "16px",
                       fontSize: "13px", lineHeight: "1.6",
-                      background: m.role === "user" ? "rgba(245,158,11,0.1)" : "#1c1c28",
-                      color: "#f1f5f9",
-                      border: `1px solid ${m.role === "user" ? "rgba(245,158,11,0.25)" : "#252535"}`,
+                      background: m.role === "user" ? "rgba(245,158,11,0.1)" : "var(--raised)",
+                      color: "var(--text)",
+                      border: `1px solid ${m.role === "user" ? "rgba(245,158,11,0.25)" : "var(--border)"}`,
                       borderBottomRightRadius: m.role === "user" ? "4px" : "16px",
                       borderBottomLeftRadius:  m.role === "assistant" ? "4px" : "16px",
                       whiteSpace: "pre-wrap",
@@ -170,18 +170,18 @@ export default function ChatBot() {
                   {proposal && (
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
                       <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "14px", padding: "12px 14px", maxWidth: "84%" }}>
-                        <div style={{ color: "#94a3b8", fontSize: "11px", marginBottom: "8px" }}>📋 الطاولة {proposal.table} • {proposal.items.length} صنف</div>
+                        <div style={{ color: "var(--text2)", fontSize: "11px", marginBottom: "8px" }}>📋 الطاولة {proposal.table} • {proposal.items.length} صنف</div>
                         {proposal.items.map((it, j) => (
-                          <div key={j} style={{ color: "#f1f5f9", fontSize: "12px", marginBottom: "3px" }}>• {it.name} ×{it.quantity}</div>
+                          <div key={j} style={{ color: "var(--text)", fontSize: "12px", marginBottom: "3px" }}>• {it.name} ×{it.quantity}</div>
                         ))}
                         <button
                           onClick={() => confirmOrder(proposal)}
                           disabled={placing}
                           style={{
                             marginTop: "10px", width: "100%", padding: "9px",
-                            background: placing ? "#252535" : "rgba(34,197,94,0.15)",
-                            color: placing ? "#64748b" : "#22c55e",
-                            border: `1px solid ${placing ? "#252535" : "rgba(34,197,94,0.35)"}`,
+                            background: placing ? "var(--border)" : "rgba(34,197,94,0.15)",
+                            color: placing ? "var(--muted)" : "var(--green)",
+                            border: `1px solid ${placing ? "var(--border)" : "rgba(34,197,94,0.35)"}`,
                             borderRadius: "10px", cursor: placing ? "not-allowed" : "pointer",
                             fontSize: "13px", fontWeight: "700",
                           }}
@@ -197,7 +197,7 @@ export default function ChatBot() {
 
             {loading && (
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div style={{ background: "#1c1c28", border: "1px solid #252535", borderRadius: "16px", borderBottomLeftRadius: "4px", padding: "10px 16px", color: "#64748b", fontSize: "13px" }}>
+                <div style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: "16px", borderBottomLeftRadius: "4px", padding: "10px 16px", color: "var(--muted)", fontSize: "13px" }}>
                   ⏳ يفكر...
                 </div>
               </div>
@@ -212,12 +212,12 @@ export default function ChatBot() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="اكتب سؤالك..."
-              style={{ flex: 1, padding: "10px 14px", background: "#0a0a0f", border: "1px solid #252535", borderRadius: "12px", color: "white", fontSize: "13px" }}
+              style={{ flex: 1, padding: "10px 14px", background: "var(--bg)", border: "1px solid #252535", borderRadius: "12px", color: "white", fontSize: "13px" }}
             />
             <button
               onClick={() => send()}
               disabled={loading}
-              style={{ padding: "10px 16px", background: loading ? "#252535" : "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: loading ? "not-allowed" : "pointer", fontSize: "18px" }}
+              style={{ padding: "10px 16px", background: loading ? "var(--border)" : "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: "12px", cursor: loading ? "not-allowed" : "pointer", fontSize: "18px" }}
             >←</button>
           </div>
         </div>
