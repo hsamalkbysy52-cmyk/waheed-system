@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DndContext, DragEndEvent, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import NewOrderDrawer from "@/components/NewOrderDrawer";
@@ -331,41 +331,39 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete, isMax }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete, onMaximize }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
   onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
   onInvoice: (order: Order) => void; paidIds: Set<number>;
-  onComplete: (id: number) => void; isMax?: boolean;
+  onComplete: (id: number) => void; onMaximize: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
-    <div style={{
-      flex: 1,
-      minWidth: isMax ? 0 : "260px",
-      maxWidth: isMax ? "none" : "320px",
-      ...(isMax ? { display: "flex", flexDirection: "column" } : {}),
-    }}>
+    <div style={{ flex: 1, minWidth: "260px", maxWidth: "320px" }}>
       <div style={{
         background: `${stage.color}10`, border: `1px solid ${stage.color}25`,
         borderRadius: "14px", padding: "10px 14px", marginBottom: "12px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        flexShrink: 0,
       }}>
         <span style={{ color: stage.color, fontWeight: "700", fontSize: "13px" }}>{stage.label}</span>
-        <span style={{ background: `${stage.color}20`, color: stage.color, borderRadius: "20px", padding: "2px 9px", fontSize: "12px", fontWeight: "700" }}>{orders.length}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ background: `${stage.color}20`, color: stage.color, borderRadius: "20px", padding: "2px 9px", fontSize: "12px", fontWeight: "700" }}>{orders.length}</span>
+          <button
+            onClick={onMaximize}
+            title="تكبير"
+            style={{ width: "26px", height: "26px", borderRadius: "7px", background: "rgba(255,255,255,0.05)", border: "1px solid #252535", color: "#475569", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+          >⛶</button>
+        </div>
       </div>
 
       <div
         ref={setNodeRef}
         style={{
-          borderRadius: "12px",
+          minHeight: "180px", borderRadius: "12px",
           border: isOver ? `2px dashed ${stage.color}50` : "2px solid transparent",
           background: isOver ? `${stage.color}06` : "transparent",
           transition: "all 0.15s", padding: "2px",
-          ...(isMax
-            ? { flex: 1, overflowY: "auto" }
-            : { minHeight: "180px" }),
         }}
       >
         {orders.map(o => (
@@ -407,22 +405,7 @@ export default function KanbanPage() {
   const [editError, setEditError]           = useState("");
   const [deletingId, setDeletingId]         = useState<number | null>(null);
 
-  const kanbanRef = useRef<HTMLDivElement>(null);
-  const [isMax, setIsMax] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setIsMax(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  const toggleMax = () => {
-    if (!document.fullscreenElement && kanbanRef.current) {
-      kanbanRef.current.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  };
+  const [maxedStage, setMaxedStage] = useState<Stage | null>(null);
 
   const fetchOrders = useCallback(async () => {
     // Always load local (offline) orders — works without internet
@@ -587,18 +570,8 @@ export default function KanbanPage() {
   const active  = orders.length;
 
   return (
-    <div
-      ref={kanbanRef}
-      style={{
-        padding: isMax ? "16px 16px 0" : "24px 24px 0",
-        background: "#0a0a0f",
-        direction: "rtl",
-        ...(isMax
-          ? { height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }
-          : { minHeight: "100vh" }),
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexShrink: 0 }}>
+    <div style={{ padding: "24px 24px 0", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>📋 لوحة الطلبات</h1>
           <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
@@ -621,28 +594,54 @@ export default function KanbanPage() {
           <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             🔄 تحديث
           </button>
-          <button onClick={toggleMax} style={{ padding: "9px 16px", background: isMax ? "rgba(99,102,241,0.18)" : "rgba(99,102,241,0.1)", color: "#818cf8", border: `1px solid ${isMax ? "rgba(99,102,241,0.45)" : "rgba(99,102,241,0.25)"}`, borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
-            {isMax ? "⊡ تصغير" : "⛶ تكبير"}
-          </button>
         </div>
       </div>
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div style={{
-          display: "flex", gap: "14px",
-          alignItems: isMax ? "stretch" : "flex-start",
-          ...(isMax
-            ? { flex: 1, overflowX: "hidden", overflowY: "hidden", paddingBottom: "16px" }
-            : { overflowX: "auto", paddingBottom: "24px" }),
-        }}>
+        <div style={{ display: "flex", gap: "14px", overflowX: "auto", paddingBottom: "24px", alignItems: "flex-start" }}>
           {STAGES.map(s => (
             <Column key={s.id} stage={s} orders={byStage(s.id)} now={now}
               onNext={next} onPrev={prev}
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
               onInvoice={setInvoiceOrder} paidIds={paidIds}
-              onComplete={completeOrder} isMax={isMax} />
+              onComplete={completeOrder} onMaximize={() => setMaxedStage(s.id)} />
           ))}
         </div>
+
+        {/* ── Maximized single-stage overlay ── */}
+        {maxedStage !== null && (() => {
+          const stage = STAGES.find(s => s.id === maxedStage)!;
+          const stageOrders = byStage(maxedStage);
+          return (
+            <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "#0a0a0f", direction: "rtl", display: "flex", flexDirection: "column" }}>
+              {/* Header */}
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1c1c28", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <span style={{ color: stage.color, fontWeight: "800", fontSize: "18px" }}>{stage.label}</span>
+                  <span style={{ background: `${stage.color}20`, color: stage.color, borderRadius: "20px", padding: "3px 12px", fontSize: "13px", fontWeight: "700" }}>{stageOrders.length} طلب</span>
+                </div>
+                <button
+                  onClick={() => setMaxedStage(null)}
+                  style={{ padding: "9px 18px", background: "rgba(100,116,139,0.12)", color: "#94a3b8", border: "1px solid #252535", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}
+                >⊡ تصغير</button>
+              </div>
+              {/* Grid of cards */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px", alignContent: "start" }}>
+                {stageOrders.length === 0 && (
+                  <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#334155", paddingTop: "60px", fontSize: "14px" }}>لا يوجد طلبات</div>
+                )}
+                {stageOrders.map(o => (
+                  <Card key={o.id} order={o} stage={maxedStage} now={now}
+                    onNext={() => next(o.id)} onPrev={() => prev(o.id)}
+                    onEdit={() => openEdit(o)} onDelete={() => deleteOrder(o.id)}
+                    isDeleting={deletingId === o.id}
+                    onInvoice={() => setInvoiceOrder(o)} isPaid={paidIds.has(o.id)}
+                    onComplete={() => completeOrder(o.id)} />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </DndContext>
 
       {/* ── Edit Order Modal ── */}
