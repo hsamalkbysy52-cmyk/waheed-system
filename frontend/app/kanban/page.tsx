@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DndContext, DragEndEvent, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import NewOrderDrawer from "@/components/NewOrderDrawer";
@@ -331,20 +331,26 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete, isMax }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
   onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
   onInvoice: (order: Order) => void; paidIds: Set<number>;
-  onComplete: (id: number) => void;
+  onComplete: (id: number) => void; isMax?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
-    <div style={{ flex: 1, minWidth: "260px", maxWidth: "320px" }}>
+    <div style={{
+      flex: 1,
+      minWidth: isMax ? 0 : "260px",
+      maxWidth: isMax ? "none" : "320px",
+      ...(isMax ? { display: "flex", flexDirection: "column" } : {}),
+    }}>
       <div style={{
         background: `${stage.color}10`, border: `1px solid ${stage.color}25`,
         borderRadius: "14px", padding: "10px 14px", marginBottom: "12px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexShrink: 0,
       }}>
         <span style={{ color: stage.color, fontWeight: "700", fontSize: "13px" }}>{stage.label}</span>
         <span style={{ background: `${stage.color}20`, color: stage.color, borderRadius: "20px", padding: "2px 9px", fontSize: "12px", fontWeight: "700" }}>{orders.length}</span>
@@ -353,10 +359,13 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
       <div
         ref={setNodeRef}
         style={{
-          minHeight: "180px", borderRadius: "12px",
+          borderRadius: "12px",
           border: isOver ? `2px dashed ${stage.color}50` : "2px solid transparent",
           background: isOver ? `${stage.color}06` : "transparent",
           transition: "all 0.15s", padding: "2px",
+          ...(isMax
+            ? { flex: 1, overflowY: "auto" }
+            : { minHeight: "180px" }),
         }}
       >
         {orders.map(o => (
@@ -397,6 +406,23 @@ export default function KanbanPage() {
   const [savingEdit, setSavingEdit]         = useState(false);
   const [editError, setEditError]           = useState("");
   const [deletingId, setDeletingId]         = useState<number | null>(null);
+
+  const kanbanRef = useRef<HTMLDivElement>(null);
+  const [isMax, setIsMax] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsMax(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleMax = () => {
+    if (!document.fullscreenElement && kanbanRef.current) {
+      kanbanRef.current.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const fetchOrders = useCallback(async () => {
     // Always load local (offline) orders — works without internet
@@ -561,8 +587,18 @@ export default function KanbanPage() {
   const active  = orders.length;
 
   return (
-    <div style={{ padding: "24px 24px 0", background: "#0a0a0f", minHeight: "100vh", direction: "rtl" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+    <div
+      ref={kanbanRef}
+      style={{
+        padding: isMax ? "16px 16px 0" : "24px 24px 0",
+        background: "#0a0a0f",
+        direction: "rtl",
+        ...(isMax
+          ? { height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }
+          : { minHeight: "100vh" }),
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexShrink: 0 }}>
         <div>
           <h1 style={{ margin: 0, color: "#f1f5f9", fontSize: "20px", fontWeight: "700" }}>📋 لوحة الطلبات</h1>
           <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "12px" }}>
@@ -585,17 +621,26 @@ export default function KanbanPage() {
           <button onClick={fetchOrders} style={{ padding: "9px 18px", background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
             🔄 تحديث
           </button>
+          <button onClick={toggleMax} style={{ padding: "9px 16px", background: isMax ? "rgba(99,102,241,0.18)" : "rgba(99,102,241,0.1)", color: "#818cf8", border: `1px solid ${isMax ? "rgba(99,102,241,0.45)" : "rgba(99,102,241,0.25)"}`, borderRadius: "12px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+            {isMax ? "⊡ تصغير" : "⛶ تكبير"}
+          </button>
         </div>
       </div>
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div style={{ display: "flex", gap: "14px", overflowX: "auto", paddingBottom: "24px", alignItems: "flex-start" }}>
+        <div style={{
+          display: "flex", gap: "14px",
+          alignItems: isMax ? "stretch" : "flex-start",
+          ...(isMax
+            ? { flex: 1, overflowX: "hidden", overflowY: "hidden", paddingBottom: "16px" }
+            : { overflowX: "auto", paddingBottom: "24px" }),
+        }}>
           {STAGES.map(s => (
             <Column key={s.id} stage={s} orders={byStage(s.id)} now={now}
               onNext={next} onPrev={prev}
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
               onInvoice={setInvoiceOrder} paidIds={paidIds}
-              onComplete={completeOrder} />
+              onComplete={completeOrder} isMax={isMax} />
           ))}
         </div>
       </DndContext>
