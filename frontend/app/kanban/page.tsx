@@ -660,17 +660,15 @@ export default function KanbanPage() {
                   {/* Table picker */}
                   <div style={{ padding: "12px 14px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
                     <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px" }}>🪑 الطاولة</div>
-                    <button onClick={() => setEditTable(0)}
-                      style={{ width: "100%", padding: "7px", borderRadius: "8px", marginBottom: "6px",
-                        background: editTable === 0 ? "rgba(99,102,241,0.18)" : "#1c1c28",
-                        color: editTable === 0 ? "#818cf8" : "#64748b",
-                        border: `1px solid ${editTable === 0 ? "rgba(99,102,241,0.5)" : "#252535"}`,
-                        cursor: "pointer", fontSize: "12px", fontWeight: editTable === 0 ? "800" : "500",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                      }}>
-                      <span>🛵</span><span>سفري</span>
-                    </button>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "100px", overflowY: "auto" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "108px", overflowY: "auto" }}>
+                      <button onClick={() => setEditTable(0)}
+                        style={{ gridColumn: "span 2", padding: "8px 2px", borderRadius: "8px",
+                          background: editTable === 0 ? "rgba(99,102,241,0.18)" : "#1c1c28",
+                          color: editTable === 0 ? "#818cf8" : "#64748b",
+                          border: `1px solid ${editTable === 0 ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                          cursor: "pointer", fontSize: "12px", fontWeight: editTable === 0 ? "800" : "500",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
+                        }}>🛵 سفري</button>
                       {tableList.map(t => (
                         <button key={t} onClick={() => setEditTable(t)}
                           style={{ padding: "8px 2px", borderRadius: "8px", background: editTable === t ? "rgba(245,158,11,0.2)" : "#1c1c28", color: editTable === t ? "#f59e0b" : "#64748b", border: `1px solid ${editTable === t ? "rgba(245,158,11,0.5)" : "#252535"}`, cursor: "pointer", fontSize: "13px", fontWeight: editTable === t ? "800" : "500" }}>{t}</button>

@@ -594,32 +594,34 @@ export default function NewOrderDrawer({
           <div style={{ flex: "0 0 40%", display: "flex", flexDirection: "column", background: "#0d0d14", overflow: "hidden" }}>
 
             {/* Table picker */}
-            <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
-              <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "7px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
+            <div style={{ padding: "10px 14px 8px", borderBottom: "1px solid #1c1c28", flexShrink: 0 }}>
+              <div style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600", marginBottom: "6px", letterSpacing: "0.5px" }}>🪑 اختر الطاولة</div>
 
-              {/* Takeaway button */}
-              <button
-                onClick={() => setTable(TAKEAWAY)}
-                style={{
-                  width: "100%", padding: "9px", borderRadius: "10px", marginBottom: "7px",
-                  background: table === TAKEAWAY ? "rgba(99,102,241,0.18)" : "#1c1c28",
-                  color: table === TAKEAWAY ? "#818cf8" : "#64748b",
-                  border: `1px solid ${table === TAKEAWAY ? "rgba(99,102,241,0.5)" : "#252535"}`,
-                  cursor: "pointer", fontSize: "13px", fontWeight: table === TAKEAWAY ? "800" : "500",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
-                }}
-              >
-                <span>🛵</span><span>سفري</span>
-              </button>
+              {/* Scrollable grid — سفري is first cell, then numbered tables */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "4px", maxHeight: "110px", overflowY: "auto" }}>
 
-              {/* Table grid — scrollable for many tables */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "5px", maxHeight: "130px", overflowY: "auto" }}>
+                {/* سفري — spans 2 columns so it stands out */}
+                <button
+                  onClick={() => setTable(TAKEAWAY)}
+                  style={{
+                    gridColumn: "span 2",
+                    padding: "9px 4px", borderRadius: "9px",
+                    background: table === TAKEAWAY ? "rgba(99,102,241,0.2)" : "#1c1c28",
+                    color: table === TAKEAWAY ? "#818cf8" : "#64748b",
+                    border: `1px solid ${table === TAKEAWAY ? "rgba(99,102,241,0.5)" : "#252535"}`,
+                    cursor: "pointer", fontSize: "12px", fontWeight: table === TAKEAWAY ? "800" : "500",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
+                  }}
+                >
+                  🛵 سفري
+                </button>
+
                 {tableList.map((t) => (
                   <button
                     key={t}
                     onClick={() => setTable(t)}
                     style={{
-                      padding: "10px 4px", borderRadius: "10px",
+                      padding: "9px 4px", borderRadius: "9px",
                       background: table === t ? "rgba(245,158,11,0.2)" : "#1c1c28",
                       color: table === t ? "#f59e0b" : "#64748b",
                       border: `1px solid ${table === t ? "rgba(245,158,11,0.55)" : "#252535"}`,
