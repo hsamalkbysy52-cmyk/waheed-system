@@ -379,7 +379,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           })),
         }))
       );
-      const r = await fetch("/api/orders/qr-create", {
+      const r = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || null }),
