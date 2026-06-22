@@ -11,7 +11,7 @@ const TABLE_STROKE   = "#333333";
 const TABLE_STROKE_W = 2;
 
 type ElementType = "round_table" | "rect_table" | "wall" | "door";
-type LayoutEl    = { id: string; type: ElementType; x: number; y: number; w: number; h: number; tableNumber?: number; capacity?: number };
+type LayoutEl    = { id: string; type: ElementType; x: number; y: number; w: number; h: number; tableNumber?: number; capacity?: number; zone?: string };
 type Order       = { id: number; table_number: number; total_price: number; status: string; created_at: string; items?: { name: string; price: number; category: string }[] };
 type ZoneSetup   = { id: string; name: string; count: number; tableType: "round_table" | "rect_table" };
 
@@ -285,6 +285,10 @@ export default function TablesPage() {
   const [zones, setZones]             = useState<ZoneSetup[]>([{ id: "z1", name: "🏠 الصالة الرئيسية", count: 10, tableType: "round_table" }]);
   const [activeZoneId, setActiveZoneId] = useState("z1");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [activeZoneTab, setActiveZoneTab]         = useState<string | null>(null);
+  const [editingZone, setEditingZone]             = useState<string | null>(null);
+  const [editingZoneInput, setEditingZoneInput]   = useState("");
+  const [confirmDeleteZone, setConfirmDeleteZone] = useState<string | null>(null);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
   const resizing    = useRef<{ id: string; mx: number; my: number; ow: number; oh: number } | null>(null);
@@ -305,6 +309,7 @@ export default function TablesPage() {
           w: e.w as number, h: e.h as number,
           tableNumber: (e.table_number as number) ?? undefined,
           capacity:    (e.capacity    as number) ?? undefined,
+          zone:        (e.label as string) || undefined,
         })));
       }
     } catch {}
@@ -402,7 +407,7 @@ export default function TablesPage() {
             x: el.x, y: el.y, w: el.w, h: el.h,
             table_number: el.tableNumber ?? null,
             capacity:     el.capacity    ?? null,
-            label: "",
+            label: el.zone ?? "",
           })),
         }),
       });
@@ -427,12 +432,14 @@ export default function TablesPage() {
           w: tw, h: th,
           tableNumber: tableNum,
           capacity: isRect ? 6 : 4,
+          zone: zone.name,
         });
         tableNum++;
       }
       zoneStartY += Math.ceil(zone.count / cols) * (th + gapY) + zoneGap;
     }
     setElements(newEls);
+    setActiveZoneTab(null);
     setShowQuickSetup(false);
     setSaving(true);
     try {
@@ -445,7 +452,7 @@ export default function TablesPage() {
             x: el.x, y: el.y, w: el.w, h: el.h,
             table_number: el.tableNumber ?? null,
             capacity: el.capacity ?? null,
-            label: "",
+            label: el.zone ?? "",
           })),
         }),
       });
@@ -467,12 +474,53 @@ export default function TablesPage() {
     }).catch(() => {});
   };
 
+  const toApiEl = (el: LayoutEl) => ({
+    element_id: el.id, element_type: el.type,
+    x: el.x, y: el.y, w: el.w, h: el.h,
+    table_number: el.tableNumber ?? null,
+    capacity: el.capacity ?? null,
+    label: el.zone ?? "",
+  });
+
+  const deleteZone = async (zoneName: string) => {
+    const newEls = elements.filter(e => e.zone !== zoneName);
+    setElements(newEls);
+    if (activeZoneTab === zoneName) setActiveZoneTab(null);
+    setConfirmDeleteZone(null);
+    setSaving(true);
+    try {
+      await fetch(`${API}/table-layout/save`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elements: newEls.map(toApiEl) }),
+      });
+    } finally { setSaving(false); }
+  };
+
+  const renameZone = async (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    setEditingZone(null);
+    if (!trimmed || trimmed === oldName) return;
+    const newEls = elements.map(el => el.zone === oldName ? { ...el, zone: trimmed } : el);
+    setElements(newEls);
+    if (activeZoneTab === oldName) setActiveZoneTab(trimmed);
+    setSaving(true);
+    try {
+      await fetch(`${API}/table-layout/save`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elements: newEls.map(toApiEl) }),
+      });
+    } finally { setSaving(false); }
+  };
+
   const occupiedTables    = new Set(orders.map(o => o.table_number));
   const tableEls          = elements.filter(e => e.type === "round_table" || e.type === "rect_table");
   const occupiedCount     = tableEls.filter(e => e.tableNumber && occupiedTables.has(e.tableNumber)).length;
   const selectedEl        = elements.find(e => e.id === selected);
   const activeTableOrders = activeTable ? orders.filter(o => o.table_number === activeTable) : [];
-  const canvasH = Math.max(560, elements.length > 0 ? Math.max(...elements.map(e => e.y + e.h)) + 80 : 560);
+  const uniqueZones      = [...new Set(elements.filter(e => e.zone).map(e => e.zone!))];
+  const hasZones         = uniqueZones.length > 0;
+  const liveEls          = activeZoneTab ? elements.filter(e => e.zone === activeZoneTab) : elements;
+  const canvasH          = Math.max(560, liveEls.length > 0 ? Math.max(...liveEls.map(e => e.y + e.h)) + 80 : 560);
 
   const inputSt: React.CSSProperties = {
     width: "100%", padding: "6px 8px",
@@ -684,136 +732,177 @@ export default function TablesPage() {
 
       ) : (
         /* ════ LIVE MODE ════ */
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "flex-start" }}>
-          <div style={{ border: "1px solid #252535", borderRadius: 16, height: 560, overflow: "auto" }}>
-            <div ref={canvasRef} style={{ background: "var(--surface)", position: "relative", height: canvasH, minWidth: "100%" }}>
-            {elements.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
-                <div style={{ fontSize: 48, opacity: 0.12, marginBottom: 4 }}>🏠</div>
-                <div style={{ color: "var(--muted)", fontSize: 14, marginBottom: 4 }}>اختر طريقة إنشاء الطاولات</div>
-                <div style={{ display: "flex", gap: 14 }}>
-                  {/* Quick Setup option */}
-                  <div
-                    onClick={() => setShowQuickSetup(true)}
-                    style={{
-                      width: 180, padding: "20px 16px", cursor: "pointer",
-                      background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.25)",
-                      borderRadius: 16, textAlign: "center",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>⚡</div>
-                    <div style={{ color: "var(--green)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>إعداد سريع</div>
-                    <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>
-                      أنشئ طاولات دائرية بعدد تختاره
-                      <br />مثالي للمطاعم السريعة
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center", marginTop: 12 }}>
-                      {Array.from({ length: 6 }, (_, i) => (
-                        <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--green)", opacity: 0.5 }} />
-                      ))}
-                    </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* ── Zone tabs ── */}
+          {hasZones && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, alignItems: "center" }}>
+              {/* "All" tab */}
+              <button
+                onClick={() => setActiveZoneTab(null)}
+                style={{
+                  padding: "7px 16px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0,
+                  background: activeZoneTab === null ? "rgba(245,158,11,0.15)" : "var(--surface)",
+                  color: activeZoneTab === null ? "var(--gold)" : "var(--muted)",
+                  border: `1px solid ${activeZoneTab === null ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                }}
+              >🏠 الكل ({elements.filter(e => e.type === "round_table" || e.type === "rect_table").length})</button>
+
+              {/* Per-zone tabs */}
+              {uniqueZones.map(zone => {
+                const zoneTableCount = elements.filter(e => e.zone === zone && (e.type === "round_table" || e.type === "rect_table")).length;
+                const isActive = activeZoneTab === zone;
+                return (
+                  <div key={zone} style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    {editingZone === zone ? (
+                      <input
+                        autoFocus
+                        value={editingZoneInput}
+                        onChange={e => setEditingZoneInput(e.target.value)}
+                        onBlur={() => renameZone(zone, editingZoneInput)}
+                        onKeyDown={e => { if (e.key === "Enter") renameZone(zone, editingZoneInput); if (e.key === "Escape") setEditingZone(null); }}
+                        style={{ padding: "5px 10px", borderRadius: 8, background: "var(--bg)", border: "1px solid var(--gold)", color: "var(--text)", fontSize: 12, width: 120 }}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setActiveZoneTab(isActive ? null : zone)}
+                        style={{
+                          padding: "7px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700,
+                          background: isActive ? "rgba(245,158,11,0.15)" : "var(--surface)",
+                          color: isActive ? "var(--gold)" : "var(--text2)",
+                          border: `1px solid ${isActive ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                        }}
+                      >{zone} ({zoneTableCount})</button>
+                    )}
+                    {/* Edit zone name */}
+                    <button
+                      onClick={() => { setEditingZone(zone); setEditingZoneInput(zone); }}
+                      title="تعديل الاسم"
+                      style={{ background: "none", border: "none", color: "var(--subtle)", fontSize: 12, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                    >✏️</button>
+                    {/* Delete zone */}
+                    {confirmDeleteZone === zone ? (
+                      <>
+                        <span style={{ color: "var(--red)", fontSize: 11, fontWeight: 700 }}>حذف؟</span>
+                        <button onClick={() => deleteZone(zone)} style={{ padding: "3px 8px", background: "rgba(239,68,68,0.15)", color: "var(--red)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 6, cursor: "pointer", fontSize: 11 }}>نعم</button>
+                        <button onClick={() => setConfirmDeleteZone(null)} style={{ padding: "3px 6px", background: "none", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11 }}>لا</button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteZone(zone)}
+                        title="حذف المنطقة"
+                        style={{ background: "none", border: "none", color: "var(--subtle)", fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                      >×</button>
+                    )}
                   </div>
-                  {/* Custom layout option */}
-                  <div
-                    onClick={() => setEditMode(true)}
-                    style={{
-                      width: 180, padding: "20px 16px", cursor: "pointer",
-                      background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)",
-                      borderRadius: 16, textAlign: "center",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>✏️</div>
-                    <div style={{ color: "var(--gold)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>تصميم مخصص</div>
-                    <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>
-                      صمم مخطط المطعم بالكامل
-                      <br />طاولات وجدران وأبواب
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Canvas + Side panel ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 24, alignItems: "flex-start" }}>
+            <div style={{ border: "1px solid var(--border)", borderRadius: 16, height: 560, overflow: "auto" }}>
+              <div ref={canvasRef} style={{ background: "var(--surface)", position: "relative", height: canvasH, minWidth: "100%" }}>
+              {elements.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
+                  <div style={{ fontSize: 48, opacity: 0.12, marginBottom: 4 }}>🏠</div>
+                  <div style={{ color: "var(--muted)", fontSize: 14, marginBottom: 4 }}>اختر طريقة إنشاء الطاولات</div>
+                  <div style={{ display: "flex", gap: 14 }}>
+                    <div onClick={() => setShowQuickSetup(true)} style={{ width: 180, padding: "20px 16px", cursor: "pointer", background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 16, textAlign: "center" }}>
+                      <div style={{ fontSize: 36, marginBottom: 10 }}>⚡</div>
+                      <div style={{ color: "var(--green)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>إعداد سريع</div>
+                      <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>أنشئ طاولات بمناطق<br />مثالي للمطاعم السريعة</div>
                     </div>
-                    <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 12, alignItems: "center" }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--gold)", opacity: 0.4 }} />
-                      <div style={{ width: 30, height: 18, borderRadius: 4, background: "var(--gold)", opacity: 0.4 }} />
-                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--gold)", opacity: 0.4 }} />
+                    <div onClick={() => setEditMode(true)} style={{ width: 180, padding: "20px 16px", cursor: "pointer", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 16, textAlign: "center" }}>
+                      <div style={{ fontSize: 36, marginBottom: 10 }}>✏️</div>
+                      <div style={{ color: "var(--gold)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>تصميم مخصص</div>
+                      <div style={{ color: "var(--muted)", fontSize: 11, lineHeight: 1.5 }}>صمم مخطط المطعم بالكامل<br />طاولات وجدران وأبواب</div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              elements.map(el => {
-                const isTable = el.type === "round_table" || el.type === "rect_table";
-                const occ = isTable && el.tableNumber ? occupiedTables.has(el.tableNumber) : false;
-                return (
-                  <CanvasEl key={el.id} el={el} editMode={false}
-                    selected={isTable && activeTable === el.tableNumber}
-                    occupied={occ}
-                    onDown={() => { if (isTable && el.tableNumber) setActiveTable(t => t === el.tableNumber ? null : el.tableNumber!); }}
-                    onResizeDown={() => {}}
-                  />
-                );
-              })
-            )}
-            </div>
-          </div>
-
-          {/* Side panel */}
-          <div style={{ width: 270, flexShrink: 0 }}>
-            {activeTable ? (
-              occupiedTables.has(activeTable) ? (
-                <div style={{ background: "var(--surface)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 18, padding: 20, borderTop: "4px solid #f59e0b" }}>
-                  <div style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>طاولة {activeTable}</div>
-                  <div style={{ color: "var(--text2)", fontSize: 11, marginBottom: 16 }}>{activeTableOrders.length} طلب نشط</div>
-                  {activeTableOrders.map(o => (
-                    <div key={o.id} style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: 12, padding: 14, marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>طلب #{o.id}</span>
-                        <span style={{ color: "var(--muted)", fontSize: 11 }}>⏱ {elapsedStr(o.created_at)}</span>
-                      </div>
-                      {(o.items ?? []).slice(0, 4).map((it, j) => (
-                        <div key={j} style={{ color: "var(--text2)", fontSize: 12, marginBottom: 2 }}>• {it.name}</div>
-                      ))}
-                      <div style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
-                        {o.total_price.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
-                      </div>
-                    </div>
-                  ))}
+              ) : liveEls.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+                  <div style={{ fontSize: 40, opacity: 0.15 }}>🔍</div>
+                  <div style={{ color: "var(--muted)", fontSize: 13 }}>لا توجد طاولات في هذه المنطقة</div>
                 </div>
               ) : (
-                <div style={{ background: "var(--surface)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
-                  <div style={{ color: "var(--green)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>QR Code</div>
-                  <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 16 }}>طاولة {activeTable}</div>
-                  {qrBase ? (<>
-                    <div style={{ background: "white", padding: 14, borderRadius: 14, display: "inline-block", marginBottom: 12, boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
-                      <QRCode value={`${qrBase}/table/${activeTable}`} size={160} />
-                    </div>
-                    <div style={{ background: "var(--bg)", border: "1px solid #252535", borderRadius: 10, padding: "8px 10px", marginBottom: 12, cursor: "pointer" }}
-                      onClick={() => navigator.clipboard.writeText(`${qrBase}/table/${activeTable}`).catch(() => {})}>
-                      <div style={{ color: "var(--muted)", fontSize: 9, marginBottom: 3, textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
-                      <div style={{ color: "var(--text2)", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{`${qrBase}/table/${activeTable}`}</div>
-                    </div>
-                  </>) : (
-                    <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>⏳</div>
-                  )}
-                  <button onClick={() => window.print()} style={{ width: "100%", padding: 11, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
-                    🖨️ طباعة
-                  </button>
-                </div>
-              )
-            ) : (
-              <div style={{ background: "var(--surface)", border: "1px dashed #252535", borderRadius: 18, padding: "48px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: 44, marginBottom: 14, opacity: 0.25 }}>🪑</div>
-                <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>اختر طاولة لعرض التفاصيل</p>
-                <p style={{ color: "var(--subtle)", margin: "6px 0 0", fontSize: 11 }}>🟢 متاحة  🔴 مشغولة</p>
+                liveEls.map(el => {
+                  const isTable = el.type === "round_table" || el.type === "rect_table";
+                  const occ = isTable && el.tableNumber ? occupiedTables.has(el.tableNumber) : false;
+                  return (
+                    <CanvasEl key={el.id} el={el} editMode={false}
+                      selected={isTable && activeTable === el.tableNumber}
+                      occupied={occ}
+                      onDown={() => { if (isTable && el.tableNumber) setActiveTable(t => t === el.tableNumber ? null : el.tableNumber!); }}
+                      onResizeDown={() => {}}
+                    />
+                  );
+                })
+              )}
               </div>
-            )}
+            </div>
+
+            {/* Side panel */}
+            <div style={{ width: 270, flexShrink: 0 }}>
+              {activeTable ? (
+                occupiedTables.has(activeTable) ? (
+                  <div style={{ background: "var(--surface)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 18, padding: 20, borderTop: "4px solid #f59e0b" }}>
+                    <div style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>طاولة {activeTable}</div>
+                    <div style={{ color: "var(--text2)", fontSize: 11, marginBottom: 16 }}>{activeTableOrders.length} طلب نشط</div>
+                    {activeTableOrders.map(o => (
+                      <div key={o.id} style={{ background: "var(--raised)", border: "1px solid #252535", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                          <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>طلب #{o.id}</span>
+                          <span style={{ color: "var(--muted)", fontSize: 11 }}>⏱ {elapsedStr(o.created_at)}</span>
+                        </div>
+                        {(o.items ?? []).slice(0, 4).map((it, j) => (
+                          <div key={j} style={{ color: "var(--text2)", fontSize: 12, marginBottom: 2 }}>• {it.name}</div>
+                        ))}
+                        <div style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
+                          {o.total_price.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ background: "var(--surface)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
+                    <div style={{ color: "var(--green)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>QR Code</div>
+                    <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 16 }}>طاولة {activeTable}</div>
+                    {qrBase ? (<>
+                      <div style={{ background: "white", padding: 14, borderRadius: 14, display: "inline-block", marginBottom: 12, boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
+                        <QRCode value={`${qrBase}/table/${activeTable}`} size={160} />
+                      </div>
+                      <div style={{ background: "var(--bg)", border: "1px solid #252535", borderRadius: 10, padding: "8px 10px", marginBottom: 12, cursor: "pointer" }}
+                        onClick={() => navigator.clipboard.writeText(`${qrBase}/table/${activeTable}`).catch(() => {})}>
+                        <div style={{ color: "var(--muted)", fontSize: 9, marginBottom: 3, textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
+                        <div style={{ color: "var(--text2)", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{`${qrBase}/table/${activeTable}`}</div>
+                      </div>
+                    </>) : (
+                      <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>⏳</div>
+                    )}
+                    <button onClick={() => window.print()} style={{ width: "100%", padding: 11, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                      🖨️ طباعة
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: 18, padding: "48px 20px", textAlign: "center" }}>
+                  <div style={{ fontSize: 44, marginBottom: 14, opacity: 0.25 }}>🪑</div>
+                  <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>اختر طاولة لعرض التفاصيل</p>
+                  <p style={{ color: "var(--subtle)", margin: "6px 0 0", fontSize: 11 }}>🟢 متاحة  🔴 مشغولة</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Quick Setup Modal ── */}
       {showQuickSetup && (() => {
-        const activeZone = zones.find(z => z.id === activeZoneId) ?? zones[0];
+        const activeZone  = zones.find(z => z.id === activeZoneId) ?? zones[0];
         const totalTables = zones.reduce((s, z) => s + z.count, 0);
-        const updateZone = (patch: Partial<ZoneSetup>) =>
+        const updateZone  = (patch: Partial<ZoneSetup>) =>
           setZones(zs => zs.map(z => z.id === activeZoneId ? { ...z, ...patch } : z));
         const addZone = () => {
           const id = `z${Date.now().toString(36)}`;
@@ -826,9 +915,9 @@ export default function TablesPage() {
           setZones(remaining);
           if (activeZoneId === id) setActiveZoneId(remaining[0].id);
         };
-        const dotSz     = activeZone.count <= 30 ? 18 : activeZone.count <= 60 ? 13 : 9;
-        const dotGap    = activeZone.count <= 60 ? 4 : 3;
-        const showNums  = activeZone.count <= 30;
+        const dotSz    = activeZone.count <= 30 ? 18 : activeZone.count <= 60 ? 13 : 9;
+        const dotGap   = activeZone.count <= 60 ? 4 : 3;
+        const showNums = activeZone.count <= 30;
         return (
           <div
             onClick={() => setShowQuickSetup(false)}
@@ -836,157 +925,148 @@ export default function TablesPage() {
           >
             <div
               onClick={e => e.stopPropagation()}
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 520, maxHeight: "90vh", overflowY: "auto", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.75)" }}
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 600, maxHeight: "90vh", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.75)", display: "flex", flexDirection: "column" }}
             >
-              {/* Modal header */}
-              <div style={{ padding: "24px 24px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                  <div>
-                    <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800 }}>⚡ إعداد سريع للطاولات</div>
-                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>أضف مناطق، اختر الشكل والعدد — سيتم الترقيم تلقائياً</div>
-                  </div>
-                  <button onClick={() => setShowQuickSetup(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 4 }}>✕</button>
+              {/* Header */}
+              <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div>
+                  <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>⚡ إعداد سريع للطاولات</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>أنشئ مناطق واختر طاولاتها — الترقيم تلقائي</div>
                 </div>
-
-                {/* Zone tabs */}
-                <div style={{ display: "flex", gap: 6, marginTop: 18, overflowX: "auto", paddingBottom: 2 }}>
-                  {zones.map(z => (
-                    <div key={z.id} style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      <button
-                        onClick={() => setActiveZoneId(z.id)}
-                        style={{
-                          padding: "7px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700,
-                          background: z.id === activeZoneId ? "rgba(245,158,11,0.15)" : "var(--raised)",
-                          color: z.id === activeZoneId ? "var(--gold)" : "var(--text2)",
-                          border: `1px solid ${z.id === activeZoneId ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
-                          whiteSpace: "nowrap",
-                        }}
-                      >{z.name}</button>
-                      {zones.length > 1 && (
-                        <button
-                          onClick={() => removeZone(z.id)}
-                          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
-                        >×</button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    onClick={addZone}
-                    style={{ padding: "7px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--raised)", color: "var(--text2)", border: "1px dashed var(--border)", flexShrink: 0 }}
-                  >+ إضافة منطقة</button>
-                </div>
+                <button onClick={() => setShowQuickSetup(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>✕</button>
               </div>
 
-              {/* Divider */}
-              <div style={{ height: 1, background: "var(--border)", margin: "16px 0 0" }} />
+              {/* Two-panel body */}
+              <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
 
-              {/* Active zone config */}
-              <div style={{ padding: "20px 24px" }}>
-                {/* Zone name */}
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 8, letterSpacing: "0.4px" }}>اسم المنطقة</div>
-                  <input
-                    value={activeZone.name}
-                    onChange={e => updateZone({ name: e.target.value })}
-                    style={{ width: "100%", padding: "9px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)", fontSize: 13, boxSizing: "border-box", marginBottom: 10 }}
-                  />
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {ZONE_PRESETS.map(p => (
-                      <button
-                        key={p.name}
-                        onClick={() => updateZone({ name: p.name })}
+                {/* Left: zone list */}
+                <div style={{ width: 180, flexShrink: 0, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+                  <div style={{ padding: "12px 14px 8px", color: "var(--muted)", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px" }}>المناطق</div>
+                  <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px" }}>
+                    {zones.map(z => (
+                      <div
+                        key={z.id}
                         style={{
-                          padding: "5px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600,
-                          background: activeZone.name === p.name ? "rgba(245,158,11,0.15)" : "var(--raised)",
-                          color: activeZone.name === p.name ? "var(--gold)" : "var(--text2)",
-                          border: `1px solid ${activeZone.name === p.name ? "rgba(245,158,11,0.35)" : "var(--border)"}`,
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "9px 10px", marginBottom: 4, borderRadius: 10, cursor: "pointer",
+                          background: z.id === activeZoneId ? "rgba(245,158,11,0.12)" : "transparent",
+                          border: `1px solid ${z.id === activeZoneId ? "rgba(245,158,11,0.3)" : "transparent"}`,
                         }}
-                      >{p.name}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Table count */}
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 10, letterSpacing: "0.4px" }}>عدد الطاولات في هذه المنطقة</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <button
-                      onClick={() => updateZone({ count: Math.max(1, activeZone.count - 1) })}
-                      style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
-                    >−</button>
-                    <div style={{ flex: 1, textAlign: "center", color: "var(--gold)", fontSize: 44, fontWeight: 800, lineHeight: 1 }}>{activeZone.count}</div>
-                    <button
-                      onClick={() => updateZone({ count: Math.min(100, activeZone.count + 1) })}
-                      style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
-                    >+</button>
-                  </div>
-                  <input
-                    type="range" min={1} max={50} value={activeZone.count}
-                    onChange={e => updateZone({ count: parseInt(e.target.value) })}
-                    style={{ width: "100%", marginTop: 10, accentColor: "var(--gold)", cursor: "pointer" }}
-                  />
-                </div>
-
-                {/* Table shape */}
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 10, letterSpacing: "0.4px" }}>شكل الطاولات</div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    {([
-                      { value: "round_table", label: "⭕ دائرية", desc: "4 أشخاص" },
-                      { value: "rect_table",  label: "⬜ عائلية",  desc: "6 أشخاص" },
-                    ] as { value: ZoneSetup["tableType"]; label: string; desc: string }[]).map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => updateZone({ tableType: opt.value })}
-                        style={{
-                          flex: 1, padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center",
-                          background: activeZone.tableType === opt.value ? "rgba(245,158,11,0.12)" : "var(--raised)",
-                          color: activeZone.tableType === opt.value ? "var(--gold)" : "var(--text2)",
-                          border: `1.5px solid ${activeZone.tableType === opt.value ? "rgba(245,158,11,0.45)" : "var(--border)"}`,
-                          fontWeight: 700, fontSize: 13,
-                        }}
+                        onClick={() => setActiveZoneId(z.id)}
                       >
-                        <div style={{ fontSize: 22, marginBottom: 4 }}>{opt.label.split(" ")[0]}</div>
-                        <div style={{ fontSize: 12 }}>{opt.label.split(" ").slice(1).join(" ")}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 2 }}>{opt.desc}</div>
-                      </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: z.id === activeZoneId ? "var(--gold)" : "var(--text2)", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{z.name}</div>
+                          <div style={{ color: "var(--subtle)", fontSize: 10, marginTop: 1 }}>{z.count} طاولة</div>
+                        </div>
+                        {zones.length > 1 && (
+                          <button
+                            onClick={e => { e.stopPropagation(); removeZone(z.id); }}
+                            style={{ background: "none", border: "none", color: "var(--subtle)", fontSize: 15, cursor: "pointer", padding: 0, lineHeight: 1, flexShrink: 0 }}
+                          >×</button>
+                        )}
+                      </div>
                     ))}
+                  </div>
+                  <div style={{ padding: "10px", borderTop: "1px solid var(--border)" }}>
+                    <button
+                      onClick={addZone}
+                      style={{ width: "100%", padding: "8px 0", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--raised)", color: "var(--text2)", border: "1px dashed var(--border)" }}
+                    >+ إضافة منطقة</button>
                   </div>
                 </div>
 
-                {/* Dot preview for active zone */}
-                <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 4 }}>
-                  <div style={{ color: "var(--muted)", fontSize: 10, marginBottom: 8 }}>معاينة {activeZone.name} — {activeZone.count} طاولة</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: dotGap }}>
-                    {Array.from({ length: activeZone.count }, (_, i) => (
-                      <div key={i} style={{
-                        width: dotSz, height: dotSz,
-                        borderRadius: activeZone.tableType === "round_table" ? "50%" : 3,
-                        background: "rgba(34,197,94,0.22)", border: "1px solid rgba(34,197,94,0.5)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 6, color: "var(--green)", fontWeight: 700,
-                      }}>{showNums ? i + 1 : ""}</div>
-                    ))}
+                {/* Right: active zone config */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+                  {/* Zone name */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 7, letterSpacing: "0.4px" }}>اسم المنطقة</div>
+                    <input
+                      value={activeZone.name}
+                      onChange={e => updateZone({ name: e.target.value })}
+                      style={{ width: "100%", padding: "8px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)", fontSize: 13, boxSizing: "border-box", marginBottom: 8 }}
+                    />
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {ZONE_PRESETS.map(p => (
+                        <button
+                          key={p.name}
+                          onClick={() => updateZone({ name: p.name })}
+                          style={{
+                            padding: "4px 9px", borderRadius: 7, cursor: "pointer", fontSize: 10, fontWeight: 600,
+                            background: activeZone.name === p.name ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                            color: activeZone.name === p.name ? "var(--gold)" : "var(--text2)",
+                            border: `1px solid ${activeZone.name === p.name ? "rgba(245,158,11,0.35)" : "var(--border)"}`,
+                          }}
+                        >{p.name}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Table count */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 10, letterSpacing: "0.4px" }}>عدد الطاولات</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <button onClick={() => updateZone({ count: Math.max(1, activeZone.count - 1) }) } style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>−</button>
+                      <div style={{ flex: 1, textAlign: "center", color: "var(--gold)", fontSize: 42, fontWeight: 800, lineHeight: 1 }}>{activeZone.count}</div>
+                      <button onClick={() => updateZone({ count: Math.min(100, activeZone.count + 1) })} style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>+</button>
+                    </div>
+                    <input type="range" min={1} max={50} value={activeZone.count} onChange={e => updateZone({ count: parseInt(e.target.value) })} style={{ width: "100%", marginTop: 10, accentColor: "var(--gold)", cursor: "pointer" }} />
+                  </div>
+
+                  {/* Table shape */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 8, letterSpacing: "0.4px" }}>شكل الطاولات</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {([
+                        { value: "round_table", icon: "⭕", label: "دائرية", desc: "4 أشخاص" },
+                        { value: "rect_table",  icon: "⬜", label: "عائلية",  desc: "6 أشخاص" },
+                      ] as { value: ZoneSetup["tableType"]; icon: string; label: string; desc: string }[]).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => updateZone({ tableType: opt.value })}
+                          style={{
+                            flex: 1, padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center",
+                            background: activeZone.tableType === opt.value ? "rgba(245,158,11,0.12)" : "var(--raised)",
+                            color: activeZone.tableType === opt.value ? "var(--gold)" : "var(--text2)",
+                            border: `1.5px solid ${activeZone.tableType === opt.value ? "rgba(245,158,11,0.45)" : "var(--border)"}`,
+                            fontWeight: 700,
+                          }}
+                        >
+                          <div style={{ fontSize: 20, marginBottom: 3 }}>{opt.icon}</div>
+                          <div style={{ fontSize: 12 }}>{opt.label}</div>
+                          <div style={{ color: "var(--subtle)", fontSize: 10, marginTop: 1 }}>{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Preview */}
+                  <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ color: "var(--subtle)", fontSize: 10, marginBottom: 7 }}>معاينة — {activeZone.count} طاولة</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: dotGap }}>
+                      {Array.from({ length: activeZone.count }, (_, i) => (
+                        <div key={i} style={{
+                          width: dotSz, height: dotSz,
+                          borderRadius: activeZone.tableType === "round_table" ? "50%" : 3,
+                          background: "rgba(34,197,94,0.22)", border: "1px solid rgba(34,197,94,0.5)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 6, color: "var(--green)", fontWeight: 700,
+                        }}>{showNums ? i + 1 : ""}</div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
-              <div style={{ borderTop: "1px solid var(--border)", padding: "16px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ borderTop: "1px solid var(--border)", padding: "14px 22px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 <div style={{ flex: 1, color: "var(--text2)", fontSize: 12 }}>
-                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15 }}>{totalTables}</span>
+                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 14 }}>{totalTables}</span>
                   <span> طاولة في </span>
-                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15 }}>{zones.length}</span>
+                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 14 }}>{zones.length}</span>
                   <span> {zones.length === 1 ? "منطقة" : "مناطق"}</span>
                 </div>
-                <button
-                  onClick={() => setShowQuickSetup(false)}
-                  style={{ padding: "10px 18px", background: "var(--raised)", color: "var(--text2)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-                >إلغاء</button>
-                <button
-                  onClick={handleQuickSetup}
-                  style={{ padding: "10px 22px", background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
-                >⚡ إنشاء {totalTables} طاولة</button>
+                <button onClick={() => setShowQuickSetup(false)} style={{ padding: "9px 16px", background: "var(--raised)", color: "var(--text2)", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>إلغاء</button>
+                <button onClick={handleQuickSetup} style={{ padding: "9px 20px", background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#000", border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 800 }}>⚡ إنشاء {totalTables} طاولة</button>
               </div>
             </div>
           </div>
