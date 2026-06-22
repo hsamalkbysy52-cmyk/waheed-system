@@ -13,6 +13,16 @@ const TABLE_STROKE_W = 2;
 type ElementType = "round_table" | "rect_table" | "wall" | "door";
 type LayoutEl    = { id: string; type: ElementType; x: number; y: number; w: number; h: number; tableNumber?: number; capacity?: number };
 type Order       = { id: number; table_number: number; total_price: number; status: string; created_at: string; items?: { name: string; price: number; category: string }[] };
+type ZoneSetup   = { id: string; name: string; count: number; tableType: "round_table" | "rect_table" };
+
+const ZONE_PRESETS = [
+  { name: "🏠 الصالة الداخلية" },
+  { name: "🌿 الصالة الخارجية" },
+  { name: "🏢 الطابق الثاني" },
+  { name: "⭐ VIP" },
+  { name: "🌳 الحديقة" },
+  { name: "🍕 الكاونتر" },
+];
 
 const PALETTE: { type: ElementType; label: string; icon: string; dw: number; dh: number }[] = [
   { type: "round_table", label: "طاولة دائرية", icon: "⭕", dw: 100, dh: 100 },
@@ -272,7 +282,8 @@ export default function TablesPage() {
   const [ghostVisible, setGhostVisible] = useState(false);
   const [ghostPos, setGhostPos]       = useState({ x: 0, y: 0 });
   const [showQuickSetup, setShowQuickSetup] = useState(false);
-  const [quickCount, setQuickCount]   = useState(10);
+  const [zones, setZones]             = useState<ZoneSetup[]>([{ id: "z1", name: "🏠 الصالة الرئيسية", count: 10, tableType: "round_table" }]);
+  const [activeZoneId, setActiveZoneId] = useState("z1");
   const [confirmClear, setConfirmClear] = useState(false);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
@@ -401,19 +412,26 @@ export default function TablesPage() {
   };
 
   const handleQuickSetup = async () => {
-    const cols = 5;
-    const tableW = 100, tableH = 100;
-    const gapX = 35, gapY = 48;
-    const startX = 30, startY = 30;
-    const newEls: LayoutEl[] = Array.from({ length: quickCount }, (_, i) => ({
-      id: `quick_${i + 1}_${Date.now()}_${i}`,
-      type: "round_table" as ElementType,
-      x: startX + (i % cols) * (tableW + gapX),
-      y: startY + Math.floor(i / cols) * (tableH + gapY),
-      w: tableW, h: tableH,
-      tableNumber: i + 1,
-      capacity: 4,
-    }));
+    const cols = 5, gapX = 35, gapY = 48, startX = 30, zoneGap = 70;
+    const newEls: LayoutEl[] = [];
+    let tableNum = 1, zoneStartY = 30;
+    for (const zone of zones) {
+      const isRect = zone.tableType === "rect_table";
+      const tw = isRect ? 140 : 100, th = 100;
+      for (let i = 0; i < zone.count; i++) {
+        newEls.push({
+          id: `quick_${tableNum}_${Date.now()}_${i}`,
+          type: zone.tableType as ElementType,
+          x: startX + (i % cols) * (tw + gapX),
+          y: zoneStartY + Math.floor(i / cols) * (th + gapY),
+          w: tw, h: th,
+          tableNumber: tableNum,
+          capacity: isRect ? 6 : 4,
+        });
+        tableNum++;
+      }
+      zoneStartY += Math.ceil(zone.count / cols) * (th + gapY) + zoneGap;
+    }
     setElements(newEls);
     setShowQuickSetup(false);
     setSaving(true);
@@ -792,79 +810,188 @@ export default function TablesPage() {
       )}
 
       {/* ── Quick Setup Modal ── */}
-      {showQuickSetup && (
-        <div
-          onClick={() => setShowQuickSetup(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
+      {showQuickSetup && (() => {
+        const activeZone = zones.find(z => z.id === activeZoneId) ?? zones[0];
+        const totalTables = zones.reduce((s, z) => s + z.count, 0);
+        const updateZone = (patch: Partial<ZoneSetup>) =>
+          setZones(zs => zs.map(z => z.id === activeZoneId ? { ...z, ...patch } : z));
+        const addZone = () => {
+          const id = `z${Date.now().toString(36)}`;
+          setZones(zs => [...zs, { id, name: "منطقة جديدة", count: 6, tableType: "round_table" }]);
+          setActiveZoneId(id);
+        };
+        const removeZone = (id: string) => {
+          if (zones.length === 1) return;
+          const remaining = zones.filter(z => z.id !== id);
+          setZones(remaining);
+          if (activeZoneId === id) setActiveZoneId(remaining[0].id);
+        };
+        const dotSz     = activeZone.count <= 30 ? 18 : activeZone.count <= 60 ? 13 : 9;
+        const dotGap    = activeZone.count <= 60 ? 4 : 3;
+        const showNums  = activeZone.count <= 30;
+        return (
           <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: 20, padding: "28px 28px 24px", width: 380, direction: "rtl", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
+            onClick={() => setShowQuickSetup(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.78)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 4 }}>⚡ إعداد سريع</div>
-            <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 24 }}>
-              طاولات دائرية مرتبة بشكل تلقائي — مثالي للمطاعم السريعة
-            </div>
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 520, maxHeight: "90vh", overflowY: "auto", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.75)" }}
+            >
+              {/* Modal header */}
+              <div style={{ padding: "24px 24px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <div>
+                    <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800 }}>⚡ إعداد سريع للطاولات</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>أضف مناطق، اختر الشكل والعدد — سيتم الترقيم تلقائياً</div>
+                  </div>
+                  <button onClick={() => setShowQuickSetup(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 4 }}>✕</button>
+                </div>
 
-            {/* Counter */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ color: "var(--text2)", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>عدد الطاولات</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
-                <button
-                  onClick={() => setQuickCount(c => Math.max(1, c - 1))}
-                  style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--raised)", border: "1px solid #252535", color: "var(--text)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
-                >−</button>
-                <div style={{ flex: 1, textAlign: "center", color: "var(--gold)", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{quickCount}</div>
-                <button
-                  onClick={() => setQuickCount(c => Math.min(100, c + 1))}
-                  style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--raised)", border: "1px solid #252535", color: "var(--text)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
-                >+</button>
+                {/* Zone tabs */}
+                <div style={{ display: "flex", gap: 6, marginTop: 18, overflowX: "auto", paddingBottom: 2 }}>
+                  {zones.map(z => (
+                    <div key={z.id} style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setActiveZoneId(z.id)}
+                        style={{
+                          padding: "7px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700,
+                          background: z.id === activeZoneId ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                          color: z.id === activeZoneId ? "var(--gold)" : "var(--text2)",
+                          border: `1px solid ${z.id === activeZoneId ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                          whiteSpace: "nowrap",
+                        }}
+                      >{z.name}</button>
+                      {zones.length > 1 && (
+                        <button
+                          onClick={() => removeZone(z.id)}
+                          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                        >×</button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={addZone}
+                    style={{ padding: "7px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--raised)", color: "var(--text2)", border: "1px dashed var(--border)", flexShrink: 0 }}
+                  >+ إضافة منطقة</button>
+                </div>
               </div>
-              <input
-                type="range" min={1} max={100} value={quickCount}
-                onChange={e => setQuickCount(parseInt(e.target.value))}
-                style={{ width: "100%", accentColor: "var(--gold)", cursor: "pointer" }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", color: "var(--subtle)", fontSize: 10, marginTop: 2 }}>
-                <span>١</span><span>٥٠</span><span>١٠٠</span>
-              </div>
-            </div>
 
-            {/* Dots preview */}
-            <div style={{ background: "var(--bg)", border: "1px solid #1c1c28", borderRadius: 12, padding: "12px 14px", marginBottom: 22, minHeight: 58 }}>
-              <div style={{ color: "var(--subtle)", fontSize: 10, marginBottom: 8 }}>معاينة — {quickCount} طاولة</div>
-              {(() => {
-                const dotSz = quickCount <= 30 ? 20 : quickCount <= 60 ? 14 : 10;
-                const gap   = quickCount <= 60 ? 4 : 3;
-                const showNums = quickCount <= 30;
-                return (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap }}>
-                    {Array.from({ length: quickCount }, (_, i) => (
+              {/* Divider */}
+              <div style={{ height: 1, background: "var(--border)", margin: "16px 0 0" }} />
+
+              {/* Active zone config */}
+              <div style={{ padding: "20px 24px" }}>
+                {/* Zone name */}
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 8, letterSpacing: "0.4px" }}>اسم المنطقة</div>
+                  <input
+                    value={activeZone.name}
+                    onChange={e => updateZone({ name: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)", fontSize: 13, boxSizing: "border-box", marginBottom: 10 }}
+                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {ZONE_PRESETS.map(p => (
+                      <button
+                        key={p.name}
+                        onClick={() => updateZone({ name: p.name })}
+                        style={{
+                          padding: "5px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600,
+                          background: activeZone.name === p.name ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                          color: activeZone.name === p.name ? "var(--gold)" : "var(--text2)",
+                          border: `1px solid ${activeZone.name === p.name ? "rgba(245,158,11,0.35)" : "var(--border)"}`,
+                        }}
+                      >{p.name}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table count */}
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 10, letterSpacing: "0.4px" }}>عدد الطاولات في هذه المنطقة</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <button
+                      onClick={() => updateZone({ count: Math.max(1, activeZone.count - 1) })}
+                      style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
+                    >−</button>
+                    <div style={{ flex: 1, textAlign: "center", color: "var(--gold)", fontSize: 44, fontWeight: 800, lineHeight: 1 }}>{activeZone.count}</div>
+                    <button
+                      onClick={() => updateZone({ count: Math.min(100, activeZone.count + 1) })}
+                      style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 20, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
+                    >+</button>
+                  </div>
+                  <input
+                    type="range" min={1} max={50} value={activeZone.count}
+                    onChange={e => updateZone({ count: parseInt(e.target.value) })}
+                    style={{ width: "100%", marginTop: 10, accentColor: "var(--gold)", cursor: "pointer" }}
+                  />
+                </div>
+
+                {/* Table shape */}
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 10, letterSpacing: "0.4px" }}>شكل الطاولات</div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    {([
+                      { value: "round_table", label: "⭕ دائرية", desc: "4 أشخاص" },
+                      { value: "rect_table",  label: "⬜ عائلية",  desc: "6 أشخاص" },
+                    ] as { value: ZoneSetup["tableType"]; label: string; desc: string }[]).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => updateZone({ tableType: opt.value })}
+                        style={{
+                          flex: 1, padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center",
+                          background: activeZone.tableType === opt.value ? "rgba(245,158,11,0.12)" : "var(--raised)",
+                          color: activeZone.tableType === opt.value ? "var(--gold)" : "var(--text2)",
+                          border: `1.5px solid ${activeZone.tableType === opt.value ? "rgba(245,158,11,0.45)" : "var(--border)"}`,
+                          fontWeight: 700, fontSize: 13,
+                        }}
+                      >
+                        <div style={{ fontSize: 22, marginBottom: 4 }}>{opt.label.split(" ")[0]}</div>
+                        <div style={{ fontSize: 12 }}>{opt.label.split(" ").slice(1).join(" ")}</div>
+                        <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 2 }}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dot preview for active zone */}
+                <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 4 }}>
+                  <div style={{ color: "var(--muted)", fontSize: 10, marginBottom: 8 }}>معاينة {activeZone.name} — {activeZone.count} طاولة</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: dotGap }}>
+                    {Array.from({ length: activeZone.count }, (_, i) => (
                       <div key={i} style={{
-                        width: dotSz, height: dotSz, borderRadius: "50%",
-                        background: "rgba(34,197,94,0.25)", border: "1px solid rgba(34,197,94,0.5)",
+                        width: dotSz, height: dotSz,
+                        borderRadius: activeZone.tableType === "round_table" ? "50%" : 3,
+                        background: "rgba(34,197,94,0.22)", border: "1px solid rgba(34,197,94,0.5)",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 7, color: "var(--green)", fontWeight: 700,
+                        fontSize: 6, color: "var(--green)", fontWeight: 700,
                       }}>{showNums ? i + 1 : ""}</div>
                     ))}
                   </div>
-                );
-              })()}
-            </div>
+                </div>
+              </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setShowQuickSetup(false)}
-                style={{ flex: 1, padding: 11, background: "rgba(100,116,139,0.1)", color: "var(--text2)", border: "1px solid #252535", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-              >إلغاء</button>
-              <button
-                onClick={handleQuickSetup}
-                style={{ flex: 2, padding: 11, background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
-              >⚡ إنشاء {quickCount} طاولة</button>
+              {/* Footer */}
+              <div style={{ borderTop: "1px solid var(--border)", padding: "16px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, color: "var(--text2)", fontSize: 12 }}>
+                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15 }}>{totalTables}</span>
+                  <span> طاولة في </span>
+                  <span style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15 }}>{zones.length}</span>
+                  <span> {zones.length === 1 ? "منطقة" : "مناطق"}</span>
+                </div>
+                <button
+                  onClick={() => setShowQuickSetup(false)}
+                  style={{ padding: "10px 18px", background: "var(--raised)", color: "var(--text2)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                >إلغاء</button>
+                <button
+                  onClick={handleQuickSetup}
+                  style={{ padding: "10px 22px", background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
+                >⚡ إنشاء {totalTables} طاولة</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Ghost element while dragging from palette */}
       {ghostVisible && paletteDrag.current && (() => {
