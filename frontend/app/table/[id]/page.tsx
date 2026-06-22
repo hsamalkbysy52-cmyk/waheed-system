@@ -382,7 +382,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
       const r = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || null }),
+        body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || "" }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
