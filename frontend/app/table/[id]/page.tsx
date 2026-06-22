@@ -2,7 +2,6 @@
 import { use, useState, useEffect, useCallback } from "react";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 
-const RAILWAY = "https://waheed-system-production.up.railway.app";
 const MENU_API = "/api/menu";
 
 type RawItem = {
@@ -380,15 +379,19 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           })),
         }))
       );
-      const r = await fetch(`${RAILWAY}/orders/qr-create`, {
+      const r = await fetch("/api/orders/qr-create", {
         method: "POST",
-        mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || null }),
       });
       if (!r.ok) {
-        const err = await r.json().catch(() => ({})) as { detail?: string };
-        throw new Error(err.detail || `فشل الإرسال (${r.status})`);
+        const err = await r.json().catch(() => ({}));
+        const detail = err.detail;
+        const msg =
+          typeof detail === "string" ? detail :
+          Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(" ، ") :
+          `فشل الإرسال (${r.status})`;
+        throw new Error(msg);
       }
       setOrderTotal(cartTotal);
       setCartOpen(false);
