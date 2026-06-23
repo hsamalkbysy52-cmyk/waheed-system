@@ -4,6 +4,7 @@ import { DndContext, DragEndEvent, useDroppable, useDraggable, closestCenter } f
 import { CSS } from "@dnd-kit/utilities";
 import NewOrderDrawer from "@/components/NewOrderDrawer";
 import { BillModal } from "@/components/BillModal";
+import { CombinedBillModal } from "@/components/CombinedBillModal";
 import { getPendingSyncOrders } from "@/src/services/db";
 
 const API = "https://waheed-system-production.up.railway.app";
@@ -432,11 +433,6 @@ export default function KanbanPage() {
   const [maxedStage, setMaxedStage] = useState<Stage | null>(null);
 
   const [tableForBill, setTableForBill]   = useState<number | null>(null);
-  const [kBillMethod, setKBillMethod]     = useState<"cash" | "card">("cash");
-  const [kBillPaying, setKBillPaying]     = useState(false);
-  const [kBillPaid, setKBillPaid]         = useState(false);
-  const [kBillSplit, setKBillSplit]       = useState(false);
-  const [kBillSplitCount, setKBillSplitCount] = useState(2);
 
   const fetchOrders = useCallback(async () => {
     // Always load local (offline) orders — works without internet
@@ -636,7 +632,7 @@ export default function KanbanPage() {
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
               onInvoice={setInvoiceOrder} paidIds={paidIds}
               onComplete={completeOrder} onMaximize={() => setMaxedStage(s.id)}
-              onTableBill={t => { setTableForBill(t); setKBillMethod("cash"); setKBillPaid(false); setKBillSplit(false); setKBillSplitCount(2); }}
+              onTableBill={t => setTableForBill(t)}
               allOrders={orders} />
           ))}
         </div>
@@ -672,7 +668,7 @@ export default function KanbanPage() {
                     isDeleting={deletingId === o.id}
                     onInvoice={() => setInvoiceOrder(o)} isPaid={paidIds.has(o.id)}
                     onComplete={() => completeOrder(o.id)}
-                    onTableBill={() => { setTableForBill(o.table_number); setKBillMethod("cash"); setKBillPaid(false); setKBillSplit(false); setKBillSplitCount(2); }}
+                    onTableBill={() => setTableForBill(o.table_number)}
                     tableHasMultiple={tableCount > 1} />
                   );
                 })}
@@ -831,165 +827,17 @@ export default function KanbanPage() {
         const allTableOrders = orders.filter(o => o.table_number === tableForBill && o.id > 0);
         const paidOrders   = allTableOrders.filter(o => o.payment_method || paidIds.has(o.id));
         const unpaidOrders = allTableOrders.filter(o => !o.payment_method && !paidIds.has(o.id));
-        const grandTotal   = unpaidOrders.reduce((s, o) => s + o.total_price, 0);
-        const paidTotal    = paidOrders.reduce((s, o) => s + o.total_price, 0);
-        const unpaidItems  = unpaidOrders.flatMap(o => o.items ?? []);
-        const groupedUnpaid = unpaidItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
-          if (!acc[it.name]) acc[it.name] = { price: it.price, qty: 0 };
-          acc[it.name].qty++;
-          return acc;
-        }, {});
-
-        const payAll = async () => {
-          setKBillPaying(true);
-          try {
-            await Promise.all(unpaidOrders.map(o =>
-              fetch(`${API}/orders/${o.id}/pay`, {
-                method: "PUT", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ payment_method: kBillMethod }),
-              })
-            ));
-            await Promise.all(unpaidOrders.map(o =>
-              fetch(`${API}/orders/${o.id}/done`, { method: "PUT" })
-            ));
-            setKBillPaid(true);
-            unpaidOrders.forEach(o => setPaidIds(p => new Set(p).add(o.id)));
-            setTimeout(() => {
-              setTableForBill(null);
-              setKBillPaid(false);
-              fetchOrders();
-            }, 1800);
-          } finally { setKBillPaying(false); }
-        };
-
         return (
-          <div onClick={() => setTableForBill(null)}
-            style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div onClick={e => e.stopPropagation()}
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 420, maxHeight: "88vh", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}>
-              {/* Header */}
-              <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>🧾 حساب شامل — طاولة {tableForBill}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>
-                    {unpaidOrders.length} طلب غير مدفوع{paidOrders.length > 0 ? ` · ${paidOrders.length} مدفوع` : ""}
-                  </div>
-                </div>
-                <button onClick={() => setTableForBill(null)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
-              </div>
-              {/* Items */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
-
-                {/* Paid orders (reference) */}
-                {paidOrders.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <span style={{ color: "var(--green)", fontSize: 11, fontWeight: 700 }}>✅ مدفوعة مسبقاً</span>
-                      <span style={{ color: "var(--green)", fontSize: 11 }}>({paidTotal.toLocaleString()} د.ع)</span>
-                    </div>
-                    {paidOrders.map(o => (
-                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", marginBottom: 4, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 9 }}>
-                        <span style={{ color: "var(--green)", fontSize: 12 }}>
-                          طلب #{o.id}
-                          {o.payment_method && <span style={{ marginRight: 4, fontSize: 11, color: "var(--muted)" }}>({o.payment_method === "card" ? "💳 بطاقة" : o.payment_method === "qr" ? "📱 QR" : "💵 نقدي"})</span>}
-                        </span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ color: "var(--green)", fontSize: 12, fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
-                          <span style={{ color: "var(--green)", fontSize: 14 }}>✓</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Unpaid items grouped */}
-                {unpaidOrders.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "20px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ جميع الطلبات مدفوعة</div>
-                ) : (<>
-                  {paidOrders.length > 0 && (
-                    <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>🔴 غير مدفوعة</div>
-                  )}
-                  {Object.entries(groupedUnpaid).map(([name, { price, qty }]) => (
-                    <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--border)" }}>
-                      <div>
-                        <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
-                        {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
-                      </div>
-                      <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 12, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
-                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 6 }}>تفصيل الطلبات غير المدفوعة</div>
-                    {unpaidOrders.map(o => (
-                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 3 }}>
-                        <span>طلب #{o.id} · {o.status === "served" ? "تم التقديم" : o.status === "ready" ? "جاهز" : "قيد التحضير"}</span>
-                        <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
-                      </div>
-                    ))}
-                  </div>
-                </>)}
-              </div>
-              {/* Footer */}
-              <div style={{ borderTop: "1px solid var(--border)", padding: "16px 22px", flexShrink: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
-                  <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
-                </div>
-
-                {/* Split equally */}
-                <div style={{ marginBottom: 12, background: "var(--bg)", borderRadius: 12, padding: "10px 14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ color: "var(--text2)", fontSize: 13, fontWeight: 600 }}>👥 تقسيم بالتساوي</span>
-                    <button onClick={() => setKBillSplit(s => !s)} style={{
-                      padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 700,
-                      background: kBillSplit ? "rgba(245,158,11,0.15)" : "var(--raised)",
-                      color: kBillSplit ? "var(--gold)" : "var(--muted)",
-                      border: `1px solid ${kBillSplit ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
-                    }}>{kBillSplit ? "مفعّل" : "تفعيل"}</button>
-                  </div>
-                  {kBillSplit && (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ color: "var(--muted)", fontSize: 12 }}>عدد الأشخاص</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <button onClick={() => setKBillSplitCount(n => Math.max(2, n - 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>−</button>
-                          <span style={{ color: "var(--text)", fontSize: 16, fontWeight: 800, minWidth: 24, textAlign: "center" }}>{kBillSplitCount}</span>
-                          <button onClick={() => setKBillSplitCount(n => Math.min(20, n + 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>+</button>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(245,158,11,0.08)", borderRadius: 9, border: "1px solid rgba(245,158,11,0.2)" }}>
-                        <span style={{ color: "var(--muted)", fontSize: 12 }}>نصيب كل شخص</span>
-                        <span style={{ color: "var(--gold)", fontSize: 16, fontWeight: 900 }}>{Math.ceil(grandTotal / kBillSplitCount).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span></span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  {(["cash", "card"] as const).map(m => (
-                    <button key={m} onClick={() => setKBillMethod(m)} style={{
-                      flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
-                      background: kBillMethod === m ? "rgba(245,158,11,0.15)" : "var(--raised)",
-                      color: kBillMethod === m ? "var(--gold)" : "var(--text2)",
-                      border: `1.5px solid ${kBillMethod === m ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
-                    }}>{m === "cash" ? "💵 نقدي" : "💳 بطاقة"}</button>
-                  ))}
-                </div>
-                {kBillPaid ? (
-                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 16, fontWeight: 800 }}>✅ تم الدفع بنجاح!</div>
-                ) : unpaidOrders.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ الطاولة مسوّاة بالكامل</div>
-                ) : (
-                  <button onClick={payAll} disabled={kBillPaying} style={{
-                    width: "100%", padding: "13px 0", border: "none", borderRadius: 12,
-                    cursor: kBillPaying ? "not-allowed" : "pointer",
-                    background: kBillPaying ? "var(--raised)" : "linear-gradient(135deg,#22c55e,#16a34a)",
-                    color: kBillPaying ? "var(--muted)" : "#000", fontSize: 14, fontWeight: 900,
-                  }}>{kBillPaying ? "⏳ جاري الدفع..." : `💰 دفع ${grandTotal.toLocaleString()} د.ع وإغلاق الطاولة`}</button>
-                )}
-              </div>
-            </div>
-          </div>
+          <CombinedBillModal
+            tableNumber={tableForBill}
+            paidOrders={paidOrders}
+            unpaidOrders={unpaidOrders}
+            onClose={() => setTableForBill(null)}
+            onAllPaid={() => {
+              unpaidOrders.forEach(o => setPaidIds(p => new Set(p).add(o.id)));
+              fetchOrders();
+            }}
+          />
         );
       })()}
     </div>
