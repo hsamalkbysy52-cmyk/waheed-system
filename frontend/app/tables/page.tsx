@@ -319,7 +319,7 @@ export default function TablesPage() {
     try {
       const r = await fetch(`${API}/orders`);
       const d = await r.json();
-      setOrders((d.orders || []).filter((o: Order) => o.status === "pending"));
+      setOrders((d.orders || []).filter((o: Order) => !["done", "paid"].includes(o.status)));
     } finally { setLoad(false); }
   }, []);
 
