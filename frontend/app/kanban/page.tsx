@@ -84,12 +84,13 @@ function timeAgo(created_at: string, now: number) {
 }
 
 /* ── Draggable card ── */
-function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting, onInvoice, isPaid, onComplete }: {
+function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting, onInvoice, isPaid, onComplete, onTableBill, tableHasMultiple }: {
   order: Order; stage: Stage; now: number;
   onNext: () => void; onPrev: () => void;
   onEdit: () => void; onDelete: () => void; isDeleting: boolean;
   onInvoice: () => void; isPaid: boolean;
   onComplete: () => void;
+  onTableBill: () => void; tableHasMultiple: boolean;
 }) {
   const isLocal = order.id < 0;
   const [confirmDel, setConfirmDel] = useState(false);
@@ -311,17 +312,32 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                 )}
               </div>
             ) : (
-              <button
-                onPointerDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); onInvoice(); }}
-                style={{
-                  width: "100%", padding: "8px",
-                  background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
-                  color: "var(--gold)",
-                  border: "1px solid rgba(245,158,11,0.35)",
-                  borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
-                }}
-              >🧾 عرض الفاتورة والدفع</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); onInvoice(); }}
+                  style={{
+                    width: "100%", padding: "8px",
+                    background: "linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.12))",
+                    color: "var(--gold)",
+                    border: "1px solid rgba(245,158,11,0.35)",
+                    borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
+                  }}
+                >🧾 دفع هذا الطلب</button>
+                {tableHasMultiple && order.table_number !== 0 && (
+                  <button
+                    onPointerDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); onTableBill(); }}
+                    style={{
+                      width: "100%", padding: "8px",
+                      background: "linear-gradient(135deg,rgba(34,197,94,0.15),rgba(22,163,74,0.1))",
+                      color: "var(--green)",
+                      border: "1px solid rgba(34,197,94,0.35)",
+                      borderRadius: "9px", cursor: "pointer", fontSize: "12px", fontWeight: "700",
+                    }}
+                  >💰 حساب شامل للطاولة {order.table_number}</button>
+                )}
+              </div>
             )}
           </div>
         );
@@ -331,12 +347,13 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
 }
 
 /* ── Droppable column ── */
-function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete, onMaximize }: {
+function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deletingId, onInvoice, paidIds, onComplete, onMaximize, onTableBill, allOrders }: {
   stage: typeof STAGES[0]; orders: Order[]; now: number;
   onNext: (id: number) => void; onPrev: (id: number) => void;
   onEdit: (order: Order) => void; onDelete: (id: number) => void; deletingId: number | null;
   onInvoice: (order: Order) => void; paidIds: Set<number>;
   onComplete: (id: number) => void; onMaximize: () => void;
+  onTableBill: (tableNum: number) => void; allOrders: Order[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   return (
@@ -366,14 +383,21 @@ function Column({ stage, orders, now, onNext, onPrev, onEdit, onDelete, deleting
           transition: "all 0.15s", padding: "2px",
         }}
       >
-        {orders.map(o => (
-          <Card key={o.id} order={o} stage={stage.id} now={now}
-            onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)}
-            onEdit={() => onEdit(o)} onDelete={() => onDelete(o.id)}
-            isDeleting={deletingId === o.id}
-            onInvoice={() => onInvoice(o)} isPaid={paidIds.has(o.id)}
-            onComplete={() => onComplete(o.id)} />
-        ))}
+        {orders.map(o => {
+          const tableCount = o.table_number > 0
+            ? allOrders.filter(x => x.table_number === o.table_number && x.id > 0 && !paidIds.has(x.id)).length
+            : 0;
+          return (
+            <Card key={o.id} order={o} stage={stage.id} now={now}
+              onNext={() => onNext(o.id)} onPrev={() => onPrev(o.id)}
+              onEdit={() => onEdit(o)} onDelete={() => onDelete(o.id)}
+              isDeleting={deletingId === o.id}
+              onInvoice={() => onInvoice(o)} isPaid={paidIds.has(o.id)}
+              onComplete={() => onComplete(o.id)}
+              onTableBill={() => onTableBill(o.table_number)}
+              tableHasMultiple={tableCount > 1} />
+          );
+        })}
         {!orders.length && (
           <div style={{ textAlign: "center", color: "var(--subtle)", padding: "32px 0", fontSize: "13px" }}>اسحب هنا</div>
         )}
@@ -406,6 +430,11 @@ export default function KanbanPage() {
   const [deletingId, setDeletingId]         = useState<number | null>(null);
 
   const [maxedStage, setMaxedStage] = useState<Stage | null>(null);
+
+  const [tableForBill, setTableForBill]   = useState<number | null>(null);
+  const [kBillMethod, setKBillMethod]     = useState<"cash" | "card">("cash");
+  const [kBillPaying, setKBillPaying]     = useState(false);
+  const [kBillPaid, setKBillPaid]         = useState(false);
 
   const fetchOrders = useCallback(async () => {
     // Always load local (offline) orders — works without internet
@@ -604,7 +633,9 @@ export default function KanbanPage() {
               onNext={next} onPrev={prev}
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
               onInvoice={setInvoiceOrder} paidIds={paidIds}
-              onComplete={completeOrder} onMaximize={() => setMaxedStage(s.id)} />
+              onComplete={completeOrder} onMaximize={() => setMaxedStage(s.id)}
+              onTableBill={t => { setTableForBill(t); setKBillMethod("cash"); setKBillPaid(false); }}
+              allOrders={orders} />
           ))}
         </div>
 
@@ -630,14 +661,19 @@ export default function KanbanPage() {
                 {stageOrders.length === 0 && (
                   <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--subtle)", paddingTop: "60px", fontSize: "14px" }}>لا يوجد طلبات</div>
                 )}
-                {stageOrders.map(o => (
+                {stageOrders.map(o => {
+                  const tableCount = orders.filter(x => x.table_number === o.table_number && x.id > 0 && !paidIds.has(x.id) && !["done","paid"].includes(x.status)).length;
+                  return (
                   <Card key={o.id} order={o} stage={maxedStage} now={now}
                     onNext={() => next(o.id)} onPrev={() => prev(o.id)}
                     onEdit={() => openEdit(o)} onDelete={() => deleteOrder(o.id)}
                     isDeleting={deletingId === o.id}
                     onInvoice={() => setInvoiceOrder(o)} isPaid={paidIds.has(o.id)}
-                    onComplete={() => completeOrder(o.id)} />
-                ))}
+                    onComplete={() => completeOrder(o.id)}
+                    onTableBill={() => { setTableForBill(o.table_number); setKBillMethod("cash"); setKBillPaid(false); }}
+                    tableHasMultiple={tableCount > 1} />
+                  );
+                })}
               </div>
             </div>
           );
@@ -770,6 +806,7 @@ export default function KanbanPage() {
         <NewOrderDrawer
           onClose={() => setShowDrawer(false)}
           onSuccess={() => { fetchOrders(); setShowDrawer(false); }}
+          occupiedTables={new Set(orders.filter(o => o.id > 0 && !["done","paid"].includes(o.status)).map(o => o.table_number))}
         />
       )}
 
@@ -781,11 +818,109 @@ export default function KanbanPage() {
           onPaid={() => {
             const id = invoiceOrder.id;
             setPaidIds(p => new Set(p).add(id));
-            // Update local order so prePaid badge shows immediately without waiting for next poll
             setOrders(p => p.map(o => o.id === id ? { ...o, payment_method: o.payment_method ?? "cash" } : o));
           }}
         />
       )}
+
+      {/* ── Table combined bill modal ── */}
+      {tableForBill !== null && (() => {
+        const billOrders = orders.filter(o => o.table_number === tableForBill && o.id > 0 && !paidIds.has(o.id));
+        const grandTotal = billOrders.reduce((s, o) => s + o.total_price, 0);
+        const allItems   = billOrders.flatMap(o => o.items ?? []);
+        const grouped    = allItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
+          if (!acc[it.name]) acc[it.name] = { price: it.price, qty: 0 };
+          acc[it.name].qty++;
+          return acc;
+        }, {});
+
+        const payAll = async () => {
+          setKBillPaying(true);
+          try {
+            await Promise.all(billOrders.map(o =>
+              fetch(`${API}/orders/${o.id}/pay`, {
+                method: "PUT", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ payment_method: kBillMethod }),
+              })
+            ));
+            await Promise.all(billOrders.map(o =>
+              fetch(`${API}/orders/${o.id}/done`, { method: "PUT" })
+            ));
+            setKBillPaid(true);
+            billOrders.forEach(o => setPaidIds(p => new Set(p).add(o.id)));
+            setTimeout(() => {
+              setTableForBill(null);
+              setKBillPaid(false);
+              fetchOrders();
+            }, 1800);
+          } finally { setKBillPaying(false); }
+        };
+
+        return (
+          <div onClick={() => setTableForBill(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 420, maxHeight: "88vh", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}>
+              {/* Header */}
+              <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>🧾 حساب شامل — طاولة {tableForBill}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>{billOrders.length} طلب · {allItems.length} صنف</div>
+                </div>
+                <button onClick={() => setTableForBill(null)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
+              </div>
+              {/* Items */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
+                {Object.entries(grouped).map(([name, { price, qty }]) => (
+                  <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--border)" }}>
+                    <div>
+                      <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
+                      {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+                    </div>
+                    <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: 12, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 6 }}>تفصيل الطلبات</div>
+                  {billOrders.map(o => (
+                    <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 3 }}>
+                      <span>طلب #{o.id} · {o.status === "served" ? "تم التقديم" : o.status === "ready" ? "جاهز" : "قيد التحضير"}</span>
+                      <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Footer */}
+              <div style={{ borderTop: "1px solid var(--border)", padding: "16px 22px", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
+                  <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  {(["cash", "card"] as const).map(m => (
+                    <button key={m} onClick={() => setKBillMethod(m)} style={{
+                      flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                      background: kBillMethod === m ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                      color: kBillMethod === m ? "var(--gold)" : "var(--text2)",
+                      border: `1.5px solid ${kBillMethod === m ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                    }}>{m === "cash" ? "💵 نقدي" : "💳 بطاقة"}</button>
+                  ))}
+                </div>
+                {kBillPaid ? (
+                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 16, fontWeight: 800 }}>✅ تم الدفع بنجاح!</div>
+                ) : (
+                  <button onClick={payAll} disabled={kBillPaying} style={{
+                    width: "100%", padding: "13px 0", border: "none", borderRadius: 12,
+                    cursor: kBillPaying ? "not-allowed" : "pointer",
+                    background: kBillPaying ? "var(--raised)" : "linear-gradient(135deg,#22c55e,#16a34a)",
+                    color: kBillPaying ? "var(--muted)" : "#000", fontSize: 14, fontWeight: 900,
+                  }}>{kBillPaying ? "⏳ جاري الدفع..." : `💰 دفع ${grandTotal.toLocaleString()} د.ع وإغلاق الطاولة`}</button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

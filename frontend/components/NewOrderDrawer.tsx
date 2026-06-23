@@ -71,9 +71,11 @@ type CartLine = {
 export default function NewOrderDrawer({
   onClose,
   onSuccess,
+  occupiedTables = new Set<number>(),
 }: {
   onClose: () => void;
   onSuccess: () => void;
+  occupiedTables?: Set<number>;
 }) {
   /* ── local menu state ── */
   const [menuItems, setMenuItems] = useState<RawItem[]>([]);
@@ -616,20 +618,45 @@ export default function NewOrderDrawer({
                   🛵 سفري
                 </button>
 
-                {tableList.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTable(t)}
-                    style={{
-                      padding: "9px 4px", borderRadius: "9px",
-                      background: table === t ? "rgba(245,158,11,0.2)" : "var(--raised)",
-                      color: table === t ? "var(--gold)" : "var(--muted)",
-                      border: `1px solid ${table === t ? "rgba(245,158,11,0.55)" : "var(--border)"}`,
-                      cursor: "pointer", fontSize: "13px", fontWeight: table === t ? "800" : "500",
-                    }}
-                  >{t}</button>
-                ))}
+                {tableList.map((t) => {
+                  const occ = occupiedTables.has(t);
+                  const sel = table === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTable(t)}
+                      style={{
+                        position: "relative",
+                        padding: "9px 4px", borderRadius: "9px",
+                        background: sel ? "rgba(245,158,11,0.2)" : occ ? "rgba(239,68,68,0.08)" : "var(--raised)",
+                        color: sel ? "var(--gold)" : occ ? "var(--red)" : "var(--muted)",
+                        border: `1px solid ${sel ? "rgba(245,158,11,0.55)" : occ ? "rgba(239,68,68,0.35)" : "var(--border)"}`,
+                        cursor: "pointer", fontSize: "13px", fontWeight: sel || occ ? "800" : "500",
+                      }}
+                    >
+                      {t}
+                      {occ && (
+                        <span style={{
+                          position: "absolute", top: 2, left: 2,
+                          width: 6, height: 6, borderRadius: "50%",
+                          background: "var(--red)", display: "block",
+                        }} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Occupied notice */}
+              {table !== TAKEAWAY && occupiedTables.has(table) && (
+                <div style={{
+                  marginTop: "6px", padding: "5px 8px", borderRadius: "7px",
+                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+                  color: "var(--gold)", fontSize: "10px", fontWeight: "600",
+                }}>
+                  🟡 طاولة {table} مشغولة — طلبك سيُضاف للفاتورة
+                </div>
+              )}
             </div>
 
             {/* Cart items */}
