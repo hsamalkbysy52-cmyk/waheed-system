@@ -820,17 +820,21 @@ export default function KanbanPage() {
           onPaid={() => {
             const id = invoiceOrder.id;
             setPaidIds(p => new Set(p).add(id));
-            setOrders(p => p.map(o => o.id === id ? { ...o, payment_method: o.payment_method ?? "cash" } : o));
+            setInvoiceOrder(null);
+            fetchOrders();
           }}
         />
       )}
 
       {/* ── Table combined bill modal ── */}
       {tableForBill !== null && (() => {
-        const billOrders = orders.filter(o => o.table_number === tableForBill && o.id > 0 && !paidIds.has(o.id));
-        const grandTotal = billOrders.reduce((s, o) => s + o.total_price, 0);
-        const allItems   = billOrders.flatMap(o => o.items ?? []);
-        const grouped    = allItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
+        const allTableOrders = orders.filter(o => o.table_number === tableForBill && o.id > 0);
+        const paidOrders   = allTableOrders.filter(o => o.payment_method || paidIds.has(o.id));
+        const unpaidOrders = allTableOrders.filter(o => !o.payment_method && !paidIds.has(o.id));
+        const grandTotal   = unpaidOrders.reduce((s, o) => s + o.total_price, 0);
+        const paidTotal    = paidOrders.reduce((s, o) => s + o.total_price, 0);
+        const unpaidItems  = unpaidOrders.flatMap(o => o.items ?? []);
+        const groupedUnpaid = unpaidItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
           if (!acc[it.name]) acc[it.name] = { price: it.price, qty: 0 };
           acc[it.name].qty++;
           return acc;
@@ -839,17 +843,17 @@ export default function KanbanPage() {
         const payAll = async () => {
           setKBillPaying(true);
           try {
-            await Promise.all(billOrders.map(o =>
+            await Promise.all(unpaidOrders.map(o =>
               fetch(`${API}/orders/${o.id}/pay`, {
                 method: "PUT", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ payment_method: kBillMethod }),
               })
             ));
-            await Promise.all(billOrders.map(o =>
+            await Promise.all(unpaidOrders.map(o =>
               fetch(`${API}/orders/${o.id}/done`, { method: "PUT" })
             ));
             setKBillPaid(true);
-            billOrders.forEach(o => setPaidIds(p => new Set(p).add(o.id)));
+            unpaidOrders.forEach(o => setPaidIds(p => new Set(p).add(o.id)));
             setTimeout(() => {
               setTableForBill(null);
               setKBillPaid(false);
@@ -867,30 +871,63 @@ export default function KanbanPage() {
               <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>🧾 حساب شامل — طاولة {tableForBill}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>{billOrders.length} طلب · {allItems.length} صنف</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>
+                    {unpaidOrders.length} طلب غير مدفوع{paidOrders.length > 0 ? ` · ${paidOrders.length} مدفوع` : ""}
+                  </div>
                 </div>
                 <button onClick={() => setTableForBill(null)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
               </div>
               {/* Items */}
               <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
-                {Object.entries(grouped).map(([name, { price, qty }]) => (
-                  <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--border)" }}>
-                    <div>
-                      <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
-                      {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+
+                {/* Paid orders (reference) */}
+                {paidOrders.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ color: "var(--green)", fontSize: 11, fontWeight: 700 }}>✅ مدفوعة مسبقاً</span>
+                      <span style={{ color: "var(--green)", fontSize: 11 }}>({paidTotal.toLocaleString()} د.ع)</span>
                     </div>
-                    <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
+                    {paidOrders.map(o => (
+                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", marginBottom: 4, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 9 }}>
+                        <span style={{ color: "var(--green)", fontSize: 12 }}>
+                          طلب #{o.id}
+                          {o.payment_method && <span style={{ marginRight: 4, fontSize: 11, color: "var(--muted)" }}>({o.payment_method === "card" ? "💳 بطاقة" : o.payment_method === "qr" ? "📱 QR" : "💵 نقدي"})</span>}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: "var(--green)", fontSize: 12, fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                          <span style={{ color: "var(--green)", fontSize: 14 }}>✓</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                <div style={{ marginTop: 12, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 6 }}>تفصيل الطلبات</div>
-                  {billOrders.map(o => (
-                    <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 3 }}>
-                      <span>طلب #{o.id} · {o.status === "served" ? "تم التقديم" : o.status === "ready" ? "جاهز" : "قيد التحضير"}</span>
-                      <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                )}
+
+                {/* Unpaid items grouped */}
+                {unpaidOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "20px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ جميع الطلبات مدفوعة</div>
+                ) : (<>
+                  {paidOrders.length > 0 && (
+                    <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>🔴 غير مدفوعة</div>
+                  )}
+                  {Object.entries(groupedUnpaid).map(([name, { price, qty }]) => (
+                    <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--border)" }}>
+                      <div>
+                        <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
+                        {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+                      </div>
+                      <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
                     </div>
                   ))}
-                </div>
+                  <div style={{ marginTop: 12, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 6 }}>تفصيل الطلبات غير المدفوعة</div>
+                    {unpaidOrders.map(o => (
+                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 3 }}>
+                        <span>طلب #{o.id} · {o.status === "served" ? "تم التقديم" : o.status === "ready" ? "جاهز" : "قيد التحضير"}</span>
+                        <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
               </div>
               {/* Footer */}
               <div style={{ borderTop: "1px solid var(--border)", padding: "16px 22px", flexShrink: 0 }}>
@@ -940,6 +977,8 @@ export default function KanbanPage() {
                 </div>
                 {kBillPaid ? (
                   <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 16, fontWeight: 800 }}>✅ تم الدفع بنجاح!</div>
+                ) : unpaidOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ الطاولة مسوّاة بالكامل</div>
                 ) : (
                   <button onClick={payAll} disabled={kBillPaying} style={{
                     width: "100%", padding: "13px 0", border: "none", borderRadius: 12,

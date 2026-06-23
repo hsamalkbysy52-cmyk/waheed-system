@@ -12,7 +12,7 @@ const TABLE_STROKE_W = 2;
 
 type ElementType = "round_table" | "rect_table" | "wall" | "door";
 type LayoutEl    = { id: string; type: ElementType; x: number; y: number; w: number; h: number; tableNumber?: number; capacity?: number; zone?: string };
-type Order       = { id: number; table_number: number; total_price: number; status: string; created_at: string; items?: { name: string; price: number; category: string }[] };
+type Order       = { id: number; table_number: number; total_price: number; status: string; created_at: string; payment_method?: string | null; items?: { name: string; price: number; category: string }[] };
 type ZoneSetup   = { id: string; name: string; count: number; tableType: "round_table" | "rect_table" };
 
 const ZONE_PRESETS = [
@@ -945,10 +945,13 @@ export default function TablesPage() {
 
       {/* ── Bill Modal ── */}
       {showBill && activeTable && (() => {
-        const billOrders = orders.filter(o => o.table_number === activeTable);
-        const grandTotal = billOrders.reduce((s, o) => s + o.total_price, 0);
-        const allItems   = billOrders.flatMap(o => o.items ?? []);
-        const grouped    = allItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
+        const allTableOrders = orders.filter(o => o.table_number === activeTable);
+        const paidOrders     = allTableOrders.filter(o => !!o.payment_method);
+        const unpaidOrders   = allTableOrders.filter(o => !o.payment_method);
+        const grandTotal     = unpaidOrders.reduce((s, o) => s + o.total_price, 0);
+        const paidTotal      = paidOrders.reduce((s, o) => s + o.total_price, 0);
+        const unpaidItems    = unpaidOrders.flatMap(o => o.items ?? []);
+        const grouped        = unpaidItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
           if (!acc[it.name]) acc[it.name] = { price: it.price, qty: 0 };
           acc[it.name].qty++;
           return acc;
@@ -966,40 +969,73 @@ export default function TablesPage() {
               <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>🧾 فاتورة طاولة {activeTable}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>{billOrders.length} طلب · {allItems.length} صنف</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>
+                    {unpaidOrders.length} طلب غير مدفوع{paidOrders.length > 0 ? ` · ${paidOrders.length} مدفوع` : ""}
+                  </div>
                 </div>
                 <button onClick={() => setShowBill(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
               </div>
 
               {/* Items list */}
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
-                {Object.entries(grouped).map(([name, { price, qty }]) => (
-                  <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-                    <div>
-                      <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
-                      {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+
+                {/* Paid orders reference */}
+                {paidOrders.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ color: "var(--green)", fontSize: 11, fontWeight: 700 }}>✅ مدفوعة مسبقاً</span>
+                      <span style={{ color: "var(--green)", fontSize: 11 }}>({paidTotal.toLocaleString()} د.ع)</span>
                     </div>
-                    <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
+                    {paidOrders.map(o => (
+                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", marginBottom: 4, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 9 }}>
+                        <span style={{ color: "var(--green)", fontSize: 12 }}>
+                          طلب #{o.id} — {elapsedStr(o.created_at)} مضت
+                          {o.payment_method && <span style={{ marginRight: 4, fontSize: 11, color: "var(--muted)" }}>({o.payment_method === "card" ? "💳" : o.payment_method === "qr" ? "📱" : "💵"})</span>}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: "var(--green)", fontSize: 12, fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                          <span style={{ color: "var(--green)", fontSize: 14 }}>✓</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Per-order breakdown */}
-                <div style={{ marginTop: 14, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 8 }}>تفصيل الطلبات</div>
-                  {billOrders.map(o => (
-                    <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 4 }}>
-                      <span>طلب #{o.id} — {elapsedStr(o.created_at)} مضت</span>
-                      <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                )}
+
+                {/* Unpaid items */}
+                {unpaidOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "20px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ جميع الطلبات مدفوعة</div>
+                ) : (<>
+                  {paidOrders.length > 0 && (
+                    <div style={{ color: "var(--text2)", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>🔴 غير مدفوعة</div>
+                  )}
+                  {Object.entries(grouped).map(([name, { price, qty }]) => (
+                    <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                      <div>
+                        <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
+                        {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+                      </div>
+                      <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
                     </div>
                   ))}
-                </div>
+                  {/* Per-order breakdown */}
+                  <div style={{ marginTop: 14, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 8 }}>تفصيل الطلبات غير المدفوعة</div>
+                    {unpaidOrders.map(o => (
+                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 4 }}>
+                        <span>طلب #{o.id} — {elapsedStr(o.created_at)} مضت</span>
+                        <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
               </div>
 
               {/* Footer */}
               <div style={{ borderTop: "1px solid var(--border)", padding: "16px 22px", flexShrink: 0 }}>
-                {/* Grand total */}
+                {/* Grand total (unpaid only) */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
-                  <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
+                  <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>{unpaidOrders.length > 0 ? "المبلغ المتبقي" : "الإجمالي الكلي"}</span>
+                  <span style={{ color: grandTotal === 0 ? "var(--green)" : "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
                 </div>
 
                 {/* Split equally */}
@@ -1049,9 +1085,11 @@ export default function TablesPage() {
                 {/* Pay button */}
                 {billPaid ? (
                   <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 16, fontWeight: 800 }}>✅ تم الدفع بنجاح!</div>
+                ) : unpaidOrders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 14, fontWeight: 700 }}>✅ الطاولة مسوّاة بالكامل</div>
                 ) : (
                   <button
-                    onClick={() => payAllOrders(billOrders, billPayMethod)}
+                    onClick={() => payAllOrders(unpaidOrders, billPayMethod)}
                     disabled={billPaying}
                     style={{
                       width: "100%", padding: "13px 0", border: "none", borderRadius: 12, cursor: billPaying ? "not-allowed" : "pointer",
