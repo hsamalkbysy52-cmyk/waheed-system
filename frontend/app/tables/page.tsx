@@ -293,6 +293,8 @@ export default function TablesPage() {
   const [billPayMethod, setBillPayMethod]         = useState<"cash" | "card">("cash");
   const [billPaying, setBillPaying]               = useState(false);
   const [billPaid, setBillPaid]                   = useState(false);
+  const [billSplit, setBillSplit]                 = useState(false);
+  const [billSplitCount, setBillSplitCount]       = useState(2);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
   const resizing    = useRef<{ id: string; mx: number; my: number; ow: number; oh: number } | null>(null);
@@ -903,7 +905,7 @@ export default function TablesPage() {
                         </span>
                       </div>
                       <button
-                        onClick={() => { setShowBill(true); setBillPayMethod("cash"); setBillPaid(false); }}
+                        onClick={() => { setShowBill(true); setBillPayMethod("cash"); setBillPaid(false); setBillSplit(false); setBillSplitCount(2); }}
                         style={{ width: "100%", padding: "11px 0", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
                       >🧾 حساب شامل</button>
                     </div>
@@ -999,6 +1001,36 @@ export default function TablesPage() {
                   <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
                   <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
                 </div>
+
+                {/* Split equally */}
+                <div style={{ marginBottom: 14, background: "var(--bg)", borderRadius: 12, padding: "10px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "var(--text2)", fontSize: 13, fontWeight: 600 }}>👥 تقسيم بالتساوي</span>
+                    <button onClick={() => setBillSplit(s => !s)} style={{
+                      padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 700,
+                      background: billSplit ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                      color: billSplit ? "var(--gold)" : "var(--muted)",
+                      border: `1px solid ${billSplit ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                    }}>{billSplit ? "مفعّل" : "تفعيل"}</button>
+                  </div>
+                  {billSplit && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ color: "var(--muted)", fontSize: 12 }}>عدد الأشخاص</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button onClick={() => setBillSplitCount(n => Math.max(2, n - 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>−</button>
+                          <span style={{ color: "var(--text)", fontSize: 16, fontWeight: 800, minWidth: 24, textAlign: "center" }}>{billSplitCount}</span>
+                          <button onClick={() => setBillSplitCount(n => Math.min(20, n + 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>+</button>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(245,158,11,0.08)", borderRadius: 9, border: "1px solid rgba(245,158,11,0.2)" }}>
+                        <span style={{ color: "var(--muted)", fontSize: 12 }}>نصيب كل شخص</span>
+                        <span style={{ color: "var(--gold)", fontSize: 16, fontWeight: 900 }}>{Math.ceil(grandTotal / billSplitCount).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span></span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Payment method */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                   {(["cash", "card"] as const).map(m => (

@@ -435,6 +435,8 @@ export default function KanbanPage() {
   const [kBillMethod, setKBillMethod]     = useState<"cash" | "card">("cash");
   const [kBillPaying, setKBillPaying]     = useState(false);
   const [kBillPaid, setKBillPaid]         = useState(false);
+  const [kBillSplit, setKBillSplit]       = useState(false);
+  const [kBillSplitCount, setKBillSplitCount] = useState(2);
 
   const fetchOrders = useCallback(async () => {
     // Always load local (offline) orders — works without internet
@@ -634,7 +636,7 @@ export default function KanbanPage() {
               onEdit={openEdit} onDelete={deleteOrder} deletingId={deletingId}
               onInvoice={setInvoiceOrder} paidIds={paidIds}
               onComplete={completeOrder} onMaximize={() => setMaxedStage(s.id)}
-              onTableBill={t => { setTableForBill(t); setKBillMethod("cash"); setKBillPaid(false); }}
+              onTableBill={t => { setTableForBill(t); setKBillMethod("cash"); setKBillPaid(false); setKBillSplit(false); setKBillSplitCount(2); }}
               allOrders={orders} />
           ))}
         </div>
@@ -670,7 +672,7 @@ export default function KanbanPage() {
                     isDeleting={deletingId === o.id}
                     onInvoice={() => setInvoiceOrder(o)} isPaid={paidIds.has(o.id)}
                     onComplete={() => completeOrder(o.id)}
-                    onTableBill={() => { setTableForBill(o.table_number); setKBillMethod("cash"); setKBillPaid(false); }}
+                    onTableBill={() => { setTableForBill(o.table_number); setKBillMethod("cash"); setKBillPaid(false); setKBillSplit(false); setKBillSplitCount(2); }}
                     tableHasMultiple={tableCount > 1} />
                   );
                 })}
@@ -896,6 +898,36 @@ export default function KanbanPage() {
                   <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
                   <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
                 </div>
+
+                {/* Split equally */}
+                <div style={{ marginBottom: 12, background: "var(--bg)", borderRadius: 12, padding: "10px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "var(--text2)", fontSize: 13, fontWeight: 600 }}>👥 تقسيم بالتساوي</span>
+                    <button onClick={() => setKBillSplit(s => !s)} style={{
+                      padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 700,
+                      background: kBillSplit ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                      color: kBillSplit ? "var(--gold)" : "var(--muted)",
+                      border: `1px solid ${kBillSplit ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                    }}>{kBillSplit ? "مفعّل" : "تفعيل"}</button>
+                  </div>
+                  {kBillSplit && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ color: "var(--muted)", fontSize: 12 }}>عدد الأشخاص</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button onClick={() => setKBillSplitCount(n => Math.max(2, n - 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>−</button>
+                          <span style={{ color: "var(--text)", fontSize: 16, fontWeight: 800, minWidth: 24, textAlign: "center" }}>{kBillSplitCount}</span>
+                          <button onClick={() => setKBillSplitCount(n => Math.min(20, n + 1))} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--raised)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>+</button>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(245,158,11,0.08)", borderRadius: 9, border: "1px solid rgba(245,158,11,0.2)" }}>
+                        <span style={{ color: "var(--muted)", fontSize: 12 }}>نصيب كل شخص</span>
+                        <span style={{ color: "var(--gold)", fontSize: 16, fontWeight: 900 }}>{Math.ceil(grandTotal / kBillSplitCount).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span></span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   {(["cash", "card"] as const).map(m => (
                     <button key={m} onClick={() => setKBillMethod(m)} style={{
