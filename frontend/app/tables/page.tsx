@@ -289,6 +289,10 @@ export default function TablesPage() {
   const [editingZone, setEditingZone]             = useState<string | null>(null);
   const [editingZoneInput, setEditingZoneInput]   = useState("");
   const [confirmDeleteZone, setConfirmDeleteZone] = useState<string | null>(null);
+  const [showBill, setShowBill]                   = useState(false);
+  const [billPayMethod, setBillPayMethod]         = useState<"cash" | "card">("cash");
+  const [billPaying, setBillPaying]               = useState(false);
+  const [billPaid, setBillPaid]                   = useState(false);
 
   const dragging    = useRef<{ id: string; ox: number; oy: number } | null>(null);
   const resizing    = useRef<{ id: string; mx: number; my: number; ow: number; oh: number } | null>(null);
@@ -510,6 +514,29 @@ export default function TablesPage() {
         body: JSON.stringify({ elements: newEls.map(toApiEl) }),
       });
     } finally { setSaving(false); }
+  };
+
+  const payAllOrders = async (tableOrders: Order[], payMethod: "cash" | "card") => {
+    setBillPaying(true);
+    try {
+      await Promise.all(tableOrders.map(o =>
+        fetch(`${API}/orders/${o.id}/pay`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_method: payMethod }),
+        })
+      ));
+      await Promise.all(tableOrders.map(o =>
+        fetch(`${API}/orders/${o.id}/done`, { method: "PUT" })
+      ));
+      setBillPaid(true);
+      setTimeout(() => {
+        setShowBill(false);
+        setBillPaid(false);
+        setActiveTable(null);
+        fetchOrders();
+      }, 1800);
+    } finally { setBillPaying(false); }
   };
 
   const occupiedTables    = new Set(orders.map(o => o.table_number));
@@ -859,11 +886,27 @@ export default function TablesPage() {
                         {(o.items ?? []).slice(0, 4).map((it, j) => (
                           <div key={j} style={{ color: "var(--text2)", fontSize: 12, marginBottom: 2 }}>• {it.name}</div>
                         ))}
+                        {(o.items ?? []).length > 4 && (
+                          <div style={{ color: "var(--subtle)", fontSize: 11, marginTop: 2 }}>+{(o.items ?? []).length - 4} أصناف أخرى</div>
+                        )}
                         <div style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
                           {o.total_price.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
                         </div>
                       </div>
                     ))}
+                    {/* Combined total + bill button */}
+                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ color: "var(--text2)", fontSize: 12 }}>المجموع الكلي</span>
+                        <span style={{ color: "var(--gold)", fontSize: 18, fontWeight: 800 }}>
+                          {activeTableOrders.reduce((s, o) => s + o.total_price, 0).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => { setShowBill(true); setBillPayMethod("cash"); setBillPaid(false); }}
+                        style={{ width: "100%", padding: "11px 0", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#000", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 800 }}
+                      >🧾 حساب شامل</button>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ background: "var(--surface)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
@@ -897,6 +940,99 @@ export default function TablesPage() {
           </div>
         </div>
       )}
+
+      {/* ── Bill Modal ── */}
+      {showBill && activeTable && (() => {
+        const billOrders = orders.filter(o => o.table_number === activeTable);
+        const grandTotal = billOrders.reduce((s, o) => s + o.total_price, 0);
+        const allItems   = billOrders.flatMap(o => o.items ?? []);
+        const grouped    = allItems.reduce<Record<string, { price: number; qty: number }>>((acc, it) => {
+          if (!acc[it.name]) acc[it.name] = { price: it.price, qty: 0 };
+          acc[it.name].qty++;
+          return acc;
+        }, {});
+        return (
+          <div
+            onClick={() => setShowBill(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 22, width: 400, maxHeight: "88vh", direction: "rtl", boxShadow: "0 40px 100px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}
+            >
+              {/* Header */}
+              <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>🧾 فاتورة طاولة {activeTable}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 3 }}>{billOrders.length} طلب · {allItems.length} صنف</div>
+                </div>
+                <button onClick={() => setShowBill(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
+              </div>
+
+              {/* Items list */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
+                {Object.entries(grouped).map(([name, { price, qty }]) => (
+                  <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                    <div>
+                      <span style={{ color: "var(--text)", fontSize: 13 }}>{name}</span>
+                      {qty > 1 && <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>×{qty}</span>}
+                    </div>
+                    <span style={{ color: "var(--gold)", fontSize: 13, fontWeight: 700 }}>{(price * qty).toLocaleString()} د.ع</span>
+                  </div>
+                ))}
+                {/* Per-order breakdown */}
+                <div style={{ marginTop: 14, background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ color: "var(--muted)", fontSize: 10, fontWeight: 700, marginBottom: 8 }}>تفصيل الطلبات</div>
+                  {billOrders.map(o => (
+                    <div key={o.id} style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 11, marginBottom: 4 }}>
+                      <span>طلب #{o.id} — {elapsedStr(o.created_at)} مضت</span>
+                      <span style={{ color: "var(--gold)", fontWeight: 700 }}>{o.total_price.toLocaleString()} د.ع</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ borderTop: "1px solid var(--border)", padding: "16px 22px", flexShrink: 0 }}>
+                {/* Grand total */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ color: "var(--text)", fontSize: 15, fontWeight: 700 }}>الإجمالي الكلي</span>
+                  <span style={{ color: "var(--gold)", fontSize: 24, fontWeight: 900 }}>{grandTotal.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 400 }}>د.ع</span></span>
+                </div>
+                {/* Payment method */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  {(["cash", "card"] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setBillPayMethod(m)}
+                      style={{
+                        flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                        background: billPayMethod === m ? "rgba(245,158,11,0.15)" : "var(--raised)",
+                        color: billPayMethod === m ? "var(--gold)" : "var(--text2)",
+                        border: `1.5px solid ${billPayMethod === m ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                      }}
+                    >{m === "cash" ? "💵 نقدي" : "💳 بطاقة"}</button>
+                  ))}
+                </div>
+                {/* Pay button */}
+                {billPaid ? (
+                  <div style={{ textAlign: "center", padding: "12px 0", color: "var(--green)", fontSize: 16, fontWeight: 800 }}>✅ تم الدفع بنجاح!</div>
+                ) : (
+                  <button
+                    onClick={() => payAllOrders(billOrders, billPayMethod)}
+                    disabled={billPaying}
+                    style={{
+                      width: "100%", padding: "13px 0", border: "none", borderRadius: 12, cursor: billPaying ? "not-allowed" : "pointer",
+                      background: billPaying ? "var(--raised)" : "linear-gradient(135deg,#22c55e,#16a34a)",
+                      color: billPaying ? "var(--muted)" : "#000", fontSize: 14, fontWeight: 900,
+                    }}
+                  >{billPaying ? "⏳ جاري الدفع..." : `💰 دفع ${grandTotal.toLocaleString()} د.ع وإغلاق الطاولة`}</button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Quick Setup Modal ── */}
       {showQuickSetup && (() => {

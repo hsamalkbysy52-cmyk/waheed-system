@@ -241,6 +241,21 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [stockAlert, setStockAlert] = useState("");
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
   const [variantPick, setVariantPick] = useState<MenuItem | null>(null);
+  const [tableOccupied, setTableOccupied] = useState(false);
+
+  /* check if table has active orders */
+  useEffect(() => {
+    fetch("/api/orders")
+      .then(r => r.json())
+      .then(d => {
+        const active = (d.orders || []).filter(
+          (o: { table_number: number; status: string }) =>
+            o.table_number === parseInt(tableId) && !["done", "paid"].includes(o.status)
+        );
+        setTableOccupied(active.length > 0);
+      })
+      .catch(() => {});
+  }, [tableId]);
 
   /* fetch menu */
   const loadMenu = useCallback(() => {
@@ -438,6 +453,20 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           <span style={{ color: "var(--gold)", fontWeight: "700", fontSize: "13px" }}>طاولة {tableId}</span>
         </div>
       </div>
+
+      {/* ── occupied notice ── */}
+      {tableOccupied && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: "10px",
+          background: "rgba(245,158,11,0.08)", borderBottom: "1px solid rgba(245,158,11,0.2)",
+          padding: "10px 20px",
+        }}>
+          <span style={{ fontSize: "16px", flexShrink: 0 }}>🟡</span>
+          <span style={{ color: "var(--gold)", fontSize: "12px", fontWeight: "600", lineHeight: 1.4 }}>
+            هذه الطاولة لها طلبات نشطة — طلبك سيُضاف وسيُجمع في الفاتورة النهائية
+          </span>
+        </div>
+      )}
 
       {/* ── body ── */}
       <div style={{ paddingBottom: cartCount > 0 ? "96px" : "24px" }}>
