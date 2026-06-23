@@ -64,12 +64,15 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
   const markDone = async () => {
     setPaying(true);
     try {
-      await fetch(`${API}/orders/${order.id}/pay`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_method: method }),
-      });
-      await fetch(`${API}/orders/${order.id}/done`, { method: "PUT" });
+      if (payOnly) {
+        await fetch(`${API}/orders/${order.id}/pay`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_method: method }),
+        });
+      } else {
+        await fetch(`${API}/orders/${order.id}/done`, { method: "PUT" });
+      }
       setDone(true);
     } catch {}
     finally { setPaying(false); }
