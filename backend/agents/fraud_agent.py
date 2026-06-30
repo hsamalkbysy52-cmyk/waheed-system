@@ -23,24 +23,25 @@ def _cancellations_last_hour(cashier: str, db: Session) -> int:
 
 
 def send_whatsapp_alert(message: str):
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+    """Send a WhatsApp alert to the owner via the local whatsapp_service."""
+    wa_service_url = os.getenv("WA_SERVICE_URL", "")
     owner_phone = os.getenv("OWNER_PHONE", "")
-    from_number = os.getenv("TWILIO_FROM_NUMBER", "whatsapp:+14155238886")
 
-    if not all([account_sid, auth_token, owner_phone]):
-        print(f"[FraudAgent] Alert skipped — missing credentials. Message: {message}")
+    if not wa_service_url or not owner_phone:
+        print(f"[FraudAgent] Alert (no WA_SERVICE_URL/OWNER_PHONE set): {message}")
         return
 
     try:
-        from twilio.rest import Client
-        client = Client(account_sid, auth_token)
-        client.messages.create(
-            from_=from_number,
-            to=f"whatsapp:{owner_phone}",
-            body=message,
+        import requests
+        resp = requests.post(
+            f"{wa_service_url}/send",
+            json={"to": owner_phone, "message": message},
+            timeout=5,
         )
-        print(f"[FraudAgent] WhatsApp alert sent to owner.")
+        if resp.ok:
+            print("[FraudAgent] WhatsApp alert sent to owner.")
+        else:
+            print(f"[FraudAgent] WA service returned {resp.status_code}: {resp.text}")
     except Exception as e:
         print(f"[FraudAgent] Failed to send alert: {e}")
 

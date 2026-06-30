@@ -31,8 +31,6 @@ try:
 except Exception as e:
     print(f"DB init warning: {e}")
 
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 OPENAI_KEY = os.getenv("OPENAI_KEY", "")
 
 
@@ -821,18 +819,16 @@ def ask_report_agent(question: str, api_key: str):
         return {"error": str(e)}
 
 
-@app.post("/whatsapp")
-async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
-    from twilio.twiml.messaging_response import MessagingResponse
-    twiml = MessagingResponse()
+@app.post("/internal/whatsapp")
+async def internal_whatsapp(request: Request, db: Session = Depends(get_db)):
+    """Called by the whatsapp_service Node.js process when a message arrives."""
+    body = await request.json()
+    message = body.get("message", "")
+    from_number = body.get("from", "unknown")
 
     if not is_restaurant_online(db):
-        twiml.message("الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة.")
-        return Response(content=str(twiml), media_type="application/xml")
+        return {"reply": "الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."}
 
     from agents.whatsapp_agent import process_whatsapp_message
-    form = await request.form()
-    message = form.get("Body", "")
     reply = process_whatsapp_message(message, OPENAI_KEY)
-    twiml.message(reply)
-    return Response(content=str(twiml), media_type="application/xml")
+    return {"reply": reply}
