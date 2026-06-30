@@ -23,25 +23,17 @@ def _cancellations_last_hour(cashier: str, db: Session) -> int:
 
 
 def send_whatsapp_alert(message: str):
-    """Send a WhatsApp alert to the owner via the local whatsapp_service."""
-    wa_service_url = os.getenv("WA_SERVICE_URL", "")
+    """Send a WhatsApp alert to the owner via the Python WhatsApp client."""
     owner_phone = os.getenv("OWNER_PHONE", "")
 
-    if not wa_service_url or not owner_phone:
-        print(f"[FraudAgent] Alert (no WA_SERVICE_URL/OWNER_PHONE set): {message}")
+    if not owner_phone:
+        print(f"[FraudAgent] Alert (OWNER_PHONE not set): {message}")
         return
 
     try:
-        import requests
-        resp = requests.post(
-            f"{wa_service_url}/send",
-            json={"to": owner_phone, "message": message},
-            timeout=5,
-        )
-        if resp.ok:
-            print("[FraudAgent] WhatsApp alert sent to owner.")
-        else:
-            print(f"[FraudAgent] WA service returned {resp.status_code}: {resp.text}")
+        from agents.whatsapp_client import send_message
+        send_message(owner_phone, message)
+        print("[FraudAgent] WhatsApp alert sent to owner.")
     except Exception as e:
         print(f"[FraudAgent] Failed to send alert: {e}")
 

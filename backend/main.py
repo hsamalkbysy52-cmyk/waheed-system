@@ -32,6 +32,14 @@ except Exception as e:
     print(f"DB init warning: {e}")
 
 OPENAI_KEY = os.getenv("OPENAI_KEY", "")
+WA_SESSION_PATH = os.getenv("WA_SESSION_PATH", "/data/wa_session.db")
+
+
+@app.on_event("startup")
+async def startup_event():
+    if OPENAI_KEY:
+        from agents.whatsapp_client import start_whatsapp_client
+        start_whatsapp_client(OPENAI_KEY, WA_SESSION_PATH)
 
 
 def get_db():
@@ -819,16 +827,3 @@ def ask_report_agent(question: str, api_key: str):
         return {"error": str(e)}
 
 
-@app.post("/internal/whatsapp")
-async def internal_whatsapp(request: Request, db: Session = Depends(get_db)):
-    """Called by the whatsapp_service Node.js process when a message arrives."""
-    body = await request.json()
-    message = body.get("message", "")
-    from_number = body.get("from", "unknown")
-
-    if not is_restaurant_online(db):
-        return {"reply": "الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."}
-
-    from agents.whatsapp_agent import process_whatsapp_message
-    reply = process_whatsapp_message(message, OPENAI_KEY)
-    return {"reply": reply}
