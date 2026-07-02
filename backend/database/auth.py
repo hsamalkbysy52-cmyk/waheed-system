@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, UniqueConstraint
 from database.models import Base, engine, SessionLocal
 from passlib.context import CryptContext
 
@@ -8,6 +8,8 @@ pwd_context = CryptContext(schemes=["bcrypt"])
 # جدول المستخدمين
 class User(Base):
     __tablename__ = "users"
+    # username فريد داخل المطعم الواحد — قيد super_admin في فهرس جزئي (enforce_not_null_restaurant_id)
+    __table_args__ = (UniqueConstraint("restaurant_id", "username", name="uq_users_restaurant_username"),)
     id = Column(Integer, primary_key=True)
     # NULL مسموح فقط لدور super_admin (مدير المنصة بلا مطعم محدد) — يُفرض في طبقة التطبيق
     restaurant_id = Column(Integer, nullable=True, index=True)

@@ -9,7 +9,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, backfill_restaurant_id, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
+from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, backfill_restaurant_id, enforce_not_null_restaurant_id, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
 from database.auth import create_users, verify_password, get_user, User
 
 SECRET_KEY = "waheed-secret-2024"
@@ -34,6 +34,7 @@ except Exception as e:
 # Multi-tenant migration — خارج try/except عمداً:
 # فشل الـ backfill يجب أن يوقف السيرفر، لا أن يُبتلع كتحذير
 backfill_restaurant_id()
+enforce_not_null_restaurant_id()   # لا يصل هنا إلا بعد تحقق backfill بنجاح (صفر NULL)
 
 OPENAI_KEY = os.getenv("OPENAI_KEY", "")
 WA_SESSION_PATH = os.getenv("WA_SESSION_PATH", "/data/wa_session.db")

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, text, UniqueConstraint
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -21,7 +21,7 @@ class MenuItem(Base):
     __tablename__ = "menu_items"
 
     id = Column(Integer, primary_key=True)
-    restaurant_id = Column(Integer, nullable=True, index=True)  # المرحلة 1: nullable مؤقتاً — يصبح NOT NULL في المرحلة 3
+    restaurant_id = Column(Integer, nullable=False, server_default="1", index=True)  # server_default جسر مؤقت — يُزال في المرحلة 7
     name = Column(String)
     price = Column(Float)
     category = Column(String)
@@ -32,9 +32,11 @@ class MenuItem(Base):
 
 class Order(Base):
     __tablename__ = "orders"
+    # client_id فريد داخل المطعم الواحد — لا عالمياً (مطعمان قد يستخدمان نفس UUID)
+    __table_args__ = (UniqueConstraint("restaurant_id", "client_id", name="uq_orders_restaurant_client"),)
 
     id = Column(Integer, primary_key=True)
-    restaurant_id = Column(Integer, nullable=True, index=True)
+    restaurant_id = Column(Integer, nullable=False, server_default="1", index=True)
     table_number = Column(Integer)
     total_price = Column(Float)
     status = Column(String, default="pending")
@@ -43,14 +45,14 @@ class Order(Base):
     cashier = Column(String(100), nullable=True)
     notes = Column(String, nullable=True)
     payment_method = Column(String(10), nullable=True)   # null=unpaid; cash/card/qr=prepaid
-    client_id = Column(String(36), nullable=True, unique=True)  # UUID sent by client for idempotency
+    client_id = Column(String(36), nullable=True)  # UUID sent by client for idempotency — unique per restaurant (see __table_args__)
 
 
 class CancellationLog(Base):
     __tablename__ = "cancellation_logs"
 
     id = Column(Integer, primary_key=True)
-    restaurant_id = Column(Integer, nullable=True, index=True)
+    restaurant_id = Column(Integer, nullable=False, server_default="1", index=True)
     order_id = Column(Integer)
     cashier = Column(String)
     cancelled_at = Column(DateTime, default=datetime.now)
@@ -60,7 +62,7 @@ class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
     id = Column(Integer, primary_key=True)
-    restaurant_id = Column(Integer, nullable=True, index=True)
+    restaurant_id = Column(Integer, nullable=False, server_default="1", index=True)
     name = Column(String)
     unit = Column(String, default="قطعة")
     quantity = Column(Float, default=0)
@@ -80,7 +82,7 @@ class TableLayoutElement(Base):
     __tablename__ = "table_layout"
 
     id = Column(Integer, primary_key=True)
-    restaurant_id = Column(Integer, nullable=True, index=True)
+    restaurant_id = Column(Integer, nullable=False, server_default="1", index=True)
     element_id = Column(String)
     element_type = Column(String)
     x = Column(Float, default=0)
@@ -158,14 +160,6 @@ def create_tables():
                 conn.commit()
             except Exception:
                 pass
-        # Unique index on client_id — safe to run repeatedly (IF NOT EXISTS)
-        try:
-            conn.execute(text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ix_orders_client_id ON orders(client_id)"
-            ))
-            conn.commit()
-        except Exception:
-            pass
         # فهارس restaurant_id — ضرورية لأداء الفلترة الإجبارية بكل استعلام
         for idx_sql in [
             "CREATE INDEX IF NOT EXISTS ix_menu_items_restaurant_id ON menu_items(restaurant_id)",
@@ -217,6 +211,38 @@ def backfill_restaurant_id():
                 + "; ".join(failures)
             )
     print("Backfill OK: all tenant rows tagged with restaurant_id")
+
+
+def enforce_not_null_restaurant_id():
+    """المرحلة 3: فرض NOT NULL + استبدال القيود الفريدة الأحادية بمركّبة لكل مطعم.
+
+    يُستدعى فقط بعد نجاح backfill_restaurant_id() (التي توقف السيرفر عند أي فشل).
+    - PostgreSQL: فرض فعلي على مستوى القاعدة. DEFAULT 1 جسر مؤقت يُزال في المرحلة 7.
+    - SQLite: لا يدعم ALTER COLUMN — يُغطى عبر تعريفات الـ models للقواعد الجديدة.
+    الأوامر كلها idempotent فلا تُبتلع أخطاؤها — أي فشل حقيقي يجب أن يوقف الإقلاع.
+    """
+    with engine.connect() as conn:
+        if engine.dialect.name == "postgresql":
+            for t in TENANT_TABLES:
+                conn.execute(text(f"ALTER TABLE {t} ALTER COLUMN restaurant_id SET DEFAULT 1"))
+                conn.execute(text(f"ALTER TABLE {t} ALTER COLUMN restaurant_id SET NOT NULL"))
+                conn.commit()
+            # القيود الفريدة القديمة المعرفة inline عند إنشاء الجدول (إن وجدت)
+            conn.execute(text("ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_client_id_key"))
+            conn.execute(text("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key"))
+            conn.commit()
+
+        # الفهارس المركّبة — صيغة تعمل على SQLite وPostgreSQL معاً
+        for sql in [
+            "DROP INDEX IF EXISTS ix_orders_client_id",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_orders_restaurant_client ON orders(restaurant_id, client_id)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_restaurant_username ON users(restaurant_id, username)",
+            # حسابات super_admin (بلا مطعم): NULL لا يخضع للقيد المركّب — فهرس جزئي خاص بها
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_superadmin_username ON users(username) WHERE restaurant_id IS NULL",
+        ]:
+            conn.execute(text(sql))
+            conn.commit()
+    print("NOT NULL enforcement OK: restaurant_id constraints active")
 
 
 def seed_restaurant():
