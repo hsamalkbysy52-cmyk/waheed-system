@@ -21,6 +21,7 @@ class MenuItem(Base):
     __tablename__ = "menu_items"
 
     id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, nullable=True, index=True)  # المرحلة 1: nullable مؤقتاً — يصبح NOT NULL في المرحلة 3
     name = Column(String)
     price = Column(Float)
     category = Column(String)
@@ -33,6 +34,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, nullable=True, index=True)
     table_number = Column(Integer)
     total_price = Column(Float)
     status = Column(String, default="pending")
@@ -48,6 +50,7 @@ class CancellationLog(Base):
     __tablename__ = "cancellation_logs"
 
     id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, nullable=True, index=True)
     order_id = Column(Integer)
     cashier = Column(String)
     cancelled_at = Column(DateTime, default=datetime.now)
@@ -57,6 +60,7 @@ class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
     id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, nullable=True, index=True)
     name = Column(String)
     unit = Column(String, default="قطعة")
     quantity = Column(Float, default=0)
@@ -76,6 +80,7 @@ class TableLayoutElement(Base):
     __tablename__ = "table_layout"
 
     id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, nullable=True, index=True)
     element_id = Column(String)
     element_type = Column(String)
     x = Column(Float, default=0)
@@ -140,6 +145,13 @@ def create_tables():
             "ALTER TABLE modifier_options ADD COLUMN sort_order INTEGER DEFAULT 0",
             "ALTER TABLE menu_items ADD COLUMN parent_id INTEGER",
             "ALTER TABLE orders ADD COLUMN client_id VARCHAR(36)",
+            # --- Multi-tenant المرحلة 1: عمود المطعم في كل جدول بيانات ---
+            "ALTER TABLE menu_items ADD COLUMN restaurant_id INTEGER",
+            "ALTER TABLE orders ADD COLUMN restaurant_id INTEGER",
+            "ALTER TABLE cancellation_logs ADD COLUMN restaurant_id INTEGER",
+            "ALTER TABLE inventory_items ADD COLUMN restaurant_id INTEGER",
+            "ALTER TABLE table_layout ADD COLUMN restaurant_id INTEGER",
+            "ALTER TABLE users ADD COLUMN restaurant_id INTEGER",
         ]:
             try:
                 conn.execute(text(sql))
@@ -154,6 +166,20 @@ def create_tables():
             conn.commit()
         except Exception:
             pass
+        # فهارس restaurant_id — ضرورية لأداء الفلترة الإجبارية بكل استعلام
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS ix_menu_items_restaurant_id ON menu_items(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS ix_orders_restaurant_id ON orders(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS ix_cancellation_logs_restaurant_id ON cancellation_logs(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_items_restaurant_id ON inventory_items(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS ix_table_layout_restaurant_id ON table_layout(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS ix_users_restaurant_id ON users(restaurant_id)",
+        ]:
+            try:
+                conn.execute(text(idx_sql))
+                conn.commit()
+            except Exception:
+                pass
     print("DB tables ready")
 
 

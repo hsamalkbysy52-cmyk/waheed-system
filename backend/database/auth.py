@@ -9,9 +9,11 @@ pwd_context = CryptContext(schemes=["bcrypt"])
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True)
+    # NULL مسموح فقط لدور super_admin (مدير المنصة بلا مطعم محدد) — يُفرض في طبقة التطبيق
+    restaurant_id = Column(Integer, nullable=True, index=True)
+    username = Column(String)  # فريد داخل المطعم الواحد (فهرس مركّب في create_tables)
     password = Column(String)
-    role = Column(String)  # admin / cashier
+    role = Column(String)  # super_admin / admin / cashier
 
 # إنشاء الجدول + مستخدمين افتراضيين
 def create_users():
