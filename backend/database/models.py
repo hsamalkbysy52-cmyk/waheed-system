@@ -183,6 +183,42 @@ def create_tables():
     print("DB tables ready")
 
 
+# الجداول الخاضعة لعزل المستأجرين — كل صف فيها يجب أن يحمل restaurant_id
+TENANT_TABLES = ["menu_items", "orders", "cancellation_logs", "inventory_items", "table_layout"]
+
+
+def backfill_restaurant_id():
+    """المرحلة 2: وسم كل الصفوف القديمة بالمطعم الحالي الوحيد (id=1).
+
+    آمنة للتشغيل عند كل إقلاع (WHERE restaurant_id IS NULL فقط).
+    لو بقي أي صف NULL بعد التعبئة: RuntimeError — السيرفر لا يعمل ببيانات غير موسومة.
+    """
+    with engine.connect() as conn:
+        for t in TENANT_TABLES:
+            conn.execute(text(f"UPDATE {t} SET restaurant_id = 1 WHERE restaurant_id IS NULL"))
+        # المستخدمون: الجميع يتبع المطعم 1 ما عدا super_admin (مدير المنصة — بلا مطعم)
+        conn.execute(text(
+            "UPDATE users SET restaurant_id = 1 "
+            "WHERE restaurant_id IS NULL AND role != 'super_admin'"
+        ))
+        conn.commit()
+
+        # تحقق ذاتي صارم — أي NULL متبقٍ يوقف الإقلاع فوراً
+        failures = []
+        for t in TENANT_TABLES:
+            remaining = conn.execute(
+                text(f"SELECT COUNT(*) FROM {t} WHERE restaurant_id IS NULL")
+            ).scalar()
+            if remaining:
+                failures.append(f"{t}: {remaining} rows still NULL")
+        if failures:
+            raise RuntimeError(
+                "MIGRATION FAILED — restaurant_id backfill incomplete, refusing to start: "
+                + "; ".join(failures)
+            )
+    print("Backfill OK: all tenant rows tagged with restaurant_id")
+
+
 def seed_restaurant():
     db = SessionLocal()
     if db.query(Restaurant).count() == 0:
