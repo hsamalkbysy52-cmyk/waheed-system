@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const RAILWAY = "https://waheed-system-production.up.railway.app";
+const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 export const dynamic = "force-dynamic";
 

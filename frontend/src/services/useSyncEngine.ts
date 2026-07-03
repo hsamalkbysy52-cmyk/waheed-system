@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { getPendingSyncOrders, updateOrderSyncStatus, type LocalOrder } from './db';
 
-const API = 'https://waheed-system-production.up.railway.app';
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://waheed-system-production.up.railway.app';
 
 // Module-level mutex — one sync at a time across all hook instances
 let isSyncing = false;

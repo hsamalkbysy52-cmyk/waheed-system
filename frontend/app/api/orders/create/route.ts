@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const RAILWAY = "https://waheed-system-production.up.railway.app";
+const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 /** Proxy POST /orders/create to Railway — avoids CORS issues on mobile browsers. */
 export async function POST(req: NextRequest) {

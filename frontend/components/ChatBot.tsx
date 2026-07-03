@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
 
-const RAILWAY = "https://waheed-system-production.up.railway.app";
+const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type OrderProposal = { table: number; items: { name: string; quantity: number; price?: number }[] };

@@ -4,7 +4,7 @@ import { BillModal, OrderForBill } from "@/components/BillModal";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
 
-const API              = "https://waheed-system-production.up.railway.app";
+const API              = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 const MENU_CACHE_KEY   = "waheed_menu_v1";
 const TABLES_CACHE_KEY = "waheed_tables_v1";
 const TAKEAWAY         = 0; // table_number = 0 means سفري

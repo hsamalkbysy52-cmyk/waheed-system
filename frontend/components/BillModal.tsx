@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const API = "https://waheed-system-production.up.railway.app";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 type PayMethod = "cash" | "card" | "qr";
 type SplitMode = "none" | "equal" | "items";

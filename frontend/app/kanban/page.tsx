@@ -7,7 +7,7 @@ import { BillModal } from "@/components/BillModal";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
 import { getPendingSyncOrders } from "@/src/services/db";
 
-const API = "https://waheed-system-production.up.railway.app";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 async function fetchWithRetry(url: string, retries = 4, delayMs = 3000): Promise<Response> {
   for (let i = 0; i < retries; i++) {

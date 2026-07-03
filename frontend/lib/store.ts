@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const API = "https://waheed-system-production.up.railway.app";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 export type MenuItem = {
   id: number;

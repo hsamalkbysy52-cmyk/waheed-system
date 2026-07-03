@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 
-const API = "https://waheed-system-production.up.railway.app";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 type RawItem = { name: string; price: number; category: string };
 type Order = { id: number; table_number: number; status: string; created_at: string; items?: RawItem[] };

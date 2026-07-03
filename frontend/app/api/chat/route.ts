@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const RAILWAY = "https://waheed-system-production.up.railway.app";
+const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 export async function POST(req: NextRequest) {
   const { messages, menuText } = await req.json();

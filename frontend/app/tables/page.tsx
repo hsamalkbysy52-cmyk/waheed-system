@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import QRCode from "react-qr-code";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
 
-const API  = "https://waheed-system-production.up.railway.app";
+const API  = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 const GRID = 30;
 const snap = (v: number) => Math.round(v / GRID) * GRID;
 

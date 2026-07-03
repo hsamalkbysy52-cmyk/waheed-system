@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const API = 'https://waheed-system-production.up.railway.app';
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://waheed-system-production.up.railway.app';
 const RESTAURANT_ID = 1;
 const INTERVAL_MS = 60_000; // 60 seconds — server timeout is 90 s
 
