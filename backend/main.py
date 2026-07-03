@@ -11,8 +11,17 @@ import os
 
 from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, backfill_restaurant_id, enforce_not_null_restaurant_id, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
 from database.auth import create_users, verify_password, get_user, User
-
-SECRET_KEY = "waheed-secret-2024"
+from database.tenant import (
+    SECRET_KEY,
+    get_restaurant_id,
+    tenant_query,
+    tenant_add,
+    owned_menu_item,
+    owned_inventory_item,
+    owned_modifier_group,
+    owned_modifier_option,
+    owned_order,
+)
 
 app = FastAPI(title="Waheed System", version="1.0.0")
 
@@ -94,8 +103,8 @@ def _serialize_menu_item(i, db: Session) -> dict:
 
 
 @app.get("/menu")
-def get_menu(db: Session = Depends(get_db)):
-    items = db.query(MenuItem).all()
+def get_menu(db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    items = tenant_query(db, MenuItem, restaurant_id).all()
     parents = [i for i in items if not i.parent_id]
     children = [i for i in items if i.parent_id]
     menu = []
@@ -115,17 +124,17 @@ class MenuItemPayload(BaseModel):
 
 
 @app.post("/menu/add")
-def add_item(payload: MenuItemPayload, db: Session = Depends(get_db)):
+def add_item(payload: MenuItemPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     item = MenuItem(name=payload.name, price=payload.price, category=payload.category,
                     description=payload.description or None, parent_id=payload.parent_id)
-    db.add(item)
+    tenant_add(db, item, restaurant_id)
     db.commit()
     return {"message": f"تم إضافة {payload.name}", "id": item.id}
 
 
 @app.put("/menu/{item_id}")
-def edit_item(item_id: int, payload: MenuItemPayload, db: Session = Depends(get_db)):
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+def edit_item(item_id: int, payload: MenuItemPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    item = owned_menu_item(db, restaurant_id, item_id)
     if not item:
         return {"error": "الصنف غير موجود"}
     item.name = payload.name
@@ -137,18 +146,20 @@ def edit_item(item_id: int, payload: MenuItemPayload, db: Session = Depends(get_
 
 
 @app.delete("/menu/{item_id}")
-def delete_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+def delete_item(item_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    item = owned_menu_item(db, restaurant_id, item_id)
     if not item:
         return {"error": "الصنف غير موجود"}
-    db.query(MenuItem).filter(MenuItem.parent_id == item_id).delete()
+    tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.parent_id == item_id).delete()
     db.delete(item)
     db.commit()
     return {"message": "تم حذف الصنف"}
 
 
 @app.get("/menu/{item_id}/modifiers/groups")
-def get_modifier_groups(item_id: int, db: Session = Depends(get_db)):
+def get_modifier_groups(item_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_menu_item(db, restaurant_id, item_id):
+        return {"error": "الصنف غير موجود"}
     return {"groups": _get_item_modifiers(item_id, db)}
 
 
@@ -158,7 +169,9 @@ class ModifierGroupPayload(BaseModel):
 
 
 @app.post("/menu/{item_id}/modifiers/groups")
-def create_modifier_group(item_id: int, payload: ModifierGroupPayload, db: Session = Depends(get_db)):
+def create_modifier_group(item_id: int, payload: ModifierGroupPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_menu_item(db, restaurant_id, item_id):
+        return {"error": "الصنف غير موجود"}
     group = ModifierGroup(menu_item_id=item_id, name=payload.name, max_selections=payload.max_selections)
     db.add(group)
     db.commit()
@@ -166,9 +179,12 @@ def create_modifier_group(item_id: int, payload: ModifierGroupPayload, db: Sessi
 
 
 @app.delete("/modifiers/groups/{group_id}")
-def delete_modifier_group(group_id: int, db: Session = Depends(get_db)):
+def delete_modifier_group(group_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    group = owned_modifier_group(db, restaurant_id, group_id)
+    if not group:
+        return {"error": "المجموعة غير موجودة"}
     db.query(ModifierOption).filter(ModifierOption.group_id == group_id).delete()
-    db.query(ModifierGroup).filter(ModifierGroup.id == group_id).delete()
+    db.delete(group)
     db.commit()
     return {"message": "تم حذف المجموعة والخيارات"}
 
@@ -181,7 +197,12 @@ class ModifierOptionPayload(BaseModel):
 
 
 @app.post("/modifiers/groups/{group_id}/options")
-def create_modifier_option(group_id: int, payload: ModifierOptionPayload, db: Session = Depends(get_db)):
+def create_modifier_option(group_id: int, payload: ModifierOptionPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_modifier_group(db, restaurant_id, group_id):
+        return {"error": "المجموعة غير موجودة"}
+    # inventory_item_id يأتي من العميل — يجب أن يخص نفس المطعم
+    if payload.inventory_item_id is not None and not owned_inventory_item(db, restaurant_id, payload.inventory_item_id):
+        return {"error": "مادة المخزون غير موجودة"}
     option = ModifierOption(
         group_id=group_id,
         name=payload.name,
@@ -195,8 +216,11 @@ def create_modifier_option(group_id: int, payload: ModifierOptionPayload, db: Se
 
 
 @app.delete("/modifiers/options/{option_id}")
-def delete_modifier_option(option_id: int, db: Session = Depends(get_db)):
-    db.query(ModifierOption).filter(ModifierOption.id == option_id).delete()
+def delete_modifier_option(option_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    option = owned_modifier_option(db, restaurant_id, option_id)
+    if not option:
+        return {"error": "الخيار غير موجود"}
+    db.delete(option)
     db.commit()
     return {"message": "تم حذف الخيار"}
 
@@ -207,8 +231,8 @@ class ModifierGroupEditPayload(BaseModel):
 
 
 @app.put("/modifiers/groups/{group_id}")
-def edit_modifier_group(group_id: int, payload: ModifierGroupEditPayload, db: Session = Depends(get_db)):
-    group = db.query(ModifierGroup).filter(ModifierGroup.id == group_id).first()
+def edit_modifier_group(group_id: int, payload: ModifierGroupEditPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    group = owned_modifier_group(db, restaurant_id, group_id)
     if not group:
         return {"error": "not found"}
     group.name = payload.name
@@ -223,8 +247,8 @@ class ModifierOptionEditPayload(BaseModel):
 
 
 @app.put("/modifiers/options/{option_id}")
-def edit_modifier_option(option_id: int, payload: ModifierOptionEditPayload, db: Session = Depends(get_db)):
-    option = db.query(ModifierOption).filter(ModifierOption.id == option_id).first()
+def edit_modifier_option(option_id: int, payload: ModifierOptionEditPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    option = owned_modifier_option(db, restaurant_id, option_id)
     if not option:
         return {"error": "not found"}
     option.name = payload.name
@@ -238,24 +262,29 @@ class ReorderPayload(BaseModel):
 
 
 @app.put("/menu/{item_id}/modifiers/groups/reorder")
-def reorder_modifier_groups(item_id: int, payload: ReorderPayload, db: Session = Depends(get_db)):
+def reorder_modifier_groups(item_id: int, payload: ReorderPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_menu_item(db, restaurant_id, item_id):
+        return {"error": "الصنف غير موجود"}
     for i, gid in enumerate(payload.order):
-        db.query(ModifierGroup).filter(ModifierGroup.id == gid).update({"sort_order": i})
+        # مقيد بمجموعات هذا الصنف فقط — لا يمكن ترتيب مجموعات صنف آخر
+        db.query(ModifierGroup).filter(ModifierGroup.id == gid, ModifierGroup.menu_item_id == item_id).update({"sort_order": i})
     db.commit()
     return {"message": "تم ترتيب المجموعات"}
 
 
 @app.put("/modifiers/groups/{group_id}/options/reorder")
-def reorder_modifier_options(group_id: int, payload: ReorderPayload, db: Session = Depends(get_db)):
+def reorder_modifier_options(group_id: int, payload: ReorderPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_modifier_group(db, restaurant_id, group_id):
+        return {"error": "المجموعة غير موجودة"}
     for i, oid in enumerate(payload.order):
-        db.query(ModifierOption).filter(ModifierOption.id == oid).update({"sort_order": i})
+        db.query(ModifierOption).filter(ModifierOption.id == oid, ModifierOption.group_id == group_id).update({"sort_order": i})
     db.commit()
     return {"message": "تم ترتيب الخيارات"}
 
 
 @app.put("/menu/{item_id}/toggle")
-def toggle_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+def toggle_item(item_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    item = owned_menu_item(db, restaurant_id, item_id)
     if not item:
         return {"error": "الصنف غير موجود"}
     item.is_available = not item.is_available
@@ -280,8 +309,8 @@ class OrderRequest(BaseModel):
 
 
 @app.get("/orders")
-def get_orders(db: Session = Depends(get_db)):
-    orders = db.query(Order).all()
+def get_orders(db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    orders = tenant_query(db, Order, restaurant_id).all()
     return {"orders": [
         {
             "id": o.id,
@@ -298,11 +327,12 @@ def get_orders(db: Session = Depends(get_db)):
     ]}
 
 
-def _deduct_inventory(items_data: list, db: Session):
+def _deduct_inventory(items_data: list, db: Session, restaurant_id: int):
     from collections import Counter
     counts = Counter(it["name"] for it in items_data)
     for item_name, qty in counts.items():
-        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        # البحث بالاسم يجب أن يتقيد بالمطعم — الأسماء تتكرر بين المطاعم
+        menu_item = tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.name == item_name).first()
         if not menu_item:
             continue
         recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
@@ -312,13 +342,13 @@ def _deduct_inventory(items_data: list, db: Session):
                 inv.quantity = max(0.0, inv.quantity - ri.amount * qty)
 
 
-def _check_stock(items_data: list, db: Session) -> list:
+def _check_stock(items_data: list, db: Session, restaurant_id: int) -> list:
     """Returns names of items that lack sufficient ingredients for the requested quantity."""
     from collections import Counter
     counts = Counter(it["name"] for it in items_data)
     unavailable = []
     for item_name, qty in counts.items():
-        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        menu_item = tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.name == item_name).first()
         if not menu_item:
             continue
         recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
@@ -330,12 +360,12 @@ def _check_stock(items_data: list, db: Session) -> list:
     return unavailable
 
 
-def _restore_inventory(items_data: list, db: Session):
+def _restore_inventory(items_data: list, db: Session, restaurant_id: int):
     """Return previously deducted ingredients back to inventory."""
     from collections import Counter
     counts = Counter(it["name"] for it in items_data)
     for item_name, qty in counts.items():
-        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        menu_item = tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.name == item_name).first()
         if not menu_item:
             continue
         recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
@@ -360,21 +390,7 @@ def _get_max_qty(menu_item_id: int, db: Session):
     return max_q if max_q is not None else None
 
 
-def _apply_modifier_inventory(items_data: list, db: Session):
-    """Apply inventory adjustments based on modifier options selected for each item."""
-    for item in items_data:
-        for mod in item.get("modifiers", []):
-            inv_id = mod.get("inventory_item_id")
-            qty_delta = mod.get("quantity_delta", 0)
-            if inv_id is None or qty_delta == 0:
-                continue
-            inv = db.query(InventoryItem).filter(InventoryItem.id == inv_id).first()
-            if inv:
-                # positive delta = deduct more inventory; negative delta = restore inventory
-                inv.quantity = max(0.0, inv.quantity - qty_delta)
-
-
-def _check_and_deduct_atomic(items_data: list, db: Session) -> list:
+def _check_and_deduct_atomic(items_data: list, db: Session, restaurant_id: int) -> list:
     """
     Check inventory and deduct in one atomic pass.
     Uses SELECT FOR UPDATE to lock rows on PostgreSQL, preventing
@@ -389,7 +405,7 @@ def _check_and_deduct_atomic(items_data: list, db: Session) -> list:
 
     name_counts = Counter(it["name"] for it in items_data)
     for item_name, qty in name_counts.items():
-        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        menu_item = tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.name == item_name).first()
         if not menu_item:
             continue
         recipe = db.query(RecipeIngredient).filter(
@@ -412,8 +428,9 @@ def _check_and_deduct_atomic(items_data: list, db: Session) -> list:
         return []
 
     # --- Lock all needed rows in one query (FOR UPDATE on PostgreSQL) ---
+    # فلتر المطعم هنا يحمي من inventory_item_id مزروع في الـ modifiers من العميل
     inv_items = (
-        db.query(InventoryItem)
+        tenant_query(db, InventoryItem, restaurant_id)
         .filter(InventoryItem.id.in_(list(deductions.keys())))
         .with_for_update()
         .all()
@@ -453,12 +470,12 @@ def _is_out_of_stock(menu_item_id: int, db: Session) -> bool:
     return False
 
 
-def _create_order_record(order: OrderRequest, db: Session) -> dict:
+def _create_order_record(order: OrderRequest, db: Session, restaurant_id: int) -> dict:
     """Shared order-creation logic for both cashier and QR channels."""
     from fastapi import HTTPException
 
     if order.client_id:
-        existing = db.query(Order).filter(Order.client_id == order.client_id).first()
+        existing = tenant_query(db, Order, restaurant_id).filter(Order.client_id == order.client_id).first()
         if existing:
             return {"message": "تم حفظ الطلب!", "total": existing.total_price, "order_id": existing.id}
 
@@ -468,7 +485,7 @@ def _create_order_record(order: OrderRequest, db: Session) -> dict:
         for i in order.items
     ]
 
-    unavailable = _check_and_deduct_atomic(items_data, db)
+    unavailable = _check_and_deduct_atomic(items_data, db, restaurant_id)
     if unavailable:
         raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
 
@@ -482,27 +499,25 @@ def _create_order_record(order: OrderRequest, db: Session) -> dict:
         payment_method=order.payment_method or None,
         client_id=order.client_id or None,
     )
-    db.add(new_order)
+    tenant_add(db, new_order, restaurant_id)
     db.commit()
     return {"message": "تم حفظ الطلب!", "total": total, "order_id": new_order.id}
 
 
 @app.post("/orders/create")
-def create_order(order: OrderRequest, db: Session = Depends(get_db)):
+def create_order(order: OrderRequest, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     """Cashier endpoint — no heartbeat check (cashier works offline)."""
-    return _create_order_record(order, db)
-
-
-class HeartbeatPayload(BaseModel):
-    restaurant_id: int = 1
+    return _create_order_record(order, db, restaurant_id)
 
 
 @app.post("/heartbeat")
-def heartbeat(payload: HeartbeatPayload, db: Session = Depends(get_db)):
-    """Cashier device calls this every 60 s to signal the restaurant is online."""
-    restaurant = db.query(Restaurant).filter(Restaurant.id == payload.restaurant_id).first()
+def heartbeat(db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    """Cashier device calls this every 60 s to signal the restaurant is online.
+    restaurant_id يأتي من JWT عبر get_restaurant_id — لا يُقبل من جسم الطلب،
+    وإلا يقدر أي طرف مجهول يزوّر حالة "أونلاين" لأي مطعم أو ينشئ مطاعم وهمية."""
+    restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
     if not restaurant:
-        restaurant = Restaurant(id=payload.restaurant_id, name="Waheed Restaurant")
+        restaurant = Restaurant(id=restaurant_id, name="Waheed Restaurant")
         db.add(restaurant)
     restaurant.last_heartbeat_at = datetime.utcnow()
     db.commit()
@@ -511,7 +526,10 @@ def heartbeat(payload: HeartbeatPayload, db: Session = Depends(get_db)):
 
 @app.get("/restaurant/status")
 def restaurant_status(db: Session = Depends(get_db)):
-    """Public status endpoint — useful for debugging and monitoring."""
+    """Public status endpoint — useful for debugging and monitoring.
+    TODO(multi-tenant, مؤجل عمداً): مقفول على المطعم 1 فقط. عميل QR بلا توكن
+    فلا يوجد restaurant_id من JWT — يحتاج تصميم لكيفية تعريف QR بمطعمه (رابط/مسار؟).
+    يُحل مع تصميم ربط بوت الواتساب وQR بالمطعم لاحقاً، مو بترقيع هنا."""
     restaurant = db.query(Restaurant).filter(Restaurant.id == 1).first()
     online = is_restaurant_online(db)
     last_beat = restaurant.last_heartbeat_at.isoformat() if restaurant and restaurant.last_heartbeat_at else None
@@ -519,20 +537,23 @@ def restaurant_status(db: Session = Depends(get_db)):
 
 
 @app.post("/orders/qr-create")
-def create_qr_order(order: OrderRequest, db: Session = Depends(get_db)):
-    """QR menu endpoint — rejected while cashier device is offline."""
+def create_qr_order(order: OrderRequest, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    """QR menu endpoint — rejected while cashier device is offline.
+    TODO(multi-tenant, مؤجل عمداً): is_restaurant_online() مقفولة على المطعم 1 —
+    نفس قرار /restaurant/status المؤجل. restaurant_id هنا من الجسر الافتراضي
+    (لا توكن لعميل QR) فيساوي 1 حالياً، فلا يوجد تعارض فعلي لحد تفعيل مطعم ثاني."""
     from fastapi import HTTPException
     if not is_restaurant_online(db):
         raise HTTPException(
             status_code=503,
             detail="الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."
         )
-    return _create_order_record(order, db)
+    return _create_order_record(order, db, restaurant_id)
 
 
 @app.put("/orders/{order_id}/ready")
-def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+def mark_order_ready(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب مو موجود"}
     order.status = "ready"
@@ -541,8 +562,8 @@ def mark_order_ready(order_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/orders/{order_id}/preparing")
-def mark_order_preparing(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+def mark_order_preparing(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     order.status = "preparing"
@@ -557,21 +578,21 @@ class OrderEditPayload(BaseModel):
 
 
 @app.put("/orders/{order_id}")
-def edit_order(order_id: int, payload: OrderEditPayload, db: Session = Depends(get_db)):
+def edit_order(order_id: int, payload: OrderEditPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     from fastapi import HTTPException
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     if order.status not in ("preparing", "pending"):
         return {"error": "لا يمكن تعديل الطلب بعد إعداده"}
     old_items = json.loads(order.items_json) if order.items_json else []
     new_items = [{"name": i.name, "price": i.price, "category": i.category} for i in payload.items]
-    _restore_inventory(old_items, db)
-    unavailable = _check_stock(new_items, db)
+    _restore_inventory(old_items, db, restaurant_id)
+    unavailable = _check_stock(new_items, db, restaurant_id)
     if unavailable:
-        _deduct_inventory(old_items, db)
+        _deduct_inventory(old_items, db, restaurant_id)
         raise HTTPException(status_code=400, detail=f"مخزون غير كافٍ: {', '.join(unavailable)}")
-    _deduct_inventory(new_items, db)
+    _deduct_inventory(new_items, db, restaurant_id)
     order.items_json = json.dumps(new_items, ensure_ascii=False)
     order.total_price = sum(i.price for i in payload.items)
     order.table_number = payload.table_number
@@ -581,21 +602,21 @@ def edit_order(order_id: int, payload: OrderEditPayload, db: Session = Depends(g
 
 
 @app.delete("/orders/{order_id}")
-def delete_order(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+def delete_order(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     if order.status in ("preparing", "pending"):
         items_data = json.loads(order.items_json) if order.items_json else []
-        _restore_inventory(items_data, db)
+        _restore_inventory(items_data, db, restaurant_id)
     order.status = "cancelled"
     db.commit()
     return {"message": "تم حذف الطلب", "order_id": order_id}
 
 
 @app.put("/orders/{order_id}/served")
-def mark_order_served(order_id: int, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+def mark_order_served(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     order.status = "served"
@@ -607,9 +628,9 @@ class PayOrderPayload(BaseModel):
     payment_method: str = "cash"
 
 @app.put("/orders/{order_id}/pay")
-def pay_order(order_id: int, payload: PayOrderPayload, db: Session = Depends(get_db)):
+def pay_order(order_id: int, payload: PayOrderPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     """Record payment without changing operational status — order stays on kanban board."""
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     order.payment_method = payload.payment_method
@@ -618,9 +639,9 @@ def pay_order(order_id: int, payload: PayOrderPayload, db: Session = Depends(get
 
 
 @app.put("/orders/{order_id}/done")
-def complete_order(order_id: int, db: Session = Depends(get_db)):
+def complete_order(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     """Payment completion only — called by BillModal after cashier confirms payment."""
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب مو موجود"}
     order.status = "done"
@@ -629,8 +650,8 @@ def complete_order(order_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/orders/{order_id}/cancel")
-def cancel_order(order_id: int, cashier: str, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+def cancel_order(order_id: int, cashier: str, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب مو موجود"}
     if order.status == "cancelled":
@@ -639,7 +660,7 @@ def cancel_order(order_id: int, cashier: str, db: Session = Depends(get_db)):
     db.commit()
 
     from agents.fraud_agent import run_fraud_check
-    fraud_detected = run_fraud_check(order_id, cashier, db)
+    fraud_detected = run_fraud_check(order_id, cashier, db, restaurant_id)
 
     result = {"message": "تم إلغاء الطلب!", "order_id": order_id}
     if fraud_detected:
@@ -655,8 +676,8 @@ class InventoryPayload(BaseModel):
 
 
 @app.get("/inventory")
-def get_inventory(db: Session = Depends(get_db)):
-    items = db.query(InventoryItem).all()
+def get_inventory(db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    items = tenant_query(db, InventoryItem, restaurant_id).all()
     return {"items": [
         {"id": i.id, "name": i.name, "unit": i.unit, "quantity": i.quantity, "min_quantity": i.min_quantity}
         for i in items
@@ -664,16 +685,16 @@ def get_inventory(db: Session = Depends(get_db)):
 
 
 @app.post("/inventory/add")
-def add_inventory_item(payload: InventoryPayload, db: Session = Depends(get_db)):
+def add_inventory_item(payload: InventoryPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     item = InventoryItem(name=payload.name, unit=payload.unit, quantity=payload.quantity, min_quantity=payload.min_quantity)
-    db.add(item)
+    tenant_add(db, item, restaurant_id)
     db.commit()
     return {"message": f"تم إضافة {payload.name}", "id": item.id}
 
 
 @app.put("/inventory/{item_id}")
-def update_inventory_item(item_id: int, payload: InventoryPayload, db: Session = Depends(get_db)):
-    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+def update_inventory_item(item_id: int, payload: InventoryPayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    item = owned_inventory_item(db, restaurant_id, item_id)
     if not item:
         return {"error": "المادة غير موجودة"}
     item.name = payload.name
@@ -685,8 +706,8 @@ def update_inventory_item(item_id: int, payload: InventoryPayload, db: Session =
 
 
 @app.delete("/inventory/{item_id}")
-def delete_inventory_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+def delete_inventory_item(item_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    item = owned_inventory_item(db, restaurant_id, item_id)
     if not item:
         return {"error": "المادة غير موجودة"}
     db.query(RecipeIngredient).filter(RecipeIngredient.inventory_item_id == item_id).delete()
@@ -696,7 +717,9 @@ def delete_inventory_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/inventory/recipe/{menu_item_id}")
-def get_recipe(menu_item_id: int, db: Session = Depends(get_db)):
+def get_recipe(menu_item_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_menu_item(db, restaurant_id, menu_item_id):
+        return {"error": "الصنف غير موجود"}
     rows = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).all()
     result = []
     for r in rows:
@@ -721,7 +744,13 @@ class RecipePayload(BaseModel):
 
 
 @app.post("/inventory/recipe/{menu_item_id}")
-def save_recipe(menu_item_id: int, payload: RecipePayload, db: Session = Depends(get_db)):
+def save_recipe(menu_item_id: int, payload: RecipePayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    if not owned_menu_item(db, restaurant_id, menu_item_id):
+        return {"error": "الصنف غير موجود"}
+    # كل مادة مخزون بالوصفة يجب أن تخص نفس المطعم
+    for ing in payload.ingredients:
+        if not owned_inventory_item(db, restaurant_id, ing.inventory_item_id):
+            return {"error": "مادة المخزون غير موجودة"}
     db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item_id).delete()
     for ing in payload.ingredients:
         db.add(RecipeIngredient(menu_item_id=menu_item_id, inventory_item_id=ing.inventory_item_id, amount=ing.amount))
@@ -730,16 +759,16 @@ def save_recipe(menu_item_id: int, payload: RecipePayload, db: Session = Depends
 
 
 @app.post("/inventory/deduct/{order_id}")
-def deduct_inventory_for_order(order_id: int, db: Session = Depends(get_db)):
+def deduct_inventory_for_order(order_id: int, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
     from collections import Counter
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = owned_order(db, restaurant_id, order_id)
     if not order:
         return {"error": "الطلب غير موجود"}
     items = json.loads(order.items_json) if order.items_json else []
     counts = Counter(it["name"] for it in items)
     low_stock = []
     for item_name, qty in counts.items():
-        menu_item = db.query(MenuItem).filter(MenuItem.name == item_name).first()
+        menu_item = tenant_query(db, MenuItem, restaurant_id).filter(MenuItem.name == item_name).first()
         if not menu_item:
             continue
         recipe = db.query(RecipeIngredient).filter(RecipeIngredient.menu_item_id == menu_item.id).all()
@@ -754,8 +783,8 @@ def deduct_inventory_for_order(order_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/table-layout")
-def get_table_layout(db: Session = Depends(get_db)):
-    elements = db.query(TableLayoutElement).all()
+def get_table_layout(db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    elements = tenant_query(db, TableLayoutElement, restaurant_id).all()
     return {"elements": [
         {
             "element_id": e.element_id,
@@ -786,17 +815,17 @@ class LayoutSavePayload(BaseModel):
 
 
 @app.post("/table-layout/save")
-def save_table_layout(payload: LayoutSavePayload, db: Session = Depends(get_db)):
-    db.query(TableLayoutElement).delete()
+def save_table_layout(payload: LayoutSavePayload, db: Session = Depends(get_db), restaurant_id: int = Depends(get_restaurant_id)):
+    tenant_query(db, TableLayoutElement, restaurant_id).delete()
     for el in payload.elements:
-        db.add(TableLayoutElement(
+        tenant_add(db, TableLayoutElement(
             element_id=el.element_id,
             element_type=el.element_type,
             x=el.x, y=el.y, w=el.w, h=el.h,
             table_number=el.table_number,
             capacity=el.capacity,
             label=el.label,
-        ))
+        ), restaurant_id)
     db.commit()
     return {"message": "تم حفظ المخطط"}
 
@@ -823,10 +852,10 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 
 
 @app.post("/agent/ask")
-def ask_report_agent(question: str, api_key: str):
+def ask_report_agent(question: str, api_key: str, restaurant_id: int = Depends(get_restaurant_id)):
     from agents.report_agent import ask_agent
     try:
-        answer = ask_agent(question, api_key)
+        answer = ask_agent(question, api_key, restaurant_id)
         return {"answer": answer}
     except Exception as e:
         return {"error": str(e)}

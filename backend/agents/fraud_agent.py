@@ -3,17 +3,19 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 
-def _log_cancellation(order_id: int, cashier: str, db: Session):
+def _log_cancellation(order_id: int, cashier: str, db: Session, restaurant_id: int):
     from database.models import CancellationLog
-    db.add(CancellationLog(order_id=order_id, cashier=cashier))
+    from database.tenant import tenant_add
+    tenant_add(db, CancellationLog(order_id=order_id, cashier=cashier), restaurant_id)
     db.commit()
 
 
-def _cancellations_last_hour(cashier: str, db: Session) -> int:
+def _cancellations_last_hour(cashier: str, db: Session, restaurant_id: int) -> int:
     from database.models import CancellationLog
+    from database.tenant import tenant_query
     cutoff = datetime.now() - timedelta(hours=1)
     return (
-        db.query(CancellationLog)
+        tenant_query(db, CancellationLog, restaurant_id)
         .filter(
             CancellationLog.cashier == cashier,
             CancellationLog.cancelled_at >= cutoff,
@@ -38,11 +40,11 @@ def send_whatsapp_alert(message: str):
         print(f"[FraudAgent] Failed to send alert: {e}")
 
 
-def run_fraud_check(order_id: int, cashier: str, db: Session) -> bool:
+def run_fraud_check(order_id: int, cashier: str, db: Session, restaurant_id: int) -> bool:
     """Log cancellation, return True and alert owner if fraud pattern detected."""
-    _log_cancellation(order_id, cashier, db)
+    _log_cancellation(order_id, cashier, db, restaurant_id)
 
-    count = _cancellations_last_hour(cashier, db)
+    count = _cancellations_last_hour(cashier, db, restaurant_id)
     if count >= 3:
         message = (
             f"🚨 تحذير احتيال - مطعم Waheed\n"

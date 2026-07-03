@@ -5,21 +5,22 @@ import openai  # تم تغيير المكتبة
 from database.models import SessionLocal, Order, MenuItem
 from datetime import datetime, date
 
-def get_today_stats():
-    """جلب إحصائيات اليوم من قاعدة البيانات"""
+def get_today_stats(restaurant_id: int):
+    """جلب إحصائيات اليوم من قاعدة البيانات — مقيّد بمطعم واحد"""
+    from database.tenant import tenant_query
     db = SessionLocal()
-    
-    # كل الطلبات
-    all_orders = db.query(Order).all()
+
+    # كل الطلبات (لهذا المطعم فقط)
+    all_orders = tenant_query(db, Order, restaurant_id).all()
     today_orders = [o for o in all_orders if o.created_at and o.created_at.date() == date.today()]
-    
+
     # المبيعات
     total_sales = sum(o.total_price for o in today_orders)
     pending = len([o for o in today_orders if o.status == "pending"])
     done = len([o for o in today_orders if o.status == "done"])
-    
+
     # المنيو
-    menu_items = db.query(MenuItem).all()
+    menu_items = tenant_query(db, MenuItem, restaurant_id).all()
     menu_list = [f"{i.name}: {i.price} د.ع" for i in menu_items]
     
     db.close()
@@ -34,11 +35,11 @@ def get_today_stats():
         "all_sales": sum(o.total_price for o in all_orders),
     }
 
-def ask_agent(question: str, api_key: str) -> str:
+def ask_agent(question: str, api_key: str, restaurant_id: int) -> str:
     """سؤال الوكيل الذكي باستخدام OpenAI"""
-    
+
     # جلب البيانات الحقيقية
-    stats = get_today_stats()
+    stats = get_today_stats(restaurant_id)
     
     # تجهيز السياق للوكيل
     context = f"""
