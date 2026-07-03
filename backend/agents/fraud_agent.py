@@ -1,6 +1,18 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+
+
+def _safe_print(text: str):
+    """print() يفشل بـ UnicodeEncodeError على كونسولات لا تدعم UTF-8 (مثل cp1252
+    بويندوز) عند طباعة إيموجي — وده كان يُسقط طلب /orders/{id}/cancel كامل.
+    تنبيه الاحتيال أهم من نجاح سطر log، فلا يصح أن يفشل أحدهما الثاني."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(encoding, errors="replace").decode(encoding))
 
 
 def _log_cancellation(order_id: int, cashier: str, db: Session, restaurant_id: int):
@@ -29,15 +41,15 @@ def send_whatsapp_alert(message: str):
     owner_phone = os.getenv("OWNER_PHONE", "")
 
     if not owner_phone:
-        print(f"[FraudAgent] Alert (OWNER_PHONE not set): {message}")
+        _safe_print(f"[FraudAgent] Alert (OWNER_PHONE not set): {message}")
         return
 
     try:
         from agents.whatsapp_client import send_message
         send_message(owner_phone, message)
-        print("[FraudAgent] WhatsApp alert sent to owner.")
+        _safe_print("[FraudAgent] WhatsApp alert sent to owner.")
     except Exception as e:
-        print(f"[FraudAgent] Failed to send alert: {e}")
+        _safe_print(f"[FraudAgent] Failed to send alert: {e}")
 
 
 def run_fraud_check(order_id: int, cashier: str, db: Session, restaurant_id: int) -> bool:
