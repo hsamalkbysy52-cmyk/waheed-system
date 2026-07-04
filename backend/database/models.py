@@ -110,6 +110,10 @@ class Restaurant(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, default="Waheed Restaurant")
     last_heartbeat_at = Column(DateTime, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    status = Column(String, nullable=False, server_default="active")  # active / suspended
+    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
 
 
 def is_restaurant_online(db: Session) -> bool:
@@ -154,9 +158,25 @@ def create_tables():
             "ALTER TABLE inventory_items ADD COLUMN restaurant_id INTEGER",
             "ALTER TABLE table_layout ADD COLUMN restaurant_id INTEGER",
             "ALTER TABLE users ADD COLUMN restaurant_id INTEGER",
+            # --- تسجيل مطاعم جديدة + لوحة super_admin: أعمدة إضافية (المرحلة 1) ---
+            "ALTER TABLE restaurants ADD COLUMN email VARCHAR",
+            "ALTER TABLE restaurants ADD COLUMN phone VARCHAR",
+            "ALTER TABLE restaurants ADD COLUMN status VARCHAR",
+            "ALTER TABLE restaurants ADD COLUMN created_at DATETIME",
+            "ALTER TABLE users ADD COLUMN email VARCHAR",
         ]:
             try:
                 conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass
+        # قيم افتراضية للمطاعم الموجودة قبل إضافة هذه الأعمدة — غير ملتبسة، لا حاجة لفشل صارم
+        for backfill_sql in [
+            "UPDATE restaurants SET status = 'active' WHERE status IS NULL",
+            "UPDATE restaurants SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL",
+        ]:
+            try:
+                conn.execute(text(backfill_sql))
                 conn.commit()
             except Exception:
                 pass
@@ -245,10 +265,51 @@ def enforce_not_null_restaurant_id():
     print("NOT NULL enforcement OK: restaurant_id constraints active")
 
 
+def backfill_user_emails():
+    """تسجيل مطاعم/دخول موحّد: users.email يصير معرّف الدخول الوحيد، فريد عالمياً.
+
+    الحسابات القديمة (admin/cashier/superadmin) ما عندها بريد حقيقي — نعطيها بريد
+    مؤقت مصطنع حصراً حتى يقبل القيد الفريد، لا يُقصد استخدامه فعلياً.
+    آمنة للتشغيل عند كل إقلاع (WHERE email IS NULL فقط).
+    لو بقي أي صف NULL بعد التعبئة: RuntimeError — نفس أسلوب backfill_restaurant_id().
+    """
+    with engine.connect() as conn:
+        placeholder_count = conn.execute(
+            text("SELECT COUNT(*) FROM users WHERE email IS NULL")
+        ).scalar()
+
+        conn.execute(text(
+            "UPDATE users SET email = username || '@restaurant' || restaurant_id || '.local.placeholder' "
+            "WHERE email IS NULL AND restaurant_id IS NOT NULL"
+        ))
+        # super_admin: بلا مطعم — نطاق مختلف يمنع أي تصادم مع بريد مطعم عادي
+        conn.execute(text(
+            "UPDATE users SET email = username || '@platform.local.placeholder' "
+            "WHERE email IS NULL AND restaurant_id IS NULL"
+        ))
+        conn.commit()
+
+        remaining = conn.execute(text("SELECT COUNT(*) FROM users WHERE email IS NULL")).scalar()
+        if remaining:
+            raise RuntimeError(
+                f"MIGRATION FAILED — users.email backfill incomplete, refusing to start: {remaining} rows still NULL"
+            )
+
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
+        conn.commit()
+
+        if placeholder_count:
+            print(
+                f"WARNING: {placeholder_count} account(s) got a placeholder email "
+                "(username@...local.placeholder) — replace with a real email before relying on it for login"
+            )
+    print("Email backfill OK: users.email is globally unique and ready as the login identifier")
+
+
 def seed_restaurant():
     db = SessionLocal()
     if db.query(Restaurant).count() == 0:
-        db.add(Restaurant(id=1, name="Waheed Restaurant"))
+        db.add(Restaurant(id=1, name="Waheed Restaurant", status="active", created_at=datetime.utcnow()))
         db.commit()
         print("Default restaurant record seeded")
     db.close()

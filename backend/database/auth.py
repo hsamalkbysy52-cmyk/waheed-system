@@ -13,9 +13,10 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     # NULL مسموح فقط لدور super_admin (مدير المنصة بلا مطعم محدد) — يُفرض في طبقة التطبيق
     restaurant_id = Column(Integer, nullable=True, index=True)
-    username = Column(String)  # فريد داخل المطعم الواحد (فهرس مركّب في create_tables)
+    username = Column(String)  # فريد داخل المطعم الواحد (فهرس مركّب في create_tables) — لم يعد معرّف الدخول
     password = Column(String)
     role = Column(String)  # super_admin / admin / cashier
+    email = Column(String, nullable=True)  # معرّف الدخول الفعلي — فريد عالمياً (ix_users_email)
 
 # إنشاء الجدول + مستخدمين افتراضيين
 def create_users():
@@ -62,5 +63,13 @@ def verify_password(plain, hashed):
 def get_user(username: str):
     db = SessionLocal()
     user = db.query(User).filter(User.username == username).first()
+    db.close()
+    return user
+
+
+def get_user_by_email(email: str):
+    """معرّف الدخول الفعلي — email فريد عالمياً عبر كل المطاعم، بعكس username."""
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
     db.close()
     return user

@@ -1,4 +1,5 @@
 import json
+import re
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -9,11 +10,12 @@ from jose import jwt
 from datetime import datetime, timedelta
 import os
 
-from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, backfill_restaurant_id, enforce_not_null_restaurant_id, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
-from database.auth import create_users, verify_password, get_user, User
+from database.models import SessionLocal, create_tables, seed_menu, seed_restaurant, backfill_restaurant_id, enforce_not_null_restaurant_id, backfill_user_emails, MenuItem, Order, CancellationLog, InventoryItem, RecipeIngredient, TableLayoutElement, ModifierGroup, ModifierOption, Restaurant, is_restaurant_online
+from database.auth import create_users, verify_password, get_user, get_user_by_email, pwd_context, User
 from database.tenant import (
     SECRET_KEY,
     get_restaurant_id,
+    require_super_admin,
     tenant_query,
     tenant_add,
     owned_menu_item,
@@ -44,6 +46,7 @@ except Exception as e:
 # فشل الـ backfill يجب أن يوقف السيرفر، لا أن يُبتلع كتحذير
 backfill_restaurant_id()
 enforce_not_null_restaurant_id()   # لا يصل هنا إلا بعد تحقق backfill بنجاح (صفر NULL)
+backfill_user_emails()   # نفس المبدأ: email يصير معرّف دخول فريد عالمياً، لا يُبتلع فشله
 
 OPENAI_KEY = os.getenv("OPENAI_KEY", "")
 WA_SESSION_PATH = os.getenv("WA_SESSION_PATH", "/data/wa_session.db")
@@ -830,18 +833,29 @@ def save_table_layout(payload: LayoutSavePayload, db: Session = Depends(get_db),
     return {"message": "تم حفظ المخطط"}
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 @app.post("/login")
-def login(username: str, password: str, db: Session = Depends(get_db)):
-    user = get_user(username)
-    if not user or not verify_password(password, user.password):
-        return {"error": "اسم المستخدم أو كلمة السر غلط"}
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = get_user_by_email(payload.email)
+    if not user or not verify_password(payload.password, user.password):
+        return {"error": "البريد الإلكتروني أو كلمة السر غلط"}
+    if user.restaurant_id is not None:
+        restaurant = db.query(Restaurant).filter(Restaurant.id == user.restaurant_id).first()
+        if restaurant and restaurant.status == "suspended":
+            return {"error": "هذا المطعم موقوف حالياً"}
     token = jwt.encode(
         {
             "username": user.username,
             "role": user.role,
+            "restaurant_id": user.restaurant_id,
             "exp": datetime.utcnow() + timedelta(hours=8)
         },
-        SECRET_KEY
+        SECRET_KEY,
+        algorithm="HS256"
     )
     return {
         "token": token,
@@ -849,6 +863,100 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
         "username": user.username,
         "message": f"أهلاً {user.username}!"
     }
+
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class RegisterRequest(BaseModel):
+    restaurant_name: str
+    phone: str
+    email: str
+    password: str
+
+
+@app.post("/register")
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    """تسجيل مطعم جديد بالكامل — الاستثناء الشرعي الوحيد لإنشاء Restaurant بلا مصادقة.
+    عمداً لا يستخدم tenant_add: هنا أصل هوية مطعم جديدة، لا كتابة داخل مطعم قائم."""
+    if not payload.restaurant_name.strip():
+        return {"error": "اسم المطعم مطلوب"}
+    if not EMAIL_RE.match(payload.email):
+        return {"error": "البريد الإلكتروني غير صالح"}
+    if len(payload.password) < 6:
+        return {"error": "كلمة السر لازم تكون 6 أحرف على الأقل"}
+    if get_user_by_email(payload.email):
+        return {"error": "البريد الإلكتروني مستخدم مسبقاً"}
+
+    restaurant = Restaurant(
+        name=payload.restaurant_name.strip(),
+        phone=payload.phone,
+        email=payload.email,
+        status="active",
+        created_at=datetime.utcnow(),
+    )
+    db.add(restaurant)
+    db.flush()  # للحصول على restaurant.id قبل إنشاء المستخدم المالك
+
+    owner = User(
+        restaurant_id=restaurant.id,
+        username=payload.email,
+        email=payload.email,
+        password=pwd_context.hash(payload.password),
+        role="admin",
+    )
+    db.add(owner)
+    db.commit()
+
+    token = jwt.encode(
+        {
+            "username": owner.username,
+            "role": owner.role,
+            "restaurant_id": owner.restaurant_id,
+            "exp": datetime.utcnow() + timedelta(hours=8)
+        },
+        SECRET_KEY,
+        algorithm="HS256"
+    )
+    return {
+        "token": token,
+        "role": owner.role,
+        "username": owner.username,
+        "message": f"تم تسجيل مطعم {restaurant.name} بنجاح! أهلاً {owner.username}!"
+    }
+
+
+@app.get("/admin/restaurants")
+def list_restaurants(db: Session = Depends(get_db), _: None = Depends(require_super_admin)):
+    """لوحة super_admin — عبر كل المطاعم عمداً، Restaurant نفسه جدول الهوية لا TENANT_TABLES."""
+    restaurants = db.query(Restaurant).order_by(Restaurant.created_at.desc()).all()
+    return {"restaurants": [
+        {
+            "id": r.id,
+            "name": r.name,
+            "email": r.email,
+            "phone": r.phone,
+            "status": r.status,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in restaurants
+    ]}
+
+
+class RestaurantStatusPayload(BaseModel):
+    status: str  # "active" | "suspended"
+
+
+@app.post("/admin/restaurants/{restaurant_id}/status")
+def set_restaurant_status(restaurant_id: int, payload: RestaurantStatusPayload, db: Session = Depends(get_db), _: None = Depends(require_super_admin)):
+    if payload.status not in ("active", "suspended"):
+        return {"error": "قيمة status غير صالحة — active أو suspended فقط"}
+    restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        return {"error": "المطعم غير موجود"}
+    restaurant.status = payload.status
+    db.commit()
+    return {"id": restaurant.id, "status": restaurant.status, "message": "تم تحديث حالة المطعم"}
 
 
 @app.post("/agent/ask")

@@ -19,12 +19,23 @@ from fastapi import Header, HTTPException
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
-from database.models import MenuItem, ModifierGroup, ModifierOption, InventoryItem, Order
+from database.models import MenuItem, ModifierGroup, ModifierOption, InventoryItem, Order, Restaurant, SessionLocal
 
 SECRET_KEY = os.getenv("JWT_SECRET", "waheed-secret-2024")
 
 # الجسر الانتقالي: المطعم الوحيد الحالي — يُستخدم عند غياب التوكن
 DEFAULT_RESTAURANT_ID = 1
+
+
+def _is_restaurant_suspended(restaurant_id: int) -> bool:
+    """يمنع الدخول الفعلي لمطعم موقوف — يُفحص عند كل طلب، لا فقط عند الدخول،
+    حتى تُقطع الجلسات القائمة على توكن صدر قبل الإيقاف."""
+    db = SessionLocal()
+    try:
+        r = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+        return bool(r and r.status == "suspended")
+    finally:
+        db.close()
 
 
 def get_restaurant_id(
@@ -34,7 +45,7 @@ def get_restaurant_id(
     """FastAPI dependency: هوية المطعم للطلب الحالي — من التوكن، لا من العميل."""
     if authorization and authorization.startswith("Bearer "):
         try:
-            payload = jwt.decode(authorization[7:], SECRET_KEY)
+            payload = jwt.decode(authorization[7:], SECRET_KEY, algorithms=["HS256"])
         except JWTError:
             raise HTTPException(status_code=401, detail="توكن غير صالح")
 
@@ -42,6 +53,7 @@ def get_restaurant_id(
         token_rid = payload.get("restaurant_id")
 
         # super_admin: بلا مطعم في التوكن — يختار مطعم العمل عبر الهيدر
+        # (مُستثنى من فحص الإيقاف — يحتاج يراجع بيانات مطعم موقوف)
         if role == "super_admin":
             return x_restaurant_id if x_restaurant_id is not None else DEFAULT_RESTAURANT_ID
 
@@ -49,10 +61,25 @@ def get_restaurant_id(
         if token_rid is not None:
             if x_restaurant_id is not None and x_restaurant_id != token_rid:
                 raise HTTPException(status_code=403, detail="غير مسموح بالوصول لمطعم آخر")
+            if _is_restaurant_suspended(token_rid):
+                raise HTTPException(status_code=403, detail="هذا المطعم موقوف حالياً")
             return token_rid
 
         # توكن قديم (قبل الترحيل) بلا restaurant_id — جسر انتقالي
     return DEFAULT_RESTAURANT_ID
+
+
+def require_super_admin(authorization: Optional[str] = Header(None)) -> None:
+    """FastAPI dependency: حماية لوحة super_admin — منفصلة عن get_restaurant_id عمداً،
+    لأن endpoints هذي اللوحة تعمل عبر كل المطاعم، لا تتقيد بمطعم واحد."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="توكن غير موجود")
+    try:
+        payload = jwt.decode(authorization[7:], SECRET_KEY, algorithms=["HS256"])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="توكن غير صالح")
+    if payload.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="هذه الصفحة لمدير المنصة فقط")
 
 
 def tenant_query(db: Session, model, restaurant_id: int):
