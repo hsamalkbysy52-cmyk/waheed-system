@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type PayMethod = "cash" | "card" | "qr";
 type SplitMode = "none" | "equal" | "items";
@@ -75,7 +74,7 @@ export function CombinedBillModal({
     setPaying(true);
     try {
       await Promise.all(unpaidOrders.map(o =>
-        fetch(`${API}/orders/${o.id}/pay`, {
+        authFetch(`/orders/${o.id}/pay`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ payment_method: payMethod }),

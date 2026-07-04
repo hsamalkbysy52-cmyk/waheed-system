@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type Item    = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string; modifiers?: ModGroup[]; parent_id?: number | null; variants?: Item[] };
 type InvItem = { id: number; name: string; unit: string };
@@ -26,8 +25,8 @@ function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => voi
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/inventory`).then(r => r.json()),
-      fetch(`${API}/inventory/recipe/${menuItem.id}`).then(r => r.json()),
+      authFetch(`/inventory`).then(r => r.json()),
+      authFetch(`/inventory/recipe/${menuItem.id}`).then(r => r.json()),
     ]).then(([invData, recipeData]) => {
       setInvItems(invData.items || []);
       setRecipe((recipeData.recipe || []).map((r: { inventory_item_id: number; inventory_name: string; unit: string; amount: number }) => ({
@@ -50,7 +49,7 @@ function RecipeModal({ menuItem, onClose }: { menuItem: Item; onClose: () => voi
   const saveRecipe = async () => {
     setSaving(true);
     try {
-      await fetch(`${API}/inventory/recipe/${menuItem.id}`, {
+      await authFetch(`/inventory/recipe/${menuItem.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ingredients: recipe.map(r => ({ inventory_item_id: r.inventory_item_id, amount: r.amount })) }),
@@ -161,8 +160,8 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   const loadData = () => {
     setLoading(true);
     Promise.all([
-      fetch(`${API}/inventory/recipe/${menuItem.id}`).then(r => r.json()),
-      fetch(`${API}/menu/${menuItem.id}/modifiers/groups`).then(r => r.json()),
+      authFetch(`/inventory/recipe/${menuItem.id}`).then(r => r.json()),
+      authFetch(`/menu/${menuItem.id}/modifiers/groups`).then(r => r.json()),
     ]).then(([recipeData, modData]) => {
       setRecipe((recipeData.recipe || []).map((r: { inventory_item_id: number; inventory_name: string; unit: string; amount: number }) => ({
         inventory_item_id: r.inventory_item_id,
@@ -180,7 +179,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     if (!newGroupName.trim()) return;
     setAddingGroup(true);
     try {
-      await fetch(`${API}/menu/${menuItem.id}/modifiers/groups`, {
+      await authFetch(`/menu/${menuItem.id}/modifiers/groups`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newGroupName.trim(), max_selections: parseInt(newGroupMax) || 1 }),
@@ -191,7 +190,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   };
 
   const deleteGroup = async (groupId: number) => {
-    await fetch(`${API}/modifiers/groups/${groupId}`, { method: "DELETE" });
+    await authFetch(`/modifiers/groups/${groupId}`, { method: "DELETE" });
     loadData();
   };
 
@@ -215,7 +214,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     const rec = recipe.find(r => r.inventory_item_id === parseInt(f.ingredient_inv_id));
     setAddingOpt(p => ({ ...p, [groupId]: true }));
     try {
-      await fetch(`${API}/modifiers/groups/${groupId}/options`, {
+      await authFetch(`/modifiers/groups/${groupId}/options`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -231,7 +230,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
   };
 
   const deleteOption = async (optionId: number) => {
-    await fetch(`${API}/modifiers/options/${optionId}`, { method: "DELETE" });
+    await authFetch(`/modifiers/options/${optionId}`, { method: "DELETE" });
     loadData();
   };
 
@@ -244,7 +243,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     if (!editGroupId) return;
     setSavingGroup(true);
     try {
-      await fetch(`${API}/modifiers/groups/${editGroupId}`, {
+      await authFetch(`/modifiers/groups/${editGroupId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editGroupForm.name.trim(), max_selections: parseInt(editGroupForm.max_selections) || 1 }),
@@ -263,7 +262,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     if (!editOptId) return;
     setSavingOpt(true);
     try {
-      await fetch(`${API}/modifiers/options/${editOptId}`, {
+      await authFetch(`/modifiers/options/${editOptId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editOptForm.name.trim(), price_delta: parseFloat(editOptForm.price_delta) || 0 }),
@@ -280,7 +279,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     reordered.splice(toIdx, 0, moved);
     setGroups(reordered);
     setDragGroupIdx(null);
-    fetch(`${API}/menu/${menuItem.id}/modifiers/groups/reorder`, {
+    authFetch(`/menu/${menuItem.id}/modifiers/groups/reorder`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: reordered.map(g => g.id) }),
@@ -300,7 +299,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
     setDragOptState(null);
     const grp = reordered.find(g => g.id === groupId);
     if (grp) {
-      fetch(`${API}/modifiers/groups/${groupId}/options/reorder`, {
+      authFetch(`/modifiers/groups/${groupId}/options/reorder`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order: grp.options.map(o => o.id) }),
@@ -628,7 +627,7 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
     if (!newName.trim() || !newPrice) return;
     setAdding(true);
     try {
-      const r = await fetch(`${API}/menu/add`, {
+      const r = await authFetch(`/menu/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName.trim(), price: parseFloat(newPrice), category: menuItem.category, parent_id: menuItem.id }),
@@ -644,7 +643,7 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
     if (!editId || !editForm.name.trim() || !editForm.price) return;
     setSaving(true);
     try {
-      await fetch(`${API}/menu/${editId}`, {
+      await authFetch(`/menu/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editForm.name.trim(), price: parseFloat(editForm.price), category: menuItem.category }),
@@ -656,7 +655,7 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
   };
 
   const deleteVariant = async (id: number) => {
-    await fetch(`${API}/menu/${id}`, { method: "DELETE" });
+    await authFetch(`/menu/${id}`, { method: "DELETE" });
     setVariants(p => p.filter(v => v.id !== id));
     onChanged();
   };
@@ -785,7 +784,7 @@ export default function MenuPage() {
 
   const fetchMenu = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/menu`);
+      const r = await authFetch(`/menu`);
       const d = await r.json();
       /* normalize is_available → available */
       const normalized = (d.menu || []).map((i: Item) => ({
@@ -823,13 +822,13 @@ export default function MenuPage() {
 
       let r: Response;
       if (editId) {
-        r = await fetch(`${API}/menu/${editId}`, {
+        r = await authFetch(`/menu/${editId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        r = await fetch(`${API}/menu/add`, {
+        r = await authFetch(`/menu/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -845,7 +844,7 @@ export default function MenuPage() {
 
   const toggleAvailable = async (item: Item) => {
     try {
-      await fetch(`${API}/menu/${item.id}/toggle`, { method: "PUT" });
+      await authFetch(`/menu/${item.id}/toggle`, { method: "PUT" });
       setItems((p) => p.map((i) => i.id === item.id ? { ...i, available: !i.available } : i));
     } catch { /* silent */ }
   };
@@ -854,7 +853,7 @@ export default function MenuPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await fetch(`${API}/menu/${deleteId}`, { method: "DELETE" });
+      await authFetch(`/menu/${deleteId}`, { method: "DELETE" });
       setItems((p) => p.filter((i) => i.id !== deleteId));
     } finally { setDeleting(false); setDeleteId(null); }
   };

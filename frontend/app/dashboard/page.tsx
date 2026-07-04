@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 const QUICK = [
   "كم مبيعاتنا اليوم؟",
@@ -20,7 +19,7 @@ export default function Dashboard() {
     if (!question || !apiKey) { alert("أكمل السؤال والـ API Key!"); return; }
     setLoading(true);
     setAnswer("");
-    const res  = await fetch(`${API}/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`, { method: "POST" });
+    const res  = await authFetch(`/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`, { method: "POST" });
     const data = await res.json();
     setAnswer(data.answer || data.error || "لا يوجد رد");
     setLoading(false);

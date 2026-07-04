@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
+import { authFetch } from "@/lib/apiFetch";
 
 type Order = { id: number; table_number: number; total_price: number; status: string; created_at: string; };
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 
 function StatCard({ label, value, color, icon }: { label: string; value: number | string; color: string; icon: string }) {
   return (
@@ -24,7 +23,7 @@ export default function OrdersPage() {
   const [tick, setTick]     = useState(0);
 
   const fetchOrders = () =>
-    fetch(`${API}/orders`).then(r => r.json()).then(d => setOrders(d.orders));
+    authFetch(`/orders`).then(r => r.json()).then(d => setOrders(d.orders));
 
   useEffect(() => {
     fetchOrders();
@@ -33,13 +32,13 @@ export default function OrdersPage() {
   }, []);
 
   const completeOrder = async (id: number) => {
-    await fetch(`${API}/orders/${id}/done`, { method: "PUT" });
+    await authFetch(`/orders/${id}/done`, { method: "PUT" });
     fetchOrders();
   };
 
   const cancelOrder = async (id: number) => {
     const cashier = localStorage.getItem("username") || "unknown";
-    await fetch(`${API}/orders/${id}/cancel?cashier=${encodeURIComponent(cashier)}`, { method: "POST" });
+    await authFetch(`/orders/${id}/cancel?cashier=${encodeURIComponent(cashier)}`, { method: "POST" });
     fetchOrders();
   };
 

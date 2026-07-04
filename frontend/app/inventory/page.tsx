@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type InvItem = { id: number; name: string; unit: string; quantity: number; min_quantity: number };
 
@@ -32,7 +31,7 @@ export default function InventoryPage() {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/inventory`);
+      const r = await authFetch(`/inventory`);
       const d = await r.json();
       setItems(d.items || []);
     } finally { setLoad(false); }
@@ -56,7 +55,7 @@ export default function InventoryPage() {
     setSaving(true); setError("");
     try {
       const payload = { name: form.name.trim(), unit: form.unit, quantity: parseFloat(form.quantity) || 0, min_quantity: parseFloat(form.min_quantity) || 5 };
-      const r = await fetch(editId ? `${API}/inventory/${editId}` : `${API}/inventory/add`, {
+      const r = await authFetch(editId ? `/inventory/${editId}` : `/inventory/add`, {
         method: editId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -71,7 +70,7 @@ export default function InventoryPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await fetch(`${API}/inventory/${deleteId}`, { method: "DELETE" });
+      await authFetch(`/inventory/${deleteId}`, { method: "DELETE" });
       setItems(p => p.filter(i => i.id !== deleteId));
     } finally { setDeleting(false); setDeleteId(null); }
   };

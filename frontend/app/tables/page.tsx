@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import QRCode from "react-qr-code";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
+import { authFetch } from "@/lib/apiFetch";
 
-const API  = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 const GRID = 30;
 const snap = (v: number) => Math.round(v / GRID) * GRID;
 
@@ -301,7 +301,7 @@ export default function TablesPage() {
 
   const fetchLayout = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/table-layout`);
+      const r = await authFetch(`/table-layout`);
       const d = await r.json();
       if (d.elements?.length > 0) {
         setElements(d.elements.map((e: Record<string, unknown>) => ({
@@ -319,7 +319,7 @@ export default function TablesPage() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/orders`);
+      const r = await authFetch(`/orders`);
       const d = await r.json();
       setOrders((d.orders || []).filter((o: Order) => !["done", "paid"].includes(o.status)));
     } finally { setLoad(false); }
@@ -400,7 +400,7 @@ export default function TablesPage() {
   const saveLayout = async () => {
     setSaving(true);
     try {
-      await fetch(`${API}/table-layout/save`, {
+      await authFetch(`/table-layout/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -445,7 +445,7 @@ export default function TablesPage() {
     setShowQuickSetup(false);
     setSaving(true);
     try {
-      await fetch(`${API}/table-layout/save`, {
+      await authFetch(`/table-layout/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -469,7 +469,7 @@ export default function TablesPage() {
     setSelected(null);
     setActiveTable(null);
     setConfirmClear(false);
-    await fetch(`${API}/table-layout/save`, {
+    await authFetch(`/table-layout/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ elements: [] }),
@@ -491,7 +491,7 @@ export default function TablesPage() {
     setConfirmDeleteZone(null);
     setSaving(true);
     try {
-      await fetch(`${API}/table-layout/save`, {
+      await authFetch(`/table-layout/save`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ elements: newEls.map(toApiEl) }),
       });
@@ -507,7 +507,7 @@ export default function TablesPage() {
     if (activeZoneTab === oldName) setActiveZoneTab(trimmed);
     setSaving(true);
     try {
-      await fetch(`${API}/table-layout/save`, {
+      await authFetch(`/table-layout/save`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ elements: newEls.map(toApiEl) }),
       });

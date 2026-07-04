@@ -16,7 +16,7 @@ const NAV = [
   { href: "/dashboard", icon: "🤖", label: "المساعد AI"   },
 ];
 
-const HIDDEN_PATHS = ["/login", "/table"];
+const HIDDEN_PATHS = ["/login", "/table", "/register", "/admin"];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

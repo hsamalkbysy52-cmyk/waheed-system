@@ -1,17 +1,13 @@
 import { useEffect } from 'react';
+import { authFetch } from '@/lib/apiFetch';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://waheed-system-production.up.railway.app';
-const RESTAURANT_ID = 1;
 const INTERVAL_MS = 60_000; // 60 seconds — server timeout is 90 s
 
 async function sendHeartbeat(): Promise<void> {
   if (!navigator.onLine) return;
   try {
-    await fetch(`${API}/heartbeat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restaurant_id: RESTAURANT_ID }),
-    });
+    // restaurant_id يأتي من JWT عبر authFetch — الباك إند ما عاد يقبله من الجسم
+    await authFetch(`/heartbeat`, { method: 'POST' });
   } catch {
     // Silent — network error means the device is offline anyway
   }

@@ -1,8 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { BillModal } from "@/components/BillModal";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type RawItem = { name: string; price: number; category: string };
 type AggItem = { name: string; price: number; category: string; qty: number };
@@ -32,7 +31,7 @@ export default function PaymentsPage() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/orders`);
+      const r = await authFetch(`/orders`);
       const d = await r.json();
       setOrders(d.orders || []);
     } finally { setLoad(false); }

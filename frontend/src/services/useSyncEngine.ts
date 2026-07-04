@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { getPendingSyncOrders, updateOrderSyncStatus, type LocalOrder } from './db';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://waheed-system-production.up.railway.app';
+import { authFetch } from '@/lib/apiFetch';
 
 // Module-level mutex — one sync at a time across all hook instances
 let isSyncing = false;
@@ -18,7 +17,7 @@ async function uploadOrder(order: LocalOrder): Promise<'synced' | 'failed_perman
 
   let response: Response;
   try {
-    response = await fetch(`${API}/orders/create`, {
+    response = await authFetch(`/orders/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

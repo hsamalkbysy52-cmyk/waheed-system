@@ -1,32 +1,33 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { API } from "@/lib/apiFetch";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
-
-export default function LoginPage() {
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+export default function RegisterPage() {
+  const [restaurantName, setRestaurantName] = useState("");
+  const [phone, setPhone]                   = useState("");
+  const [email, setEmail]                   = useState("");
+  const [password, setPassword]             = useState("");
+  const [error, setError]                   = useState("");
+  const [loading, setLoading]               = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    if (!email || !password) { setError("أكمل البيانات!"); return; }
+  const handleRegister = async () => {
+    if (!restaurantName || !phone || !email || !password) { setError("أكمل كل الحقول!"); return; }
     setLoading(true);
     setError("");
     try {
-      const res  = await fetch(`${API}/login`, {
+      const res = await fetch(`${API}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ restaurant_name: restaurantName, phone, email, password }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); setLoading(false); return; }
-      localStorage.setItem("token",    data.token);
-      localStorage.setItem("role",     data.role);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
       localStorage.setItem("username", data.username);
-      router.push(data.role === "super_admin" ? "/admin" : data.role === "admin" ? "/orders" : "/");
+      router.push("/orders");
     } catch {
       setError("تعذر الاتصال بالسيرفر");
       setLoading(false);
@@ -48,7 +49,6 @@ export default function LoginPage() {
       fontFamily: "'Segoe UI', Arial, sans-serif", direction: "rtl",
       position: "relative", overflow: "hidden",
     }}>
-      {/* Background decoration */}
       <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "rgba(243,156,18,0.04)", top: -150, right: -150, pointerEvents: "none" }} />
       <div style={{ position: "absolute", width: 350, height: 350, borderRadius: "50%", background: "rgba(52,152,219,0.04)", bottom: -80, left: -80, pointerEvents: "none" }} />
 
@@ -63,26 +63,28 @@ export default function LoginPage() {
         position: "relative",
       }}>
 
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <div style={{ fontSize: "68px", marginBottom: "10px", filter: "drop-shadow(0 4px 12px rgba(243,156,18,0.4))" }}>🍔</div>
           <div style={{ color: "var(--gold)", fontSize: "30px", fontWeight: "800", letterSpacing: "2px" }}>WAHEED</div>
-          <div style={{ color: "var(--text2)", fontSize: "13px", marginTop: "6px", letterSpacing: "1px" }}>نظام إدارة المطعم</div>
+          <div style={{ color: "var(--text2)", fontSize: "13px", marginTop: "6px", letterSpacing: "1px" }}>تسجيل مطعم جديد</div>
           <div style={{ width: "50px", height: "3px", background: "linear-gradient(90deg, #f39c12, #e67e22)", borderRadius: "2px", margin: "14px auto 0" }} />
         </div>
 
-        {/* Email */}
         <div style={{ marginBottom: "16px" }}>
-          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>البريد الإلكتروني</label>
-          <input
-            placeholder="owner@restaurant.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
-          />
+          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>اسم المطعم</label>
+          <input placeholder="مطعم الوحيد" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} style={inputStyle} />
         </div>
 
-        {/* Password */}
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>رقم الهاتف</label>
+          <input placeholder="07701234567" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
+        </div>
+
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>البريد الإلكتروني</label>
+          <input placeholder="owner@restaurant.com" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+        </div>
+
         <div style={{ marginBottom: "28px" }}>
           <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "7px", fontWeight: "600", letterSpacing: "0.5px" }}>كلمة السر</label>
           <input
@@ -90,12 +92,11 @@ export default function LoginPage() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            onKeyDown={(e) => e.key === "Enter" && handleRegister()}
             style={inputStyle}
           />
         </div>
 
-        {/* Error */}
         {error && (
           <div style={{
             background: "rgba(231,76,60,0.1)", border: "1px solid rgba(231,76,60,0.3)",
@@ -104,8 +105,7 @@ export default function LoginPage() {
           }}>❌ {error}</div>
         )}
 
-        {/* Submit */}
-        <button onClick={handleLogin} disabled={loading} style={{
+        <button onClick={handleRegister} disabled={loading} style={{
           width: "100%", padding: "16px",
           background: loading ? "#333" : "linear-gradient(135deg, #f39c12, #e67e22)",
           color: "white", border: "none", borderRadius: "14px",
@@ -113,12 +113,12 @@ export default function LoginPage() {
           boxShadow: loading ? "none" : "0 6px 20px rgba(243,156,18,0.4)",
           letterSpacing: "0.5px",
         }}>
-          {loading ? "⏳ جاري الدخول..." : "دخول  ←"}
+          {loading ? "⏳ جاري التسجيل..." : "تسجيل المطعم  ←"}
         </button>
 
         <div style={{ textAlign: "center", marginTop: "20px" }}>
-          <a href="/register" style={{ color: "var(--text2)", fontSize: "13px", textDecoration: "none" }}>
-            مطعم جديد؟ <span style={{ color: "var(--gold)" }}>سجّله الآن</span>
+          <a href="/login" style={{ color: "var(--text2)", fontSize: "13px", textDecoration: "none" }}>
+            عندك حساب؟ <span style={{ color: "var(--gold)" }}>دخول</span>
           </a>
         </div>
       </div>

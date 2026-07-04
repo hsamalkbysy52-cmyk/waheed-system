@@ -6,18 +6,17 @@ import NewOrderDrawer from "@/components/NewOrderDrawer";
 import { BillModal } from "@/components/BillModal";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
 import { getPendingSyncOrders } from "@/src/services/db";
+import { authFetch } from "@/lib/apiFetch";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
-
-async function fetchWithRetry(url: string, retries = 4, delayMs = 3000): Promise<Response> {
+async function fetchWithRetry(path: string, retries = 4, delayMs = 3000): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
-      const r = await fetch(url);
+      const r = await authFetch(path);
       if (r.ok) return r;
     } catch {}
     if (i < retries - 1) await new Promise(res => setTimeout(res, delayMs));
   }
-  return fetch(url);
+  return authFetch(path);
 }
 
 type OrderItem = { name: string; price: number; category: string; modifiers?: { name: string }[] };
@@ -455,11 +454,11 @@ export default function KanbanPage() {
     try {
       let r: Response;
       try {
-        r = await fetch(`${API}/orders`);
+        r = await authFetch(`/orders`);
         if (!r.ok) throw new Error("not ok");
       } catch {
         setWaking(true);
-        r = await fetchWithRetry(`${API}/orders`);
+        r = await fetchWithRetry(`/orders`);
         setWaking(false);
       }
       const d = await r.json();
@@ -509,11 +508,11 @@ export default function KanbanPage() {
 
   const moveTo = async (orderId: number, stage: Stage) => {
     const endpoint: Record<Stage, string> = {
-      preparing: `${API}/orders/${orderId}/preparing`,
-      ready:     `${API}/orders/${orderId}/ready`,
-      served:    `${API}/orders/${orderId}/served`,   // food delivered, NOT paid
+      preparing: `/orders/${orderId}/preparing`,
+      ready:     `/orders/${orderId}/ready`,
+      served:    `/orders/${orderId}/served`,   // food delivered, NOT paid
     };
-    await fetch(endpoint[stage], { method: "PUT" });
+    await authFetch(endpoint[stage], { method: "PUT" });
     setStageMap(p => ({ ...p, [orderId]: stage }));
   };
 
@@ -548,7 +547,7 @@ export default function KanbanPage() {
     if (editMenu.length === 0) {
       setLoadingEditMenu(true);
       try {
-        const r = await fetch(`${API}/menu`);
+        const r = await authFetch(`/menu`);
         const d = await r.json();
         setEditMenu((d.menu || []).filter((i: MenuItem) => i.is_available !== false));
       } finally { setLoadingEditMenu(false); }
@@ -562,7 +561,7 @@ export default function KanbanPage() {
       const expanded = editCart.flatMap(c =>
         Array.from({ length: c.qty }, () => ({ name: c.name, price: c.price, category: c.category }))
       );
-      const r = await fetch(`${API}/orders/${editOrderId}`, {
+      const r = await authFetch(`/orders/${editOrderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: expanded, table_number: editTable, notes: editNotes }),
@@ -578,14 +577,14 @@ export default function KanbanPage() {
   const deleteOrder = async (orderId: number) => {
     setDeletingId(orderId);
     try {
-      await fetch(`${API}/orders/${orderId}`, { method: "DELETE" });
+      await authFetch(`/orders/${orderId}`, { method: "DELETE" });
       setOrders(p => p.filter(o => o.id !== orderId));
       setStageMap(p => { const n = { ...p }; delete n[orderId]; return n; });
     } finally { setDeletingId(null); }
   };
 
   const completeOrder = async (orderId: number) => {
-    await fetch(`${API}/orders/${orderId}/done`, { method: "PUT" });
+    await authFetch(`/orders/${orderId}/done`, { method: "PUT" });
     setOrders(p => p.filter(o => o.id !== orderId));
     setStageMap(p => { const n = { ...p }; delete n[orderId]; return n; });
   };

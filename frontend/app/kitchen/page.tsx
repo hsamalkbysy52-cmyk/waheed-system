@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type RawItem = { name: string; price: number; category: string };
 type Order = { id: number; table_number: number; status: string; created_at: string; items?: RawItem[] };
@@ -54,7 +53,7 @@ export default function KitchenPage() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/orders`);
+      const r = await authFetch(`/orders`);
       const d = await r.json();
       const pending = (d.orders || []).filter((o: Order) => o.status === "preparing");
       pending.sort((a: Order, b: Order) =>
@@ -74,7 +73,7 @@ export default function KitchenPage() {
   const markReady = async (id: number) => {
     setMarking(p => new Set(p).add(id));
     try {
-      await fetch(`${API}/orders/${id}/ready`, { method: "PUT" });
+      await authFetch(`/orders/${id}/ready`, { method: "PUT" });
       setOrders(p => p.filter(o => o.id !== id));
     } finally {
       setMarking(p => { const s = new Set(p); s.delete(id); return s; });

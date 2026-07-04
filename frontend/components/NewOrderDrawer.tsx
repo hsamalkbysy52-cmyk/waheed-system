@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { BillModal, OrderForBill } from "@/components/BillModal";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
+import { authFetch } from "@/lib/apiFetch";
 
-const API              = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
 const MENU_CACHE_KEY   = "waheed_menu_v1";
 const TABLES_CACHE_KEY = "waheed_tables_v1";
 const TAKEAWAY         = 0; // table_number = 0 means سفري
@@ -130,7 +130,7 @@ export default function NewOrderDrawer({
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       try {
-        const r = await fetch(`${API}/menu`, { signal: controller.signal });
+        const r = await authFetch(`/menu`, { signal: controller.signal });
         clearTimeout(timeoutId);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const d = await r.json();
@@ -173,7 +173,7 @@ export default function NewOrderDrawer({
       }
     } catch {}
 
-    fetch(`${API}/table-layout`)
+    authFetch(`/table-layout`)
       .then(r => r.json())
       .then((d: { elements?: { table_number?: number }[] }) => {
         const seen = new Set<number>();
@@ -307,7 +307,7 @@ export default function NewOrderDrawer({
         };
         if (withPayment) body.payment_method = withPayment;
 
-        const r = await fetch(`${API}/orders/create`, {
+        const r = await authFetch(`/orders/create`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -382,7 +382,7 @@ export default function NewOrderDrawer({
 
     // 3. Online: sync to server, then open BillModal for payment
     try {
-      const r = await fetch(`${API}/orders/create`, {
+      const r = await authFetch(`/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ table_number: table, items: expandedItems, cashier, notes, client_id: local_uuid }),
@@ -417,7 +417,7 @@ export default function NewOrderDrawer({
   const cancelPendingOrder = async () => {
     if (!pendingBillOrder || paidRef.current) return;
     try {
-      await fetch(`${API}/orders/${pendingBillOrder.id}`, { method: "DELETE" });
+      await authFetch(`/orders/${pendingBillOrder.id}`, { method: "DELETE" });
     } catch { /* silent — order will stay unpaid, cashier can handle from payments page */ }
     setPendingBillOrder(null);
   };
@@ -520,7 +520,7 @@ export default function NewOrderDrawer({
                       setLoadingMenu(true);
                       const controller = new AbortController();
                       setTimeout(() => controller.abort(), 8000);
-                      fetch(`${API}/menu`, { signal: controller.signal })
+                      authFetch(`/menu`, { signal: controller.signal })
                         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
                         .then(d => { const items = processMenuItems(d.menu || d.items || d || []); setMenuItems(items); saveMenuCache(items); })
                         .catch(e => { const cached = loadMenuCache(); if (cached) { setMenuItems(cached); } else { setFetchError(String(e)); } })

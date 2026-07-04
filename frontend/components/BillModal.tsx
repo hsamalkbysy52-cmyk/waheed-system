@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { authFetch } from "@/lib/apiFetch";
 
 type PayMethod = "cash" | "card" | "qr";
 type SplitMode = "none" | "equal" | "items";
@@ -65,13 +64,13 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
     setPaying(true);
     try {
       if (payOnly) {
-        await fetch(`${API}/orders/${order.id}/pay`, {
+        await authFetch(`/orders/${order.id}/pay`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ payment_method: method }),
         });
       } else {
-        await fetch(`${API}/orders/${order.id}/done`, { method: "PUT" });
+        await authFetch(`/orders/${order.id}/done`, { method: "PUT" });
       }
       setDone(true);
     } catch {}
