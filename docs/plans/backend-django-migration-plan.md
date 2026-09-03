@@ -155,7 +155,7 @@ backend_legacy/                    # read-only backup of the FastAPI app
 | Schema | Contents |
 |---|---|
 | `public` | `django_tenants`, `tenants.Restaurant`, `tenants.Domain`, `accounts.User`, `contenttypes`, `auth` (permissions only), channel accounts (§6.4) |
-| `r_<12 hex>` (one per restaurant) | `menu.*`, `inventory.*`, `orders.*`, `layout.*`, `ai.AIUsageLog`, `ai.ConversationState` |
+| `r_<12 hex>` (one per restaurant) | `contenttypes` (django-tenants requires it in both app lists), `menu.*`, `inventory.*`, `orders.*`, `layout.*`, `ai.AIUsageLog`, `ai.ConversationState` |
 
 Settings skeleton:
 
@@ -169,10 +169,10 @@ TENANT_LIMIT_SET_CALLS = True
 SHARED_APPS = (
     "django_tenants", "tenants", "accounts", "platform_admin",
     "django.contrib.contenttypes", "django.contrib.auth",
-    "django.contrib.admin", "django.contrib.sessions", "django.contrib.messages",  # Super admin console
+    "django.contrib.admin", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",  # Super admin console
     "rest_framework", "corsheaders",
 )
-TENANT_APPS = ("menu", "inventory", "orders", "layout", "ai")
+TENANT_APPS = ("django.contrib.contenttypes", "menu", "inventory", "orders", "layout", "ai")  # contenttypes in both lists: django-tenants requires it
 INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
 
 MIDDLEWARE = (
@@ -187,8 +187,8 @@ MIDDLEWARE = (
 )
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": env("REDIS_URL"),
-                      "KEY_FUNCTION": "django_tenants.cache.make_key",
-                      "REVERSE_KEY_FUNCTION": "django_tenants.cache.reverse_key"}}
+                      "KEY_FUNCTION": "django_tenants.cache.make_key"}}
+# REVERSE_KEY_FUNCTION is a django-redis setting; Django's own RedisCache ignores it (dropped in ticket 01).
 ```
 
 The **Django admin** (`/django-admin/`, public schema) is the Super admin console for now: Restaurants (status, slug, country, currency, timezone), Users (create staff, reset passwords), WhatsApp accounts. Only `super_admin` users get `is_staff`. The frontend `/admin` page and `/admin/restaurants*` API stay for parity.
