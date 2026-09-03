@@ -157,3 +157,17 @@ _Avoid_: suggested order, cart
 **Provider**:
 The external model service (Gemini or OpenAI) behind an agent.
 _Avoid_: LLM, vendor, model (for the company)
+
+### WhatsApp
+
+**WhatsApp account**:
+The business phone number a Restaurant uses on WhatsApp, connected by the Super admin.
+_Avoid_: channel, bot number, WABA
+
+**Conversation**:
+The exchange between one customer number and a Restaurant's WhatsApp account; it expires after two hours of silence.
+_Avoid_: chat, session, thread
+
+**Service window**:
+The 24 hours after a customer's last message during which the Restaurant's replies are free of charge.
+_Avoid_: free window, reply window

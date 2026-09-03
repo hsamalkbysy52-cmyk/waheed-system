@@ -7,7 +7,7 @@ Multi-restaurant (multi-tenant) SaaS for restaurants: cashier POS and kanban, ki
 - `backend/` — Django 5.2 + DRF API. One PostgreSQL schema per restaurant via django-tenants; Celery + Redis for background work. Being rebuilt per `docs/plans/backend-django-migration-plan.md` (approved; read it before backend work).
 - `backend_legacy/` — the previous FastAPI API, kept as a read-only backup for behaviour reference. Edit nothing there; the user decides when it is deleted.
 - `frontend/` — Next.js 16 (App Router) cashier, admin and customer UI. Read `frontend/AGENTS.md` first: this Next.js version differs from training data.
-- `CONTEXT.md` (glossary), `docs/adr/` (decisions), `docs/plans/` (approved plans), `.scratch/<feature>/` (specs and tickets).
+- `CONTEXT.md` (glossary), `docs/adr/` (decisions), `docs/plans/` (approved plans), `docs/research/` (fact sheets), `backlog.md` (everything postponed), `.scratch/<feature>/` (specs and tickets).
 
 ## Working rules
 
@@ -18,6 +18,7 @@ Multi-restaurant (multi-tenant) SaaS for restaurants: cashier POS and kanban, ki
 - Money is `Decimal` (`DecimalField(max_digits=12, decimal_places=2)`), serialized as JSON numbers.
 - Tenant safety: tenant models live in `TENANT_APPS` and are only reached with a tenant on the connection. Celery tasks take `schema_name` and run inside `schema_context`. Migrations run with `migrate_schemas`, never `migrate`.
 - One responsibility per function. When a better practice improves the system, apply it and say what changed.
+- The moment something is postponed, deferred or marked "later", add it to `backlog.md` with a one-line reason and where it was decided; remove it when it ships.
 
 ## Local gotchas
 

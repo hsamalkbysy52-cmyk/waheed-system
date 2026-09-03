@@ -137,7 +137,7 @@ backend/
 │   ├── providers/{base,openai_provider,gemini_provider}.py
 │   ├── agents/{report_agent,chat_agent,fraud_agent}.py
 │   └── tasks.py                   # send_fraud_alert, ...
-├── messaging/          (TENANT+SHARED split, §6.4)  # WhatsApp channel adapter — after the §6.4 decision
+├── messaging/          (TENANT)   # WhatsApp Cloud API channel (§6.4): webhook view, sender, inbound task; WhatsAppAccount lives in tenants
 └── tests/                         # pytest, FastTenantTestCase-based
 backend_legacy/                    # read-only backup of the FastAPI app
 ```
@@ -398,7 +398,7 @@ class LLMProvider(Protocol):
 ### 6.3 Report agent (`POST /agent/ask`)
 Tools executed under `request.tenant`: `get_sales_summary(period)`, `get_top_items(limit)`, `get_low_stock()`, `get_cancellations(period)`, `get_order_status_counts()`. Arabic system prompt. Admin-only, throttled, 20 s timeout; response `{answer, provider, model}`. `question` from query string or JSON body.
 
-### 6.4 WhatsApp bot — cost analysis (decision required before any bot code)
+### 6.4 WhatsApp bot — cost analysis and decision (ADR-0004)
 
 Today's bot uses **neonize**, a Python binding of the unofficial WhatsApp Web (whatsmeow) protocol: a long-running process logged in as a normal WhatsApp account via QR scan, with the session file on a volume.
 
@@ -412,7 +412,7 @@ Today's bot uses **neonize**, a Python binding of the unofficial WhatsApp Web (w
 
 **What is built regardless of the choice:** a channel-agnostic `messaging` pipeline — `InboundMessage(restaurant, sender, text)` → Celery task under the tenant → `chat_agent` with structured output → `orders.services.create_order()` → `OutboundMessage`. Options A and B are adapters at the edges. Owner fraud alerts go through the same outbound adapter.
 
-**Gate:** the `/grill-with-docs` session records the decision as an ADR; tickets for the adapter are created only after that.
+**Decision (grilling Q19–Q22, 2026-09-03): Option B**, recorded in ADR-0004. One business number per Restaurant under the platform's WhatsApp Business Account, onboarded by the Super admin in the Django admin (`tenants.WhatsAppAccount(restaurant, phone_number_id, access_token, enabled)`). Inbound: `POST /webhooks/whatsapp` verifies `X-Hub-Signature-256` with the app secret, answers 200 immediately, and enqueues `process_inbound_message(schema_name, ...)`; `GET` answers Meta's `hub.challenge` with the verify token. Outbound: Graph API `messages` endpoint. Owner fraud alerts use the approved `fraud_alert` utility template; until approval they are logged only. Development uses Meta's free test number and a local tunnel; a `/wizard` script walks the human through creating the Meta app, the test number and the webhook. Costs and sources: `docs/research/whatsapp-cloud-api-costs-iraq.md`.
 
 ### 6.5 Chat agent (`POST /agent/chat`) — backend home for the floating bot and the WhatsApp bot
 - Body `{messages:[{role, content}], table_number?}`; menu context from the **tenant DB**. Response `{reply, order_proposal?: {table_number, items:[{name, quantity, price}]}}` via structured output:
@@ -451,7 +451,7 @@ Idempotent: creates restaurant "Waheed Restaurant" (slug `waheed`) with its sche
 | **4 — Frontend** | §5.6 F1–F8 | customer QR flow works with the slug; chat bot orders through the backend; 401 redirects; no OpenAI key in the frontend | 1.5 d |
 | **5 — Deployment** | `railway.json` (Railpack, gunicorn, `preDeployCommand: migrate_schemas`), worker service (`celery -A waheed worker`), Redis + PostgreSQL plugins, env vars (§11), `/health` check | staging passes the isolation matrix and contract tests against the deployed URL | 1 d |
 | **6 — Cutover** | fresh production DB, `bootstrap_dev` or registration, point the Railway web service at `backend/`, frontend env unchanged | all frontend pages work end-to-end on production | 0.5 d |
-| **7 — WhatsApp adapter** | after the §6.4 decision: Cloud API webhook + outbound adapter (or neonize adapter) | a customer orders via WhatsApp into the right tenant; owner receives a fraud alert | 1.5 d |
+| **7 — WhatsApp (Cloud API)** | webhook (verify token + signature check) → Celery task → Chat agent → order; outbound sender; `fraud_alert` template; Django-admin onboarding of numbers; `/wizard` script for the Meta app, test number and tunnel | a customer orders via WhatsApp into the right tenant with Meta's test number; owner receives a fraud alert (or the logged fallback) | 1.5 d |
 | **8 — Cleanup** | remove `nixpacks.toml`, `Procfile`; `backend/README.md`; `backend_legacy/` stays until the user says otherwise | no dead config; docs current | 0.5 d |
 
 Total ≈ **12.5 working days**. Everything lands on branch `faysal`, pushed after every commit.
@@ -523,7 +523,9 @@ Removed: fastapi, uvicorn, sqlalchemy, psycopg2-binary, passlib, bcrypt, python-
 | `AI_DEFAULT_PROVIDER` | `gemini` \| `openai` |
 | `GEMINI_API_KEY` | free tier |
 | `OPENAI_API_KEY` | existing provider (renamed from `OPENAI_KEY`) |
-| WhatsApp vars | defined with the §6.4 decision |
+| `WHATSAPP_VERIFY_TOKEN` | webhook GET verification |
+| `WHATSAPP_APP_SECRET` | validates `X-Hub-Signature-256` on webhook POSTs |
+| (per Restaurant, in DB) | `phone_number_id`, `access_token` on `WhatsAppAccount` |
 
 ---
 
@@ -541,7 +543,7 @@ Resolved 2026-09-03 by the user:
 9. Push everything to branch `faysal` immediately.
 10. Keep `backend_legacy/` as backup.
 
-Grilling round 1 (2026-09-03): all 18 recommendations accepted, plus "Jordan first, Iraq later" and "Django admin as Super admin console"; see §14. Still open: WhatsApp option A/B/C and its follow-ups (round 2).
+Grilling rounds 1–2 (2026-09-03): all recommendations accepted, plus "Jordan first, Iraq later", "Django admin as Super admin console" and "keep `backlog.md` for everything postponed"; see §14 and `backlog.md`. The design tree is fully visited.
 
 ---
 
@@ -573,3 +575,9 @@ Frontend redesign, QR ordering product changes beyond the slug, FinTech phase, h
 | Q17 | Category stays free text. |
 | Q18 | Online window 90 s; only signed-in staff devices send Heartbeats. |
 | Django admin | Super admin console for now (§3.1); staff accounts (cashiers) are created there until a restaurant-side staff API exists. |
+| Q19 | WhatsApp via Meta Cloud API direct (ADR-0004). |
+| Q20 | One business number per Restaurant under the platform's WhatsApp Business Account; Super admin onboards it in the Django admin. |
+| Q21 | Owner fraud alerts as the `fraud_alert` utility template; logged-only fallback until approved. |
+| Q22 | A `/wizard` script guides the human through the Meta app, test number and webhook tunnel (assumes no existing Meta account). |
+| Q23 | No taxes/service charge in this migration → `backlog.md`. |
+| Q24 | Registration fixed to `country = JO` → country selector in `backlog.md`. |
