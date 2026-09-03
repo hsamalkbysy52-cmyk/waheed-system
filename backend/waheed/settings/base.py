@@ -1,5 +1,6 @@
 """Settings shared by every environment. dev.py, prod.py and test.py override."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -36,6 +37,8 @@ INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_
 TENANT_MODEL = "tenants.Restaurant"
 TENANT_DOMAIN_MODEL = "tenants.Domain"
 TENANT_LIMIT_SET_CALLS = True
+# Only fills the mandatory Domain row (``<slug>.<base>``); nothing routes by hostname (ADR-0001).
+TENANT_BASE_DOMAIN = env("TENANT_BASE_DOMAIN", default="localhost")
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 DATABASES = {
@@ -96,6 +99,13 @@ REST_FRAMEWORK = {
     ),
     # Secure by default; public routes opt in with @permission_classes([AllowAny]).
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
+}
+
+# Sessions last a working day and refresh silently for a month (plan §14 Q5).
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
 }
 
 # --- Background work and cache (ADR-0003) -------------------------------------------------

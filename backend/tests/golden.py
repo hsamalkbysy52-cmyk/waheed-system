@@ -113,6 +113,16 @@ def legacy_golden(route: str, case: str = "success") -> Golden:
     raise KeyError(f"no legacy golden for {route!r} with case {case!r}")
 
 
+def golden_error(golden: Golden) -> dict:
+    """The body the rebuilt API answers for a legacy failure fixture (tests/goldens/README.md).
+
+    The legacy API answered ``{"error": m}`` with 200 or ``{"detail": m}`` with a real code; the
+    rebuild answers both keys with the same message and a real code, which each test asserts.
+    """
+    message = golden.response.get("error") or golden.response["detail"]
+    return {"error": message, "detail": message}
+
+
 def route_pattern(route: str) -> "re.Pattern[str]":
     """Regex that matches only the concrete paths of a route template like 'PUT /menu/{item_id}'."""
     literal_parts = re.split(r"\{[^/}]+\}", split_route(route)[1])
