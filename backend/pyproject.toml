@@ -46,9 +46,6 @@ select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "DJ"]
 # CLAUDE.md: Python 3.10 style keeps typing.Optional / typing.Union.
 ignore = ["UP007", "UP045"]
 
-[tool.ruff.lint.isort]
-known-first-party = ["waheed", "core", "tenants", "accounts"]
-
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "waheed.settings.test"
 python_files = ["test_*.py"]

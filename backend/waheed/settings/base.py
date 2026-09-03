@@ -10,7 +10,7 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")  # silently skipped when the file is absent
 
 DEBUG = False
-ALLOWED_HOSTS: "list[str]" = []
+ALLOWED_HOSTS = []
 
 # --- Tenancy (ADR-0001): one PostgreSQL schema per Restaurant -----------------------------
 

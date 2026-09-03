@@ -17,8 +17,11 @@ pip install -e ".[dev]"
 cp .env.example .env                                   # optional: every value is the local default
 python manage.py migrate_schemas --shared              # never plain `migrate`
 python manage.py runserver 8000
-celery -A waheed worker -l info                        # second terminal
+DJANGO_SETTINGS_MODULE=waheed.settings.dev celery -A waheed worker -l info   # second terminal
 ```
+
+`manage.py` defaults to the dev settings; `wsgi.py`, `asgi.py` and the Celery app default to prod so a
+deployment that forgets `DJANGO_SETTINGS_MODULE` fails at start-up rather than running with dev secrets.
 
 Health: `GET http://localhost:8000/` (legacy body) and `GET http://localhost:8000/health`.
 Django admin: `http://localhost:8000/django-admin/`.

@@ -19,7 +19,7 @@ def test_health_reports_ok_when_the_database_answers(client):
 
 
 @pytest.mark.django_db
-def test_django_admin_login_page_is_served_from_the_public_schema(client):
+def test_django_admin_login_page_renders(client):
     response = client.get("/django-admin/login/")
 
     assert response.status_code == 200

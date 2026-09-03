@@ -2,6 +2,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waheed.settings.dev")
+# Deployment entrypoint: defaults to prod so a service missing the variable fails at start-up
+# instead of running with the dev secret key and open CORS. manage.py defaults to dev.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "waheed.settings.prod")
 
 application = get_wsgi_application()
