@@ -13,8 +13,8 @@
 | Python | **3.10.20** (pyenv, existing venv). No 3.11+ syntax |
 | Multi-tenancy | **django-tenants 3.14** — one PostgreSQL schema per restaurant; shared `public` schema for platform data (restaurants, users) |
 | Tenant resolution | Custom middleware: tenant from the **JWT**; super-admin picks a tenant via `X-Restaurant-Id`; customer QR endpoints identify the restaurant by **slug** (`X-Restaurant-Slug` header or `?r=`). **No subdomains** |
-| Auth | `djangorestframework-simplejwt` 5.5 with custom claims (`role`, `restaurant_id`, `username`); 8 h access + 30 d refresh; frontend redirects to login on 401 |
-| Database | PostgreSQL only. Driver `psycopg` 3.2. Money as `Decimal` |
+| Auth | `djangorestframework-simplejwt` 5.5 with custom claims (`role`, `restaurant_id`, `username`); 8 h access + 30 d refresh; frontend refreshes once then redirects to login on 401. **Django admin** is the Super admin console for now |
+| Database | PostgreSQL only. Driver `psycopg` 3.2. Money as `Decimal(12,3)` (Jordanian dinar has 3 decimals); per-Restaurant `country`, `currency`, `timezone` |
 | Background work | **Celery 5.6 + Redis** (one worker service). Every task is tenant-aware via `schema_name` |
 | AI | Provider abstraction: **OpenAI (existing) + Gemini (new)** via `google-genai` 2.22 Interactions API, **free tier**. `gemini-3.8-flash` for reports/chat reasoning, `gemini-3.5-flash-lite` for high-volume bots |
 | WhatsApp bot | **Decision pending** — cost analysis in §6.4 must be approved before any bot code is written |
@@ -90,7 +90,7 @@ Legend — **Tenant**: runs inside a restaurant schema. **Public**: runs in the 
 | 32 | DELETE | `/inventory/{id}` | Bearer | Tenant | also deletes recipe rows |
 | 33 | GET | `/inventory/recipe/{menu_item_id}` | Bearer | Tenant | `{recipe:[{id,inventory_item_id,amount,inventory_name,unit}]}` |
 | 34 | POST | `/inventory/recipe/{menu_item_id}` | Bearer | Tenant | `{ingredients:[{inventory_item_id,amount}]}` full replace |
-| 35 | POST | `/inventory/deduct/{order_id}` | — (not called by FE) | Tenant | manual deduction → `{message,low_stock:[]}` |
+| 35 | POST | `/inventory/deduct/{order_id}` | — (not called by FE) | Tenant | **Dropped** (grilling Q12): unused by any UI and would double-deduct stock already taken at order creation |
 | 36 | GET | `/table-layout` | Bearer | Tenant | `{elements:[{element_id,element_type,x,y,w,h,table_number,capacity,label}]}` (`label` = zone name) |
 | 37 | POST | `/table-layout/save` | Bearer | Tenant | full replace; empty array clears |
 | 38 | POST | `/login` | none | Public | `{email,password}` → `{token,role,username,message}` or `{error}` |
@@ -169,6 +169,7 @@ TENANT_LIMIT_SET_CALLS = True
 SHARED_APPS = (
     "django_tenants", "tenants", "accounts", "platform_admin",
     "django.contrib.contenttypes", "django.contrib.auth",
+    "django.contrib.admin", "django.contrib.sessions", "django.contrib.messages",  # Super admin console
     "rest_framework", "corsheaders",
 )
 TENANT_APPS = ("menu", "inventory", "orders", "layout", "ai")
@@ -178,7 +179,11 @@ MIDDLEWARE = (
     "corsheaders.middleware.CorsMiddleware",      # first: CORS headers must reach the browser even on the
     "core.middleware.JWTTenantMiddleware",        # 401/403 responses the tenant middleware emits
     "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",      # Django admin only
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",                 # Django admin only; API views are CSRF-exempt
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 )
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": env("REDIS_URL"),
@@ -186,7 +191,7 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", 
                       "REVERSE_KEY_FUNCTION": "django_tenants.cache.reverse_key"}}
 ```
 
-`django.contrib.admin`/`sessions` stay out of v1 (the platform console is the frontend's `/admin` page).
+The **Django admin** (`/django-admin/`, public schema) is the Super admin console for now: Restaurants (status, slug, country, currency, timezone), Users (create staff, reset passwords), WhatsApp accounts. Only `super_admin` users get `is_staff`. The frontend `/admin` page and `/admin/restaurants*` API stay for parity.
 
 ### 3.2 Tenant resolution — `core.middleware.JWTTenantMiddleware`
 
@@ -252,7 +257,7 @@ Inside `transaction.atomic()`: validate (same rules and Arabic messages as today
 | `modifier_options.group_id` / `inventory_item_id` | FKs (`inventory_item` `SET_NULL`) | |
 | `recipe_ingredients` | FKs CASCADE + `UniqueConstraint(menu_item, inventory_item)`, `amount Decimal` | |
 | `orders.items_json` (text) | `Order.items = JSONField(default=list)` | same serialized shape |
-| `orders.total_price` Float | `DecimalField(12,2)`; serialized as a JSON **number** (`coerce_to_string=False`) | contract unchanged |
+| `orders.total_price` Float (and every price/delta) | `DecimalField(12,3)`; serialized as a JSON **number** (`coerce_to_string=False`) | JOD has 3 decimals; frontend formats via `toLocaleString()` |
 | `orders.client_id` | `UniqueConstraint(client_id)` (schema-local) | |
 | `orders.status` | `CharField(choices=Order.Status)` (`TextChoices`) | today's six values |
 | `restaurants.last_heartbeat_at` | stays on `Restaurant` (public) | |
@@ -354,6 +359,8 @@ All 42 routes, their paths, request bodies and success response bodies, includin
 - **F6** Sync engine: treat 401 as "retry after login", not permanent `SyncFailed`.
 - **F7** Delete `app/api/debug`, `app/api/orders/qr-create`, `PUT /api/chat`, `lib/store.fetchOrders`, the `NEXT_PUBLIC_OPENAI_API_KEY` fallback.
 - **F8** Import the base URL from `lib/apiFetch.ts` everywhere instead of 10 copies.
+- **F9** `formatMoney()` helper: currency symbol and decimals from `GET /me` (`د.أ` with 3 decimals for JOD, `د.ع` for IQD) replaces the ~20 hard-coded `د.ع` labels.
+- **F10** Old orders page: the `pending` stat card becomes "open orders" (status not `done`/`cancelled`); revenue tiles count Paid, non-cancelled orders only.
 
 ---
 
@@ -534,9 +541,35 @@ Resolved 2026-09-03 by the user:
 9. Push everything to branch `faysal` immediately.
 10. Keep `backend_legacy/` as backup.
 
-Still open (to settle in the grilling session): WhatsApp option A/B/C; anything the grilling surfaces.
+Grilling round 1 (2026-09-03): all 18 recommendations accepted, plus "Jordan first, Iraq later" and "Django admin as Super admin console"; see §14. Still open: WhatsApp option A/B/C and its follow-ups (round 2).
 
 ---
 
 ## 13. Out of scope
 Frontend redesign, QR ordering product changes beyond the slug, FinTech phase, hosting other than Railway, real-time (WebSocket) order updates, subdomain routing.
+
+---
+
+## 14. Grilling resolutions (2026-09-03, round 1)
+
+| # | Decision |
+|---|---|
+| Q1 | A Restaurant is one location. A brand with branches registers each branch as its own Restaurant. |
+| Q2 | Slug auto-generated (`r-<8 hex>`) at registration; renaming comes with a later restaurant-settings endpoint. |
+| Q3 | Roles stay `super_admin`, `admin`, `cashier`; `kitchen` is a future role. |
+| Q4 | Suspended restaurant: customer QR endpoints return 403 `{"error": "المطعم غير متاح حالياً"}`; the customer page shows that message. |
+| Q5 | Access token 8 h, refresh 30 d; frontend refreshes once on 401 then redirects to login; logout is client-side. |
+| Q6 | Order state machine: new orders start `preparing`; `preparing → ready → served → done`; `cancelled` from `preparing`/`ready`/`served`; `done` terminal; `pending` retired. |
+| Q7 | `done` = closed; `Paid` = payment method recorded, independent of status. Revenue = Paid, non-cancelled orders. |
+| Q8 | Cancelling (either endpoint) restores stock only while the order is `preparing`. |
+| Q9 | Negative modifier `quantity_delta` reduces the recipe deduction, floored at zero. |
+| Q10 | A Variant inherits its parent's Modifier groups and Recipe when it has none of its own; `GET /menu` materialises the inheritance so the frontend is unchanged. |
+| Q11 → Jordan | Money is `Decimal(12,3)`. `Restaurant.country` (`JO` now, `IQ` later), `Restaurant.currency` (`JOD` default; `IQD`), `Restaurant.timezone` (`Asia/Amman` default; `Asia/Baghdad`). "Today" in reports is the Restaurant's local day. Phone numbers stored as entered, digits normalised, no strict validation yet. |
+| Q12 | `POST /inventory/deduct/{order_id}` dropped. |
+| Q13 | `/agent/ask` and `/agent/chat` are synchronous; Celery only for alerts, outbound messages, inbound webhooks. |
+| Q14 | Gemini 429/5xx → automatic fallback to OpenAI when a key exists, else `{"error": "المساعد مشغول، حاول بعد قليل"}`; fallback recorded in `AIUsageLog`. |
+| Q15 | Chat agent in the web UI is staff-only; customers reach it over WhatsApp. |
+| Q16 | Cutover reuses the existing Railway service and URL with a fresh PostgreSQL, plus Redis and a worker service. |
+| Q17 | Category stays free text. |
+| Q18 | Online window 90 s; only signed-in staff devices send Heartbeats. |
+| Django admin | Super admin console for now (§3.1); staff accounts (cashiers) are created there until a restaurant-side staff API exists. |

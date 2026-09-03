@@ -45,7 +45,7 @@ A sellable dish or drink with a price and a Category.
 _Avoid_: product, dish, SKU
 
 **Variant**:
-A Menu item sold as a size or flavour version of a parent Menu item.
+A Menu item sold as a size or flavour version of a parent Menu item; it inherits the parent's Modifier groups and Recipe unless it defines its own.
 _Avoid_: option, size, child item
 
 **Category**:
@@ -104,8 +104,12 @@ _Avoid_: client id (in prose), UUID
 The Order statuses: the kitchen is making it; it is made and waiting to go to the table; it is at the table; it is closed by the cashier; it was withdrawn (terminal).
 _Avoid_: in progress, completed, finished, deleted
 
+**Open order**:
+An Order that is Preparing, Ready or Served: it occupies its Table and still awaits closing.
+_Avoid_: active order, pending order, live order
+
 **Paid**:
-An Order whose Payment method has been recorded.
+An Order whose Payment method has been recorded; independent of its status.
 _Avoid_: settled, closed
 
 **Payment method**:
