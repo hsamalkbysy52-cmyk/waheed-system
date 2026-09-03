@@ -11,3 +11,7 @@
 - [ ] A comparison helper asserts recursively equal keys and value types and equal Arabic `message`/`error` strings while ignoring volatile values (ids, timestamps, tokens)
 - [ ] A meta-test loads every fixture and validates its structure
 - [ ] A note lists the routes whose behaviour the spec intentionally changes (removed deduct route, real status codes, redacted customer orders, QR semantics) so their comparisons are relaxed deliberately
+
+## Comments
+
+- 2026-09-04 (from ticket 01): `backend_legacy/.venv` moved with the directory, so its entry-point scripts (`uvicorn`, `pip`) still carry the old `backend/.venv/bin/python3` shebang and now resolve to the new Django venv (`.venv/bin/uvicorn` fails with "No module named uvicorn"). Run the legacy API with `backend_legacy/.venv/bin/python -m uvicorn main:app --port 8001` from `backend_legacy/`, or recreate that venv from `requirements.txt`.

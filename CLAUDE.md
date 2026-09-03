@@ -24,7 +24,8 @@ Multi-restaurant (multi-tenant) SaaS for restaurants: cashier POS and kanban, ki
 
 - Frontend needs `frontend/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8000`; without it every call goes to the **production** Railway API.
 - Backend tests need PostgreSQL running (`brew services start postgresql@15`) and Redis for Celery (`brew services start redis`). SQLite is not supported.
-- Python comes from pyenv `3.10.20`; the venv is `backend/.venv`.
+- Python comes from pyenv `3.10.20`; the venv is `backend/.venv` (`pip install -e ".[dev]"`). The legacy venv is `backend_legacy/.venv`; call it as `python -m ...` because its scripts' shebangs point at the new venv.
+- If `brew services start` reports success but nothing listens (launchd status 78: `/opt/homebrew/var` belongs to another macOS account), run PostgreSQL and Redis under your own account as described in `backend/README.md`.
 
 ## Workflow
 

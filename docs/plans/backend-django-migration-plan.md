@@ -498,7 +498,7 @@ Tests: `pytest` (needs PostgreSQL + Redis; `FastTenantTestCase` + `TenantClient`
 | djangorestframework-simplejwt | 5.5.1 | |
 | psycopg[binary] | ≥3.2.1,<3.3 | range django-tenants tests against |
 | celery[redis] | 5.6.3 | broker + result backend on Redis |
-| redis | 8.1.0 | also Django cache backend |
+| redis | 6.4.0 | also Django cache backend. Corrected in ticket 01 (2026-09-04): kombu 5.6 (Celery 5.6.3) requires `redis<6.5`, so 8.1.0 cannot install |
 | django-cors-headers | 4.9.0 | |
 | django-environ | 0.14.0 | `DATABASE_URL`/`REDIS_URL` parsing |
 | google-genai | 2.22.0 | Interactions API needs ≥ 2.3.0 |
