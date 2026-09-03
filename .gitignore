@@ -1,17 +1,27 @@
-backend/.env
-backend/waheed.db
-backend/__pycache__/
-**/__pycache__/
-*.pyc
-.vercel
+# Legacy FastAPI backup (read-only): its virtualenv, SQLite database and local env
+backend_legacy/.venv/
+backend_legacy/venv/
+backend_legacy/waheed.db
+backend_legacy/.env
+backend_legacy/__pycache__/
 
-# Python virtual environments
-.venv/
-venv/
+# Django backend
+backend/.env
 backend/.venv/
 backend/venv/
+backend/staticfiles/
+
+# Python
+**/__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
 
 # Frontend
 frontend/node_modules/
 frontend/.next/
 frontend/.env*
+.vercel
