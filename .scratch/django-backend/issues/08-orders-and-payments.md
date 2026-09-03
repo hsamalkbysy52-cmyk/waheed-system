@@ -11,3 +11,7 @@
 - [ ] Routes 16, 17, 18 and 21 to 28 match the goldens; creation time keeps the legacy format; recording payment is idempotent under concurrent calls; cancel writes the Cancellation log and returns the fraud flag when three or more cancellations by the same cashier fall within 60 minutes (dispatch is ticket 10)
 - [ ] Heartbeat updates the Restaurant's last Heartbeat; Online means within 90 seconds; only token callers may send Heartbeats
 - [ ] Tests: every route; two Orders competing for the last unit of stock; idempotent replay; the full status transition matrix; revenue-relevant data (Paid, non-cancelled) visible in responses
+
+## Comments
+
+- 2026-09-04 (from ticket 02): the legacy `PUT /orders/{order_id}` rewrote the Order lines without their `modifiers` (see order 9 in fixture `16-get-orders.json`), while `POST /orders/create` stored them. Decide whether edited lines keep their Modifier options; the golden for route 23 only fixes the `{message, order_id}` response shape.

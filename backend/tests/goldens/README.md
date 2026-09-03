@@ -22,9 +22,13 @@ assert_matches_golden(response.json(), golden.response)
 ```
 
 `assert_matches_golden` compares keys and value kinds recursively and compares `message`, `error`
-and `detail` strings by value. Ids, totals, timestamps and tokens may differ. `null` on either side
-matches any value. Each list element is compared to the golden list's first element, and a populated
-golden list rejects an empty actual list, so seed data before comparing.
+and `detail` strings by value. Ids, totals, timestamps and tokens may differ. A value may be `null`
+only where the golden shows `null` at that position in some element; where the golden shows only
+`null`, anything is accepted. List elements are compared to the merged shape of all the golden's
+elements. A top-level list rejects an empty actual list when the golden's has elements, so seed
+data before comparing; lists inside elements (an item's modifiers) may be empty. `fraud_alert` is
+user-facing text too, but it embeds the cashier's name, so it is compared by kind only; the Fraud
+alert ticket asserts it with the known cashier name.
 
 ## Recording
 
@@ -56,10 +60,10 @@ Compare these loosely, in the way described, instead of against the fixture as r
 | `POST /inventory/deduct/{order_id}` (35) | Deducts stock a second time | Removed (grilling Q12) | No comparison; assert the route is gone |
 | Every `failure:*` fixture with status 200 and `{"error"}` | Business and validation failures answered 200 | Real codes: 400 validation, state and stock; 401 authentication; 403 forbidden or Suspended; 404 not found; body carries both `error` and `detail` | Assert the spec's status; compare the body against `{"error": g.response["error"], "detail": g.response["error"]}` |
 | `failure:*` fixtures with 400/401/403/503 and `{"detail"}` | FastAPI `HTTPException` shape | Same status, body gains `error` | Compare against `{"error": g.response["detail"], "detail": g.response["detail"]}` |
-| `GET /orders` (16) without a token | Full Orders of Restaurant 1 | Slug-resolved customers get only `id`, `table_number`, `status` of Open orders; staff get the full shape | Customer tests compare against the fixture's element with the other keys removed |
-| `GET /restaurant/status` (19), `POST /orders/qr-create` (20) | Hard-coded to Restaurant 1 | Need a Slug (`X-Restaurant-Slug` header or `?r=`); slug-less call is 400; Suspended Restaurant is 403 with an Arabic "restaurant unavailable" message | Success shapes and the 503 offline message are unchanged |
+| `GET /orders` (16) | Full Orders of Restaurant 1 for any caller, token or not (the fixture was recorded as a Cashier; token-less QR callers got the same body) | Slug-resolved customers get only `id`, `table_number`, `status` of Open orders; staff get the full shape | Customer tests compare against the fixture's element with the other keys removed |
+| `GET /restaurant/status` (19), `POST /orders/qr-create` (20) | Hard-coded to Restaurant 1 | Need a Slug (`X-Restaurant-Slug` header or `?r=`); slug-less call is 400 (plan §3.9, item 3); Suspended Restaurant is 403 with an Arabic "restaurant unavailable" message | Success shapes and the 503 offline message are unchanged |
 | `POST /orders/create` (17) without a token | Accepted for Restaurant 1 | Slug-resolved callers follow Customer-order rules (503 offline, cashier `QR`, payment method ignored); otherwise a JWT is required | Same response shape |
 | `POST /login` (38), `POST /register` (39) | `{token, role, username, message}` | Adds a `refresh` token | Compare against `{**g.response, "refresh": "<jwt>"}` |
 | `POST /agent/ask` (42) | `{"error": <OpenAI exception text>}` for the client-supplied key | Client key ignored; `{"answer"}` on success, Arabic "assistant is busy" `error` when the Provider is rate-limited | Compare the shape only, never the error text |
-| `PUT /orders/{order_id}` (23) | Editable while `preparing` or `pending`; rewrites the lines without their `modifiers` (see order 9 in fixture 16) | Editable while `preparing` only; `pending` is retired; ticket 08 decides whether edited lines keep Modifier options | Messages unchanged |
+| `PUT /orders/{order_id}` (23) | Editable while `preparing` or `pending`; rewrites the lines without their `modifiers` (see order 9 in fixture 16) | Editable while `preparing` only; `pending` is retired; whether edited lines keep their Modifier options is a handoff recorded in ticket 08 | Messages unchanged |
 | All routes | `X-Restaurant-Id` mismatch 403, invalid token 401, Suspended 403 (fixtures under `02-get-menu--*`, `40-get-admin-restaurants--*`) | Same codes and messages, emitted by the tenant middleware with CORS headers | Compare as recorded |
