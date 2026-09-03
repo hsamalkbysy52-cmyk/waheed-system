@@ -1,0 +1,14 @@
+{
+  "route": "PUT /orders/{order_id}/ready",
+  "case": "failure:not-found",
+  "method": "PUT",
+  "path": "/orders/9999/ready",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "الطلب مو موجود"
+  }
+}

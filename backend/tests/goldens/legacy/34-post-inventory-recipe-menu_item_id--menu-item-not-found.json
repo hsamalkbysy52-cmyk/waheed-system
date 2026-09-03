@@ -1,0 +1,26 @@
+{
+  "route": "POST /inventory/recipe/{menu_item_id}",
+  "case": "failure:menu-item-not-found",
+  "method": "POST",
+  "path": "/inventory/recipe/9999",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "ingredients": [
+      {
+        "inventory_item_id": 1,
+        "amount": 0.2
+      },
+      {
+        "inventory_item_id": 2,
+        "amount": 1
+      }
+    ]
+  },
+  "status": 200,
+  "response": {
+    "error": "الصنف غير موجود"
+  }
+}

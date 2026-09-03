@@ -1,0 +1,14 @@
+{
+  "route": "PUT /orders/{order_id}/done",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/4/done",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم الدفع وإنجاز الطلب!"
+  }
+}

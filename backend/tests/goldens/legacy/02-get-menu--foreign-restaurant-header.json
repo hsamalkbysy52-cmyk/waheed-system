@@ -1,0 +1,15 @@
+{
+  "route": "GET /menu",
+  "case": "failure:foreign-restaurant-header",
+  "method": "GET",
+  "path": "/menu",
+  "headers": {
+    "Authorization": "Bearer <admin>",
+    "X-Restaurant-Id": "2"
+  },
+  "body": null,
+  "status": 403,
+  "response": {
+    "detail": "غير مسموح بالوصول لمطعم آخر"
+  }
+}

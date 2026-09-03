@@ -1,0 +1,31 @@
+{
+  "route": "GET /admin/restaurants",
+  "case": "success",
+  "method": "GET",
+  "path": "/admin/restaurants",
+  "headers": {
+    "Authorization": "Bearer <super_admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "restaurants": [
+      {
+        "id": 2,
+        "name": "Shawarma House",
+        "email": "owner@shawarma-house.example",
+        "phone": "+962790000000",
+        "status": "active",
+        "created_at": "2026-09-03T21:46:43.309812"
+      },
+      {
+        "id": 1,
+        "name": "Waheed Restaurant",
+        "email": null,
+        "phone": null,
+        "status": "active",
+        "created_at": "2026-09-03T21:46:36.764850"
+      }
+    ]
+  }
+}

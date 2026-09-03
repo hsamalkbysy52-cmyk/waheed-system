@@ -1,0 +1,13 @@
+{
+  "route": "GET /restaurant/status",
+  "case": "success",
+  "method": "GET",
+  "path": "/restaurant/status",
+  "headers": {},
+  "body": null,
+  "status": 200,
+  "response": {
+    "online": true,
+    "last_heartbeat_at": "2026-09-03T21:46:43.624261"
+  }
+}

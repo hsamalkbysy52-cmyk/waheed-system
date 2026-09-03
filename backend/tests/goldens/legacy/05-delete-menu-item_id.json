@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /menu/{item_id}",
+  "case": "success",
+  "method": "DELETE",
+  "path": "/menu/8",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم حذف الصنف"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "route": "POST /admin/restaurants/{restaurant_id}/status",
+  "case": "failure:invalid-status",
+  "method": "POST",
+  "path": "/admin/restaurants/2/status",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <super_admin>"
+  },
+  "body": {
+    "status": "closed"
+  },
+  "status": 200,
+  "response": {
+    "error": "قيمة status غير صالحة — active أو suspended فقط"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "route": "POST /admin/restaurants/{restaurant_id}/status",
+  "case": "failure:not-found",
+  "method": "POST",
+  "path": "/admin/restaurants/9999/status",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <super_admin>"
+  },
+  "body": {
+    "status": "active"
+  },
+  "status": 200,
+  "response": {
+    "error": "المطعم غير موجود"
+  }
+}

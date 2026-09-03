@@ -1,0 +1,14 @@
+{
+  "route": "GET /menu",
+  "case": "failure:invalid-token",
+  "method": "GET",
+  "path": "/menu",
+  "headers": {
+    "Authorization": "Bearer <invalid>"
+  },
+  "body": null,
+  "status": 401,
+  "response": {
+    "detail": "توكن غير صالح"
+  }
+}

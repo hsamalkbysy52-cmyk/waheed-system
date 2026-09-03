@@ -1,0 +1,15 @@
+{
+  "route": "PUT /menu/{item_id}/toggle",
+  "case": "success",
+  "method": "PUT",
+  "path": "/menu/6/toggle",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم تغيير الحالة",
+    "is_available": false
+  }
+}

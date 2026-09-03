@@ -1,0 +1,19 @@
+{
+  "route": "POST /admin/restaurants/{restaurant_id}/status",
+  "case": "success",
+  "method": "POST",
+  "path": "/admin/restaurants/2/status",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <super_admin>"
+  },
+  "body": {
+    "status": "suspended"
+  },
+  "status": 200,
+  "response": {
+    "id": 2,
+    "status": "suspended",
+    "message": "تم تحديث حالة المطعم"
+  }
+}

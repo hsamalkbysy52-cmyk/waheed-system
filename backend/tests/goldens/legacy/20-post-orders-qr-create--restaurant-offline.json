@@ -1,0 +1,25 @@
+{
+  "route": "POST /orders/qr-create",
+  "case": "failure:restaurant-offline",
+  "method": "POST",
+  "path": "/orders/qr-create",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "table_number": 2,
+    "items": [
+      {
+        "name": "برجر",
+        "price": 5000,
+        "category": "وجبات",
+        "modifiers": []
+      }
+    ],
+    "notes": ""
+  },
+  "status": 503,
+  "response": {
+    "detail": "الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."
+  }
+}

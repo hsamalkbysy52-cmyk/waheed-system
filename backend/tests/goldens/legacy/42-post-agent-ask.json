@@ -1,0 +1,14 @@
+{
+  "route": "POST /agent/ask",
+  "case": "success",
+  "method": "POST",
+  "path": "/agent/ask?question=%D9%83%D9%85+%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA+%D8%A7%D9%84%D9%8A%D9%88%D9%85%D8%9F&api_key=sk-invalid",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-invalid. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}"
+  }
+}

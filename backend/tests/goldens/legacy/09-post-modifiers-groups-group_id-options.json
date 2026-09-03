@@ -1,0 +1,21 @@
+{
+  "route": "POST /modifiers/groups/{group_id}/options",
+  "case": "success",
+  "method": "POST",
+  "path": "/modifiers/groups/1/options",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "جبن إضافي",
+    "price_delta": 500,
+    "inventory_item_id": 3,
+    "quantity_delta": 1
+  },
+  "status": 200,
+  "response": {
+    "message": "تم إضافة الخيار",
+    "id": 1
+  }
+}

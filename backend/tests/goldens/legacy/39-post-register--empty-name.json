@@ -1,0 +1,19 @@
+{
+  "route": "POST /register",
+  "case": "failure:empty-name",
+  "method": "POST",
+  "path": "/register",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "restaurant_name": "   ",
+    "phone": "+962790000000",
+    "email": "owner@shawarma-house.example",
+    "password": "secret123"
+  },
+  "status": 200,
+  "response": {
+    "error": "اسم المطعم مطلوب"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "route": "PUT /orders/{order_id}/ready",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/2/ready",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "الطلب جاهز للتقديم!"
+  }
+}

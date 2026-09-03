@@ -1,0 +1,33 @@
+{
+  "route": "PUT /orders/{order_id}",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/9",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": {
+    "items": [
+      {
+        "name": "برجر",
+        "price": 5000,
+        "category": "وجبات",
+        "modifiers": []
+      },
+      {
+        "name": "برجر",
+        "price": 5000,
+        "category": "وجبات",
+        "modifiers": []
+      }
+    ],
+    "table_number": 3,
+    "notes": "تعديل: برجرين"
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تعديل الطلب",
+    "order_id": 9
+  }
+}

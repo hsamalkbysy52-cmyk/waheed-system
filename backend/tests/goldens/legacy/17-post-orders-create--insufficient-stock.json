@@ -1,0 +1,28 @@
+{
+  "route": "POST /orders/create",
+  "case": "failure:insufficient-stock",
+  "method": "POST",
+  "path": "/orders/create",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": {
+    "table_number": 2,
+    "items": [
+      {
+        "name": "باستا",
+        "price": 6000,
+        "category": "وجبات",
+        "modifiers": []
+      }
+    ],
+    "cashier": "cashier",
+    "notes": "",
+    "client_id": "00000011-0000-4000-8000-000000000000"
+  },
+  "status": 400,
+  "response": {
+    "detail": "مخزون غير كافٍ: باستا"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "route": "GET /menu",
+  "case": "success:super-admin-selects-restaurant",
+  "method": "GET",
+  "path": "/menu",
+  "headers": {
+    "Authorization": "Bearer <super_admin>",
+    "X-Restaurant-Id": "2"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "menu": []
+  }
+}

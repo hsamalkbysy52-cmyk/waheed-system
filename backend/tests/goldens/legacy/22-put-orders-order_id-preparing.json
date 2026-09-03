@@ -1,0 +1,14 @@
+{
+  "route": "PUT /orders/{order_id}/preparing",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/9/preparing",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم إرجاع الطلب لقيد التحضير"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "route": "POST /orders/{order_id}/cancel",
+  "case": "success:fraud-alert",
+  "method": "POST",
+  "path": "/orders/8/cancel?cashier=cashier",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم إلغاء الطلب!",
+    "order_id": 8,
+    "fraud_alert": "⚠️ cashier ألغى 3 طلبات أو أكثر خلال ساعة — تم إبلاغ المالك."
+  }
+}

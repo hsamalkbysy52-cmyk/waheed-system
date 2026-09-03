@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /modifiers/groups/{group_id}",
+  "case": "failure:not-found",
+  "method": "DELETE",
+  "path": "/modifiers/groups/9999",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "المجموعة غير موجودة"
+  }
+}

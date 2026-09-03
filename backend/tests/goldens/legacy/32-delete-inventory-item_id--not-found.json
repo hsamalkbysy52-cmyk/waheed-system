@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /inventory/{item_id}",
+  "case": "failure:not-found",
+  "method": "DELETE",
+  "path": "/inventory/9999",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "المادة غير موجودة"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "route": "GET /inventory/recipe/{menu_item_id}",
+  "case": "success",
+  "method": "GET",
+  "path": "/inventory/recipe/1",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "recipe": [
+      {
+        "id": 1,
+        "inventory_item_id": 1,
+        "amount": 0.2,
+        "inventory_name": "لحم بقري",
+        "unit": "كغم"
+      },
+      {
+        "id": 2,
+        "inventory_item_id": 2,
+        "amount": 1.0,
+        "inventory_name": "خبز",
+        "unit": "قطعة"
+      }
+    ]
+  }
+}

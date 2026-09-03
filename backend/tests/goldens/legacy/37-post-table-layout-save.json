@@ -1,0 +1,73 @@
+{
+  "route": "POST /table-layout/save",
+  "case": "success",
+  "method": "POST",
+  "path": "/table-layout/save",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "elements": [
+      {
+        "element_id": "t-1",
+        "element_type": "table",
+        "x": 40,
+        "y": 60,
+        "w": 90,
+        "h": 90,
+        "table_number": 1,
+        "capacity": 4,
+        "label": "الصالة"
+      },
+      {
+        "element_id": "t-2",
+        "element_type": "table",
+        "x": 160,
+        "y": 60,
+        "w": 90,
+        "h": 90,
+        "table_number": 2,
+        "capacity": 2,
+        "label": "الصالة"
+      },
+      {
+        "element_id": "t-3",
+        "element_type": "table",
+        "x": 40,
+        "y": 220,
+        "w": 120,
+        "h": 90,
+        "table_number": 3,
+        "capacity": 6,
+        "label": "الحديقة"
+      },
+      {
+        "element_id": "w-1",
+        "element_type": "wall",
+        "x": 0,
+        "y": 170,
+        "w": 300,
+        "h": 10,
+        "table_number": null,
+        "capacity": null,
+        "label": ""
+      },
+      {
+        "element_id": "d-1",
+        "element_type": "door",
+        "x": 300,
+        "y": 0,
+        "w": 40,
+        "h": 10,
+        "table_number": null,
+        "capacity": null,
+        "label": ""
+      }
+    ]
+  },
+  "status": 200,
+  "response": {
+    "message": "تم حفظ المخطط"
+  }
+}

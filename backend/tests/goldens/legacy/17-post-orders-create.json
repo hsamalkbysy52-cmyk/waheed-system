@@ -1,0 +1,43 @@
+{
+  "route": "POST /orders/create",
+  "case": "success",
+  "method": "POST",
+  "path": "/orders/create",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": {
+    "table_number": 3,
+    "items": [
+      {
+        "name": "برجر",
+        "price": 5000,
+        "category": "وجبات",
+        "modifiers": [
+          {
+            "name": "جبن إضافي",
+            "price_delta": 750,
+            "inventory_item_id": 3,
+            "quantity_delta": 1
+          }
+        ]
+      },
+      {
+        "name": "كولا",
+        "price": 1500,
+        "category": "مشروبات",
+        "modifiers": []
+      }
+    ],
+    "cashier": "cashier",
+    "notes": "بدون بصل",
+    "client_id": "00000001-0000-4000-8000-000000000000"
+  },
+  "status": 200,
+  "response": {
+    "message": "تم حفظ الطلب!",
+    "total": 6500.0,
+    "order_id": 1
+  }
+}

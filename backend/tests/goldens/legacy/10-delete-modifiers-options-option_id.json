@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /modifiers/options/{option_id}",
+  "case": "success",
+  "method": "DELETE",
+  "path": "/modifiers/options/4",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم حذف الخيار"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "route": "POST /menu/add",
+  "case": "success",
+  "method": "POST",
+  "path": "/menu/add",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "برجر دبل",
+    "price": 7000,
+    "category": "وجبات",
+    "description": "قطعتين لحم",
+    "parent_id": 1
+  },
+  "status": 200,
+  "response": {
+    "message": "تم إضافة برجر دبل",
+    "id": 7
+  }
+}

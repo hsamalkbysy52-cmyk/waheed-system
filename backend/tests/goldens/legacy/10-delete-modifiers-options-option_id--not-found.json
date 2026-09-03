@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /modifiers/options/{option_id}",
+  "case": "failure:not-found",
+  "method": "DELETE",
+  "path": "/modifiers/options/9999",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "الخيار غير موجود"
+  }
+}

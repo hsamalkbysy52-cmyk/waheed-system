@@ -1,0 +1,43 @@
+{
+  "route": "GET /inventory",
+  "case": "success",
+  "method": "GET",
+  "path": "/inventory",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "items": [
+      {
+        "id": 1,
+        "name": "لحم بقري",
+        "unit": "كغم",
+        "quantity": 19.000000000000004,
+        "min_quantity": 5.0
+      },
+      {
+        "id": 2,
+        "name": "خبز",
+        "unit": "قطعة",
+        "quantity": 45.0,
+        "min_quantity": 10.0
+      },
+      {
+        "id": 3,
+        "name": "جبن",
+        "unit": "شريحة",
+        "quantity": 2.0,
+        "min_quantity": 10.0
+      },
+      {
+        "id": 4,
+        "name": "طماطم",
+        "unit": "كغم",
+        "quantity": 1.0,
+        "min_quantity": 2.0
+      }
+    ]
+  }
+}

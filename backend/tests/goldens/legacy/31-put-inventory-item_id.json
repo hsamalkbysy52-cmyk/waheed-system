@@ -1,0 +1,20 @@
+{
+  "route": "PUT /inventory/{item_id}",
+  "case": "success",
+  "method": "PUT",
+  "path": "/inventory/1",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "لحم بقري",
+    "unit": "كغم",
+    "quantity": 20,
+    "min_quantity": 5
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تعديل المادة"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "route": "GET /",
+  "case": "success",
+  "method": "GET",
+  "path": "/",
+  "headers": {},
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "Waheed System Running!",
+    "status": "ok"
+  }
+}

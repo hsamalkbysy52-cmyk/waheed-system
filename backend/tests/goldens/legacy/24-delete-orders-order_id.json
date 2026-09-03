@@ -1,0 +1,15 @@
+{
+  "route": "DELETE /orders/{order_id}",
+  "case": "success",
+  "method": "DELETE",
+  "path": "/orders/5",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم حذف الطلب",
+    "order_id": 5
+  }
+}

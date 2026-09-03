@@ -1,0 +1,19 @@
+{
+  "route": "POST /register",
+  "case": "failure:invalid-email",
+  "method": "POST",
+  "path": "/register",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "restaurant_name": "Shawarma House",
+    "phone": "+962790000000",
+    "email": "not-an-email",
+    "password": "secret123"
+  },
+  "status": 200,
+  "response": {
+    "error": "البريد الإلكتروني غير صالح"
+  }
+}

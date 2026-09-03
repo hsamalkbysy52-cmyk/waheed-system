@@ -1,0 +1,19 @@
+{
+  "route": "POST /register",
+  "case": "failure:duplicate-email",
+  "method": "POST",
+  "path": "/register",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "restaurant_name": "Shawarma House",
+    "phone": "+962790000000",
+    "email": "owner@shawarma-house.example",
+    "password": "secret123"
+  },
+  "status": 200,
+  "response": {
+    "error": "البريد الإلكتروني مستخدم مسبقاً"
+  }
+}

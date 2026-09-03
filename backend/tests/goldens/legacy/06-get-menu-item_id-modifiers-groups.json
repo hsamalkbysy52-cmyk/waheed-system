@@ -1,0 +1,36 @@
+{
+  "route": "GET /menu/{item_id}/modifiers/groups",
+  "case": "success",
+  "method": "GET",
+  "path": "/menu/1/modifiers/groups",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "groups": [
+      {
+        "id": 1,
+        "name": "الإضافات",
+        "max_selections": 3,
+        "options": [
+          {
+            "id": 2,
+            "name": "بدون خبز",
+            "price_delta": 0.0,
+            "inventory_item_id": 2,
+            "quantity_delta": -1.0
+          },
+          {
+            "id": 1,
+            "name": "جبن إضافي",
+            "price_delta": 750.0,
+            "inventory_item_id": 3,
+            "quantity_delta": 1.0
+          }
+        ]
+      }
+    ]
+  }
+}

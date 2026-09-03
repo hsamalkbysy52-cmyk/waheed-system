@@ -1,0 +1,14 @@
+{
+  "route": "PUT /orders/{order_id}/served",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/3/served",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم تقديم الطلب للطاولة"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "route": "PUT /orders/{order_id}/pay",
+  "case": "success",
+  "method": "PUT",
+  "path": "/orders/4/pay",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": {
+    "payment_method": "card"
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تسجيل الدفع"
+  }
+}

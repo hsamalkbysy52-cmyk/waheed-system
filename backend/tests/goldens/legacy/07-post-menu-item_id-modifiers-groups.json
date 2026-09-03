@@ -1,0 +1,19 @@
+{
+  "route": "POST /menu/{item_id}/modifiers/groups",
+  "case": "success",
+  "method": "POST",
+  "path": "/menu/1/modifiers/groups",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "إضافات",
+    "max_selections": 2
+  },
+  "status": 200,
+  "response": {
+    "message": "تم إنشاء المجموعة",
+    "id": 1
+  }
+}

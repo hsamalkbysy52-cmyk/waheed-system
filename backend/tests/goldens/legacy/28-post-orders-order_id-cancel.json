@@ -1,0 +1,15 @@
+{
+  "route": "POST /orders/{order_id}/cancel",
+  "case": "success",
+  "method": "POST",
+  "path": "/orders/6/cancel?cashier=cashier",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم إلغاء الطلب!",
+    "order_id": 6
+  }
+}

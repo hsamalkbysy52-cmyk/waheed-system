@@ -1,0 +1,14 @@
+{
+  "route": "DELETE /modifiers/groups/{group_id}",
+  "case": "success",
+  "method": "DELETE",
+  "path": "/modifiers/groups/2",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "message": "تم حذف المجموعة والخيارات"
+  }
+}

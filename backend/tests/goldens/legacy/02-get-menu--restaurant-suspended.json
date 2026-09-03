@@ -1,0 +1,14 @@
+{
+  "route": "GET /menu",
+  "case": "failure:restaurant-suspended",
+  "method": "GET",
+  "path": "/menu",
+  "headers": {
+    "Authorization": "Bearer <restaurant_2_owner>"
+  },
+  "body": null,
+  "status": 403,
+  "response": {
+    "detail": "هذا المطعم موقوف حالياً"
+  }
+}

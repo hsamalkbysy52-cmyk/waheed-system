@@ -1,0 +1,18 @@
+{
+  "route": "PUT /modifiers/options/{option_id}",
+  "case": "success",
+  "method": "PUT",
+  "path": "/modifiers/options/1",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "جبن إضافي",
+    "price_delta": 750
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تعديل الخيار"
+  }
+}

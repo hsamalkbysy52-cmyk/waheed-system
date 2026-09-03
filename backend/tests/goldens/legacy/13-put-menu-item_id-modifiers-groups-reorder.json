@@ -1,0 +1,19 @@
+{
+  "route": "PUT /menu/{item_id}/modifiers/groups/reorder",
+  "case": "success",
+  "method": "PUT",
+  "path": "/menu/1/modifiers/groups/reorder",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "order": [
+      1
+    ]
+  },
+  "status": 200,
+  "response": {
+    "message": "تم ترتيب المجموعات"
+  }
+}

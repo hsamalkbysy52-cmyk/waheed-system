@@ -1,0 +1,26 @@
+{
+  "route": "POST /inventory/recipe/{menu_item_id}",
+  "case": "success",
+  "method": "POST",
+  "path": "/inventory/recipe/1",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "ingredients": [
+      {
+        "inventory_item_id": 1,
+        "amount": 0.2
+      },
+      {
+        "inventory_item_id": 2,
+        "amount": 1
+      }
+    ]
+  },
+  "status": 200,
+  "response": {
+    "message": "تم حفظ الوصفة"
+  }
+}

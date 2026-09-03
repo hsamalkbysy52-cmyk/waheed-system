@@ -1,0 +1,22 @@
+{
+  "route": "POST /register",
+  "case": "success",
+  "method": "POST",
+  "path": "/register",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "restaurant_name": "Shawarma House",
+    "phone": "+962790000000",
+    "email": "owner@shawarma-house.example",
+    "password": "secret123"
+  },
+  "status": 200,
+  "response": {
+    "token": "<jwt>",
+    "role": "admin",
+    "username": "owner@shawarma-house.example",
+    "message": "تم تسجيل مطعم Shawarma House بنجاح! أهلاً owner@shawarma-house.example!"
+  }
+}

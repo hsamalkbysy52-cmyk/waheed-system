@@ -1,0 +1,15 @@
+{
+  "route": "POST /heartbeat",
+  "case": "success",
+  "method": "POST",
+  "path": "/heartbeat",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "status": "ok",
+    "last_heartbeat_at": "2026-09-03T21:46:43.624261"
+  }
+}

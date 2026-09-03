@@ -1,0 +1,14 @@
+{
+  "route": "POST /orders/{order_id}/cancel",
+  "case": "failure:already-cancelled",
+  "method": "POST",
+  "path": "/orders/6/cancel?cashier=cashier",
+  "headers": {
+    "Authorization": "Bearer <cashier>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "error": "الطلب ملغي مسبقاً"
+  }
+}

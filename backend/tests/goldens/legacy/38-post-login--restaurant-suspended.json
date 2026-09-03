@@ -1,0 +1,17 @@
+{
+  "route": "POST /login",
+  "case": "failure:restaurant-suspended",
+  "method": "POST",
+  "path": "/login",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "email": "owner@shawarma-house.example",
+    "password": "secret123"
+  },
+  "status": 200,
+  "response": {
+    "error": "هذا المطعم موقوف حالياً"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "route": "GET /admin/restaurants",
+  "case": "failure:not-super-admin",
+  "method": "GET",
+  "path": "/admin/restaurants",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 403,
+  "response": {
+    "detail": "هذه الصفحة لمدير المنصة فقط"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "route": "PUT /menu/{item_id}",
+  "case": "success",
+  "method": "PUT",
+  "path": "/menu/7",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "برجر دبل",
+    "price": 7500,
+    "category": "وجبات",
+    "description": "قطعتين لحم",
+    "parent_id": 1
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تعديل الصنف"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "route": "POST /orders/qr-create",
+  "case": "success",
+  "method": "POST",
+  "path": "/orders/qr-create",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "table_number": 2,
+    "items": [
+      {
+        "name": "كولا",
+        "price": 1500,
+        "category": "مشروبات",
+        "modifiers": []
+      }
+    ],
+    "notes": ""
+  },
+  "status": 200,
+  "response": {
+    "message": "تم حفظ الطلب!",
+    "total": 1500.0,
+    "order_id": 10
+  }
+}

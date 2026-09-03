@@ -1,0 +1,18 @@
+{
+  "route": "PUT /modifiers/groups/{group_id}",
+  "case": "success",
+  "method": "PUT",
+  "path": "/modifiers/groups/1",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <admin>"
+  },
+  "body": {
+    "name": "الإضافات",
+    "max_selections": 3
+  },
+  "status": 200,
+  "response": {
+    "message": "تم تعديل المجموعة"
+  }
+}

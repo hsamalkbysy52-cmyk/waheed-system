@@ -1,0 +1,70 @@
+{
+  "route": "GET /table-layout",
+  "case": "success",
+  "method": "GET",
+  "path": "/table-layout",
+  "headers": {
+    "Authorization": "Bearer <admin>"
+  },
+  "body": null,
+  "status": 200,
+  "response": {
+    "elements": [
+      {
+        "element_id": "t-1",
+        "element_type": "table",
+        "x": 40.0,
+        "y": 60.0,
+        "w": 90.0,
+        "h": 90.0,
+        "table_number": 1,
+        "capacity": 4,
+        "label": "الصالة"
+      },
+      {
+        "element_id": "t-2",
+        "element_type": "table",
+        "x": 160.0,
+        "y": 60.0,
+        "w": 90.0,
+        "h": 90.0,
+        "table_number": 2,
+        "capacity": 2,
+        "label": "الصالة"
+      },
+      {
+        "element_id": "t-3",
+        "element_type": "table",
+        "x": 40.0,
+        "y": 220.0,
+        "w": 120.0,
+        "h": 90.0,
+        "table_number": 3,
+        "capacity": 6,
+        "label": "الحديقة"
+      },
+      {
+        "element_id": "w-1",
+        "element_type": "wall",
+        "x": 0.0,
+        "y": 170.0,
+        "w": 300.0,
+        "h": 10.0,
+        "table_number": null,
+        "capacity": null,
+        "label": ""
+      },
+      {
+        "element_id": "d-1",
+        "element_type": "door",
+        "x": 300.0,
+        "y": 0.0,
+        "w": 40.0,
+        "h": 10.0,
+        "table_number": null,
+        "capacity": null,
+        "label": ""
+      }
+    ]
+  }
+}
