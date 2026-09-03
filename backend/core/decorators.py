@@ -10,15 +10,18 @@ from functools import wraps
 from rest_framework.exceptions import NotAuthenticated, ValidationError
 
 from core import messages
-from core.middleware import FROM_SLUG
+from core.middleware import TenantSource
 
 
 def tenant_required(view):
     """400 without a Restaurant; 401 when a Slug selected it and this is not a customer route."""
+    _below_api_view(view)
 
     @wraps(view)
     def guarded(request, *args, **kwargs):
-        if request.tenant_source == FROM_SLUG and not getattr(guarded, "public_tenant", False):
+        if request.tenant_source == TenantSource.SLUG and not getattr(
+            guarded, "public_tenant", False
+        ):
             raise NotAuthenticated(messages.MISSING_TOKEN)
         if request.tenant is None:
             raise ValidationError(messages.RESTAURANT_NOT_SPECIFIED)
@@ -29,6 +32,7 @@ def tenant_required(view):
 
 def public_tenant_allowed(view):
     """Marks one of the customer routes: a Slug-resolved Restaurant is acceptable here."""
+    _below_api_view(view)
     view.public_tenant = True  # ``wraps`` carries the mark whichever decorator is applied first
     return view
 
@@ -36,6 +40,7 @@ def public_tenant_allowed(view):
 def public_only(view):
     """400 when a Restaurant is set: ``/login``, ``/register`` and ``/admin/*`` work at platform
     scope, and a Restaurant cannot be created while the connection is inside another."""
+    _below_api_view(view)
 
     @wraps(view)
     def guarded(request, *args, **kwargs):
@@ -44,3 +49,10 @@ def public_only(view):
         return view(request, *args, **kwargs)
 
     return guarded
+
+
+def _below_api_view(view) -> None:
+    """Above ``@api_view`` the guards would wrap DRF's generated view: the mark would be lost and
+    the exceptions would escape DRF's handler as 500s. Fail at import time instead."""
+    if hasattr(view, "cls") or hasattr(view, "view_class"):
+        raise TypeError(f"{view.__name__}: apply the tenancy guards below @api_view")

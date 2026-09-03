@@ -239,7 +239,7 @@ The customer page (`/table/[id]`) and its Next.js proxies call `GET /menu`, `GET
 
 ### 3.5 Users & roles
 
-- Custom `accounts.User(AbstractBaseUser, PermissionsMixin)` in **public**: `email` (USERNAME_FIELD, unique), `username` (display; `UniqueConstraint(restaurant, username)`), `role ∈ {super_admin, admin, cashier}`, `restaurant` FK (null **only** for `super_admin`, enforced by a `CheckConstraint`), `is_active`. Django's default PBKDF2 hasher (no legacy hashes to carry).
+- Custom `accounts.User(AbstractBaseUser)` in **public** (ticket 03 dropped `PermissionsMixin`: `role` is the single authority, `is_staff` is derived from it, no groups or permission tables): `email` (USERNAME_FIELD, unique), `username` (display; `UniqueConstraint(restaurant, username)`), `role ∈ {super_admin, admin, cashier}`, `restaurant` FK (null **only** for `super_admin`, enforced by a `CheckConstraint`), `is_active`. Django's default PBKDF2 hasher (no legacy hashes to carry).
 - Tokens: `RefreshToken.for_user(user)` plus claims `role`, `restaurant_id`, `username`. `JWTAuthentication` resolves the user from `public.accounts_user`, always on the search path.
 - `django-tenant-users` evaluated and **not adopted** (own user model and per-tenant permission tables; our authorization is three fixed roles).
 
@@ -308,7 +308,7 @@ def menu_add(request):
 ```
 
 - **Serializers** validate input and format output (`created_at` as `%Y-%m-%dT%H:%M:%SZ`, decimals as numbers). Output dicts are built explicitly to guarantee the exact legacy shapes.
-- **Exception handler** always emits **both keys** — `{"error": "<message>", "detail": "<message>"}`. `ValidationError` → 400 (+ `errors` field map); `NotAuthenticated` → 401; `PermissionDenied` → 403; `Http404` → 404; offline QR → 503. The frontend's offline sync engine treats **4xx as permanent** failure and **5xx/network as retryable**, so validation/stock problems are 4xx and infrastructure problems 5xx.
+- **Exception handler** always emits **both keys** — `{"error": "<message>", "detail": "<message>"}`. `ValidationError` → 400 (the first failed check only; the `errors` field map was dropped in ticket 03 because the golden comparison rejects extra keys and the frontend shows one line); `NotAuthenticated` → 401; `PermissionDenied` → 403; `Http404` → 404; offline QR → 503. The frontend's offline sync engine treats **4xx as permanent** failure and **5xx/network as retryable**, so validation/stock problems are 4xx and infrastructure problems 5xx.
 - **N+1 avoidance:** `GET /menu` prefetches groups/options/recipes once and computes `out_of_stock`/`max_qty` in Python (≤ 5 queries).
 - **Throttling:** `AnonRateThrottle` on `/login`, `/register` and slug-resolved endpoints; `UserRateThrottle` on `/agent/*`.
 - **URLs:** identical paths to §1.3; `APPEND_SLASH=False`; no trailing slashes.

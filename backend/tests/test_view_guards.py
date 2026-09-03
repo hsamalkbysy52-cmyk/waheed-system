@@ -4,12 +4,12 @@ permission classes (plan §3.3, §3.4; isolation matrix items 3 and 5)."""
 import pytest
 
 from tests.conftest import suspend
-from tests.golden import golden_error, legacy_golden
+from tests.golden import golden_error, legacy_golden, refusal
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("tests.probe_urls")]
 
-NO_TOKEN = {"error": "توكن غير موجود", "detail": "توكن غير موجود"}
-NO_RESTAURANT = {"error": "المطعم غير محدد", "detail": "المطعم غير محدد"}
+NO_TOKEN = refusal("توكن غير موجود")
+NO_RESTAURANT = refusal("المطعم غير محدد")
 
 
 # --- staff routes: a token for the Restaurant ---------------------------------------------
@@ -51,10 +51,7 @@ def test_admin_routes_refuse_cashiers(client, cashier, login):
     response = client.get("/_probe/admin", headers=login(cashier))
 
     assert response.status_code == 403
-    assert response.json() == {
-        "error": "هذه العملية لمدير المطعم فقط",
-        "detail": "هذه العملية لمدير المطعم فقط",
-    }
+    assert response.json() == refusal("هذه العملية لمدير المطعم فقط")
 
 
 def test_admin_routes_admit_the_admin(client, admin, login):
@@ -98,7 +95,7 @@ def test_an_unknown_slug_is_not_found(client, restaurant):
     response = client.get("/_probe/customer?r=nobody")
 
     assert response.status_code == 404
-    assert response.json() == {"error": "المطعم غير موجود", "detail": "المطعم غير موجود"}
+    assert response.json() == refusal("المطعم غير موجود")
 
 
 def test_a_suspended_restaurant_is_unavailable_to_customers(client, other_restaurant):
@@ -107,7 +104,7 @@ def test_a_suspended_restaurant_is_unavailable_to_customers(client, other_restau
     response = client.get("/_probe/customer?r=r-other")
 
     assert response.status_code == 403
-    assert response.json() == {"error": "المطعم غير متاح حالياً", "detail": "المطعم غير متاح حالياً"}
+    assert response.json() == refusal("المطعم غير متاح حالياً")
 
 
 # --- super admin: platform scope, or one named Restaurant -----------------------------------
@@ -152,7 +149,7 @@ def test_platform_routes_refuse_a_super_admin_scoped_to_a_restaurant(
     response = client.get("/_probe/platform", headers=headers)
 
     assert response.status_code == 400
-    assert response.json() == {"error": "هذا المسار للمنصة فقط", "detail": "هذا المسار للمنصة فقط"}
+    assert response.json() == refusal("هذا المسار للمنصة فقط")
 
 
 def test_platform_routes_refuse_restaurant_staff(client, admin, login):
@@ -181,4 +178,4 @@ def test_register_and_login_are_platform_routes(client, admin, login):
     response = client.post("/register", body, content_type="application/json", headers=login(admin))
 
     assert response.status_code == 400
-    assert response.json() == {"error": "هذا المسار للمنصة فقط", "detail": "هذا المسار للمنصة فقط"}
+    assert response.json() == refusal("هذا المسار للمنصة فقط")

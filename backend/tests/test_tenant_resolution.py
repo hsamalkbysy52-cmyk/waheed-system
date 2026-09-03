@@ -8,7 +8,7 @@ import pytest
 from rest_framework_simplejwt.tokens import AccessToken
 
 from tests.conftest import suspend
-from tests.golden import golden_error, legacy_golden
+from tests.golden import golden_error, legacy_golden, refusal
 
 ORIGIN = {"Origin": "http://localhost:3000"}
 
@@ -60,7 +60,7 @@ def test_a_token_whose_user_is_gone_is_refused_in_arabic(client, admin, login):
     response = client.get("/me", headers=headers)
 
     assert response.status_code == 401
-    assert response.json() == {"error": "توكن غير صالح", "detail": "توكن غير صالح"}
+    assert response.json() == refusal("توكن غير صالح")
 
 
 @pytest.mark.django_db
@@ -132,4 +132,4 @@ def test_a_super_admin_naming_an_unknown_restaurant_gets_404(client, super_admin
     response = client.get("/me", headers=headers)
 
     assert response.status_code == 404
-    assert response.json() == {"error": "المطعم غير موجود", "detail": "المطعم غير موجود"}
+    assert response.json() == refusal("المطعم غير موجود")

@@ -4,23 +4,16 @@ and the register → login → me path from an empty database (isolation matrix 
 import pytest
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from tests.golden import legacy_golden
+from tests.conftest import sign_in
+from tests.golden import legacy_golden, refusal
 
 EIGHT_HOURS = 8 * 3600
 THIRTY_DAYS = 30 * 86400
 
 
-def sign_in(client, email, password):
-    response = client.post(
-        "/login", {"email": email, "password": password}, content_type="application/json"
-    )
-    assert response.status_code == 200, response.content
-    return response.json()
-
-
 @pytest.mark.django_db
 def test_tokens_carry_the_legacy_claims_and_the_agreed_lifetimes(client, admin):
-    session = sign_in(client, admin.email, "admin123")
+    session = sign_in(client, admin.email, admin.plain_password)
 
     access, refresh = AccessToken(session["token"]), RefreshToken(session["refresh"])
 
@@ -34,7 +27,7 @@ def test_tokens_carry_the_legacy_claims_and_the_agreed_lifetimes(client, admin):
 
 @pytest.mark.django_db
 def test_refresh_returns_a_new_access_token_that_signs_in(client, admin):
-    session = sign_in(client, admin.email, "admin123")
+    session = sign_in(client, admin.email, admin.plain_password)
 
     response = client.post(
         "/auth/refresh", {"refresh": session["refresh"]}, content_type="application/json"
@@ -54,12 +47,12 @@ def test_refresh_with_an_invalid_token_is_refused(client):
     )
 
     assert response.status_code == 401
-    assert response.json() == {"error": "توكن غير صالح", "detail": "توكن غير صالح"}
+    assert response.json() == refusal("توكن غير صالح")
 
 
 @pytest.mark.django_db
 def test_refresh_for_a_deactivated_user_is_refused_in_arabic(client, admin):
-    session = sign_in(client, admin.email, "admin123")
+    session = sign_in(client, admin.email, admin.plain_password)
     admin.is_active = False
     admin.save()
 
@@ -68,7 +61,7 @@ def test_refresh_for_a_deactivated_user_is_refused_in_arabic(client, admin):
     )
 
     assert response.status_code == 401
-    assert response.json() == {"error": "توكن غير صالح", "detail": "توكن غير صالح"}
+    assert response.json() == refusal("توكن غير صالح")
 
 
 @pytest.mark.django_db
@@ -107,7 +100,7 @@ def test_me_without_a_token_is_refused_with_the_legacy_message(client):
     response = client.get("/me")
 
     assert response.status_code == 401
-    assert response.json() == {"error": "توكن غير موجود", "detail": "توكن غير موجود"}
+    assert response.json() == refusal("توكن غير موجود")
 
 
 @pytest.mark.django_db

@@ -119,7 +119,11 @@ def golden_error(golden: Golden) -> dict:
     The legacy API answered ``{"error": m}`` with 200 or ``{"detail": m}`` with a real code; the
     rebuild answers both keys with the same message and a real code, which each test asserts.
     """
-    message = golden.response.get("error") or golden.response["detail"]
+    return refusal(golden.response.get("error") or golden.response["detail"])
+
+
+def refusal(message: str) -> dict:
+    """The body of every refusal the rebuilt API gives: one message under both keys."""
     return {"error": message, "detail": message}
 
 

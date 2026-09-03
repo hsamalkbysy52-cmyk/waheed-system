@@ -14,12 +14,13 @@ def provision_restaurant(
     """Create a Restaurant with Jordan defaults and its schema (synchronously, plan §3.6).
 
     The Slug is ``r-`` plus eight hex characters unless the caller fixes one (the demo Restaurant
-    is ``waheed``). Call inside ``transaction.atomic()`` together with whatever must exist
-    alongside the Restaurant, so a failure leaves nothing behind.
+    is ``waheed``); the schema name is ``r_`` plus twelve. Both are random, and their unique
+    constraints are the collision guard. Call inside ``transaction.atomic()`` together with
+    whatever must exist alongside the Restaurant, so a failure leaves nothing behind.
     """
     restaurant = Restaurant.objects.create(
-        schema_name=_unused(lambda: f"r_{uuid4().hex[:12]}", "schema_name"),
-        slug=slug or _unused(lambda: f"r-{uuid4().hex[:8]}", "slug"),
+        schema_name=f"r_{uuid4().hex[:12]}",
+        slug=slug or f"r-{uuid4().hex[:8]}",
         name=name,
         email=email,
         phone=phone,
@@ -30,11 +31,3 @@ def provision_restaurant(
         is_primary=True,
     )
     return restaurant
-
-
-def _unused(generate, field: str) -> str:
-    """A generated value no Restaurant has yet; collisions are very rare, not impossible."""
-    while True:
-        candidate = generate()
-        if not Restaurant.objects.filter(**{field: candidate}).exists():
-            return candidate

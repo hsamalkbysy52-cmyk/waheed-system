@@ -14,3 +14,5 @@
 ## Comments
 
 - 2026-09-04 (from ticket 01): `GET /health` runs `SELECT 1`, so Railway's health check (and its restart policy) fails while PostgreSQL is unreachable. Keep or relax that deliberately when writing `railway.json`. `wsgi.py` and the Celery app default to `waheed.settings.prod`; the Railway services still need `DJANGO_SETTINGS_MODULE` set explicitly.
+
+- 2026-09-04 (from ticket 03): the User table's `UniqueConstraint(nulls_distinct=False)` needs PostgreSQL 15 or newer; confirm the Railway PostgreSQL plugin's version before the first `migrate_schemas`. `TENANT_BASE_DOMAIN` is a new environment variable (default `localhost`); it only fills the mandatory Domain row.

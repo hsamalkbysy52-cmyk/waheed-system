@@ -26,6 +26,23 @@ def _public_schema():
 
 
 PASSWORD = "secret123"
+ADMIN_PASSWORD = "admin123"  # the demo Admin's password, as the login golden records it
+
+
+def make_user(email: str, password: str, **fields) -> User:
+    """A user who remembers the password they were given, so ``login`` can sign them in."""
+    user = User.objects.create_user(email, password, **fields)
+    user.plain_password = password  # test-only attribute, never persisted
+    return user
+
+
+def sign_in(client, email: str, password: str) -> dict:
+    """The body of a successful ``POST /login``."""
+    response = client.post(
+        "/login", {"email": email, "password": password}, content_type="application/json"
+    )
+    assert response.status_code == 200, response.content
+    return response.json()
 
 
 @pytest.fixture
@@ -42,9 +59,9 @@ def other_restaurant(db):
 
 @pytest.fixture
 def admin(restaurant):
-    return User.objects.create_user(
+    return make_user(
         "admin@restaurant1.local.placeholder",
-        "admin123",
+        ADMIN_PASSWORD,
         username="admin",
         role=Role.ADMIN,
         restaurant=restaurant,
@@ -53,7 +70,7 @@ def admin(restaurant):
 
 @pytest.fixture
 def cashier(restaurant):
-    return User.objects.create_user(
+    return make_user(
         "cashier@restaurant1.local.placeholder",
         PASSWORD,
         username="cashier",
@@ -64,7 +81,7 @@ def cashier(restaurant):
 
 @pytest.fixture
 def other_admin(other_restaurant):
-    return User.objects.create_user(
+    return make_user(
         "owner@shawarma-house.example",
         PASSWORD,
         username="owner@shawarma-house.example",
@@ -75,7 +92,7 @@ def other_admin(other_restaurant):
 
 @pytest.fixture
 def super_admin(db):
-    return User.objects.create_user(
+    return make_user(
         "superadmin@platform.local.placeholder",
         PASSWORD,
         username="superadmin",
@@ -86,18 +103,11 @@ def super_admin(db):
 
 @pytest.fixture
 def login(client):
-    """``login(user)``: that user's ``Authorization`` header, obtained through ``POST /login``.
+    """``login(user)``: that user's ``Authorization`` header, obtained through ``POST /login``."""
 
-    The Admin fixture keeps the demo password the goldens use; every other fixture uses PASSWORD.
-    """
-
-    def _login(user, password=None):
-        password = password or ("admin123" if user.username == "admin" else PASSWORD)
-        response = client.post(
-            "/login", {"email": user.email, "password": password}, content_type="application/json"
-        )
-        assert response.status_code == 200, response.content
-        return {"Authorization": f"Bearer {response.json()['token']}"}
+    def _login(user) -> dict:
+        session = sign_in(client, user.email, user.plain_password)
+        return {"Authorization": f"Bearer {session['token']}"}
 
     return _login
 

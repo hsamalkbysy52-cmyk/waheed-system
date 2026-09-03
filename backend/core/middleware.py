@@ -7,9 +7,9 @@ or ``?r=``), and records how on ``request.tenant_source``. Refusals are answered
 view, with the legacy messages; CORS middleware runs outside this one so browsers see them.
 """
 
-from typing import Optional
+from typing import NamedTuple, Optional
 
-from django.db import connection
+from django.db import connection, models
 from django.http import JsonResponse
 from django_tenants.middleware.main import TenantMainMiddleware
 from rest_framework.exceptions import AuthenticationFailed
@@ -21,10 +21,18 @@ from core import messages
 from core.responses import error_body
 from tenants.models import Restaurant
 
-# request.tenant_source values
-FROM_JWT = "jwt"
-FROM_SUPER_ADMIN = "super_admin"
-FROM_SLUG = "slug"  # also when nothing identified a Restaurant: request.tenant is then None
+
+class TenantSource(models.TextChoices):
+    """How the request's Restaurant was resolved (``request.tenant_source``)."""
+
+    JWT = "jwt"
+    SUPER_ADMIN = "super_admin"
+    SLUG = "slug"  # also when nothing identified a Restaurant: request.tenant is then None
+
+
+class Resolution(NamedTuple):
+    restaurant: Optional[Restaurant]
+    source: str
 
 
 class Refused(Exception):
@@ -37,23 +45,24 @@ class JWTTenantMiddleware(TenantMainMiddleware):
     def process_request(self, request):
         connection.set_schema_to_public()  # tenant metadata lives there; never inherit a schema
         try:
-            request.tenant, request.tenant_source = self.resolve(request)
+            resolution = self.resolve(request)
         except Refused as refused:
             return JsonResponse(
                 error_body(refused.message),
                 status=refused.status,
                 json_dumps_params={"ensure_ascii": False},
             )
+        request.tenant, request.tenant_source = resolution.restaurant, resolution.source
         if request.tenant is not None:
             connection.set_tenant(request.tenant)
 
-    def resolve(self, request) -> tuple:
+    def resolve(self, request) -> Resolution:
         claims = self.claims(request)
         if claims is None:
-            return self.from_slug(request), FROM_SLUG
+            return Resolution(self.from_slug(request), TenantSource.SLUG)
         if claims.get("role") == Role.SUPER_ADMIN:
-            return self.from_header(request), FROM_SUPER_ADMIN
-        return self.from_claims(request, claims), FROM_JWT
+            return Resolution(self.from_header(request), TenantSource.SUPER_ADMIN)
+        return Resolution(self.from_claims(request, claims), TenantSource.JWT)
 
     @staticmethod
     def claims(request) -> Optional[dict]:

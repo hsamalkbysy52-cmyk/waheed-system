@@ -21,6 +21,7 @@ Everything postponed or deferred, in one place. Add an item the moment something
 
 - **Subdomain per Restaurant** — `Domain` rows already exist; needs wildcard DNS and frontend routing (ADR-0001).
 - **Server-side logout / refresh-token blacklist** — logout is client-side only (grilling Q5).
+- **Request throttling** — `AnonRateThrottle` on `/login`, `/register` and the Slug-resolved customer routes (plan §4); the agent routes are throttled by tickets 11 and 12, nothing owns the rest. Noticed in ticket 03's code review (2026-09-04).
 - **Async long reports** — "submit then poll" for `/agent/ask` if reports outgrow the 20 s request budget (grilling Q13).
 - **Gemini Tier 1** — link a billing account when free-tier rate limits are hit in practice (plan §6.1).
 - **`OrderLine` table** — normalise the `items` JSON into rows when reporting needs joins (plan §3.7).
