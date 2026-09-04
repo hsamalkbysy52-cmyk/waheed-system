@@ -527,7 +527,11 @@ Removed: fastapi, uvicorn, sqlalchemy, psycopg2-binary, passlib, bcrypt, python-
 | `OPENAI_API_KEY` | existing provider (renamed from `OPENAI_KEY`) |
 | `WHATSAPP_VERIFY_TOKEN` | webhook GET verification |
 | `WHATSAPP_APP_SECRET` | validates `X-Hub-Signature-256` on webhook POSTs |
-| (per Restaurant, in DB) | `phone_number_id`, `access_token` on `WhatsAppAccount` |
+| `WHATSAPP_API_VERSION`, `WHATSAPP_FRAUD_ALERT_TEMPLATE`, `WHATSAPP_TEMPLATE_LANGUAGE` | Graph API version; the approved utility template (empty = log only); its language (added in ticket 15) |
+| `GEMINI_MODEL`, `OPENAI_MODEL`, `AGENT_THROTTLE_RATE` | model ids and the per-user agent throttle (ticket 11) |
+| `MESSAGING_SENDER` | dotted path of the outbound sender class (ticket 10; default the Cloud API sender) |
+| `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS` | prod hardening knobs (ticket 16) |
+| (per Restaurant, in DB) | `phone_number_id`, `access_token`, `owner_phone` on `WhatsAppAccount` |
 
 ---
 

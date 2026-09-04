@@ -21,6 +21,7 @@ dependencies = [
   "google-genai==2.22.0",
   "openai==3.8.0",
   "gunicorn==26.2.0",
+  "whitenoise==6.12.0",  # serves the Django admin's static files behind gunicorn
   # Already pulled in by the AI SDKs; named here because messaging/whatsapp.py imports it directly.
   "httpx>=0.27,<1",
 ]

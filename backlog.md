@@ -32,7 +32,5 @@ Everything postponed or deferred, in one place. Add an item the moment something
 - **Async tenant provisioning** — create the schema in a Celery task with a `provisioning` status, or enable `TENANT_CREATION_FAKES_MIGRATIONS`, if registration gets slow (plan §3.6).
 - **`django-tenant-users`** — revisit if one user must belong to several Restaurants (ADR-0001).
 - **Delete `backend_legacy/`** — the user decides when (decision 10, 2026-09-03).
-- **Django admin static files in production** — gunicorn does not serve `/static/`; add WhiteNoise (or equivalent) before the Django admin is used on Railway. Noticed in ticket 01 (2026-09-04); deployment ticket 16 does not list it.
-- **Production hardening left by `check --deploy`** — HSTS (`SECURE_HSTS_SECONDS`), `XFrameOptionsMiddleware`, `SECURE_SSL_REDIRECT` (must not break Railway's HTTP health probe). Deferred from ticket 01 (2026-09-04) to the deployment ticket 16.
 - **Switch the issue tracker to GitHub Issues** — re-run `/setup-matt-pocock-skills` after `brew install gh && gh auth login`; local markdown under `.scratch/` until then.
 - **Re-authorise the GitHub MCP connector** — token expired; needed for PR automation from Claude.

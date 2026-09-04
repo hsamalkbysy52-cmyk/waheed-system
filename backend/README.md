@@ -54,3 +54,27 @@ ruff check . && ruff format --check .
 
 Tests use `waheed.settings.test` (set in `pyproject.toml`): Celery runs tasks eagerly, so no worker
 is needed, but PostgreSQL and Redis must be running.
+
+## Deployment (Railway)
+
+`railway.json` in this directory configures the web service: Railpack builder, `collectstatic` at
+build time, `migrate_schemas` as the pre-deploy command, gunicorn as the start command and
+`/health` as the health check. A second service runs the worker from the same root directory:
+
+```bash
+celery -A waheed worker -l info --concurrency 2
+```
+
+Both services need `DJANGO_SETTINGS_MODULE=waheed.settings.prod` and the variables listed in
+`.env.example` (`SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`,
+`TENANT_BASE_DOMAIN`, the AI keys and the WhatsApp secrets). PostgreSQL must be 15 or newer.
+Static files for the Django admin are served by WhiteNoise. The human steps (plugins, variables,
+root directory, worker service, seed, frontend URL) are scripted as a wizard:
+
+```bash
+scripts/railway_cutover_wizard.sh      # Railway deployment and cutover
+scripts/whatsapp_setup_wizard.sh       # Meta app, test number, webhook (ADR-0004)
+```
+
+Migrations never run at start-up: only `migrate_schemas` in the pre-deploy command (or by hand).
+

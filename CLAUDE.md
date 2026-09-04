@@ -4,7 +4,7 @@ Multi-restaurant (multi-tenant) SaaS for restaurants: cashier POS and kanban, ki
 
 ## Layout
 
-- `backend/` — Django 5.2 + DRF API. One PostgreSQL schema per restaurant via django-tenants; Celery + Redis for background work. Being rebuilt per `docs/plans/backend-django-migration-plan.md` (approved; read it before backend work).
+- `backend/` — Django 5.2 + DRF API. One PostgreSQL schema per restaurant via django-tenants; Celery + Redis for background work. Built per `docs/plans/backend-django-migration-plan.md` (approved; read it before backend work). Shared apps: `tenants`, `accounts`, `platform_admin`, `core`; per-Restaurant apps: `menu`, `inventory`, `layout`, `orders`, `messaging`, `ai`. `scripts/` holds the human wizards (Railway cutover, WhatsApp onboarding); `railway.json` is the deployment.
 - `backend_legacy/` — the previous FastAPI API, kept as a read-only backup for behaviour reference. Edit nothing there; the user decides when it is deleted.
 - `frontend/` — Next.js 16 (App Router) cashier, admin and customer UI. Read `frontend/AGENTS.md` first: this Next.js version differs from training data.
 - `CONTEXT.md` (glossary), `docs/adr/` (decisions), `docs/plans/` (approved plans), `docs/research/` (fact sheets), `backlog.md` (everything postponed), `.scratch/<feature>/` (specs and tickets).

@@ -66,11 +66,13 @@ MIDDLEWARE = (
     "corsheaders.middleware.CorsMiddleware",
     "core.middleware.JWTTenantMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # the Django admin's static files (no CDN)
     "django.contrib.sessions.middleware.SessionMiddleware",  # Django admin only
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",  # Django admin only; API views are CSRF-exempt
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",  # Django admin pages only
 )
 
 ROOT_URLCONF = "waheed.urls"
@@ -161,7 +163,12 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # `collectstatic` target; WhiteNoise serves it in prod
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Compressed but without a manifest, so a deploy that skipped collectstatic still serves.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 # --- AI Providers (plan §6.1; grilling Q14) -------------------------------------------------
 

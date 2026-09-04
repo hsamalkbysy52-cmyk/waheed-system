@@ -8,3 +8,9 @@ SECRET_KEY = env("SECRET_KEY", default="dev-only-insecure-secret-key-never-use-i
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 CORS_ALLOW_ALL_ORIGINS = True  # the legacy API allowed every origin; prod restricts it
+
+# WhiteNoise serves straight from the app finders locally, so no `collectstatic` (and no
+# staticfiles/ directory) is needed for the Django admin to render; prod serves STATIC_ROOT.
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True
+
