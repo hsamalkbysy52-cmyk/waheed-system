@@ -121,6 +121,26 @@ def _serialize_on(key: str) -> None:
         cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", [key])
 
 
+def expand_quantity_lines(items: list) -> list:
+    """Turn ``[{name, quantity}]`` into the legacy one-line-per-unit shape at the Restaurant's own
+    menu prices; a name that is not on the menu is refused (spec: proposals never set prices)."""
+    lines = []
+    for item in items:
+        menu_item = MenuItem.objects.filter(name=item["name"]).order_by("id").first()
+        if menu_item is None:
+            raise NotFound(messages.ORDER_ITEM_NOT_ON_MENU.format(name=item["name"]))
+        lines.extend(
+            {
+                "name": menu_item.name,
+                "price": menu_item.price,
+                "category": menu_item.category,
+                "modifiers": [],
+            }
+            for _ in range(item["quantity"])
+        )
+    return lines
+
+
 # --- stock ------------------------------------------------------------------------------------
 
 

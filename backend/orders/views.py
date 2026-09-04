@@ -21,6 +21,7 @@ from orders.serializers import (
     OrderCreateSerializer,
     OrderEditSerializer,
     PaymentSerializer,
+    QuantityOrderSerializer,
     serialize_order,
     serialize_order_for_customer,
 )
@@ -38,16 +39,42 @@ def _is_customer(request) -> bool:
     return request.tenant_source == TenantSource.SLUG
 
 
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])
 @public_tenant_allowed
 @tenant_required
-def orders_list(request):
+def orders_collection(request):
+    """``GET /orders`` for staff and, redacted, for customers; ``POST /orders`` is the new
+    quantity-based creation the Chat agent's proposals are confirmed through (staff only)."""
+    if request.method == "POST":
+        require_staff(request)
+        return _create_quantity_order(request)
     if _is_customer(request):
         rows = [serialize_order_for_customer(order) for order in services.open_orders()]
         return ok({"orders": rows})
     require_staff(request)
     return ok({"orders": [serialize_order(order) for order in services.orders()]})
+
+
+def _create_quantity_order(request):
+    payload = _validated(QuantityOrderSerializer, request)
+    order = services.create_order(
+        items=services.expand_quantity_lines(payload["items"]),
+        table_number=payload["table_number"],
+        cashier=request.user.username,
+        notes=payload["notes"],
+        payment_method=None,
+        client_id=payload["client_id"],
+    )
+    # The chat bot reads the id under either name (plan §1.3).
+    return ok(
+        {
+            "message": messages.ORDER_SAVED,
+            "total": order.total_price,
+            "order_id": order.id,
+            "id": order.id,
+        }
+    )
 
 
 @api_view(["POST"])

@@ -74,3 +74,7 @@ ORDER_ALREADY_CANCELLED = "الطلب ملغي مسبقاً"
 ORDER_CLOSED = "الطلب مغلق ولا يمكن تغييره"  # new: done and cancelled are final
 FRAUD_ALERT = "⚠️ {cashier} ألغى 3 طلبات أو أكثر خلال ساعة — تم إبلاغ المالك."
 ONLINE_ORDERING_UNAVAILABLE = "الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."
+
+# Quantity-based orders (new route POST /orders, spec)
+ORDER_LINE_QUANTITY_INVALID = "الكمية يجب أن تكون 1 أو أكثر"
+ORDER_ITEM_NOT_ON_MENU = "الصنف غير موجود في القائمة: {name}"

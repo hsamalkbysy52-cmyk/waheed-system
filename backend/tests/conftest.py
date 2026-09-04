@@ -47,12 +47,14 @@ def sign_in(client, email: str, password: str) -> dict:
 @pytest.fixture
 def restaurant(db):
     """The demo Restaurant the goldens were recorded against, provisioned like a registration."""
+    connection.set_schema_to_public()  # an earlier fixture's request may have left a schema set
     return provision_restaurant("Waheed Restaurant", slug="waheed", email="", phone="")
 
 
 @pytest.fixture
 def other_restaurant(db):
     """A second Restaurant, for every test that must prove one cannot reach the other."""
+    connection.set_schema_to_public()
     return provision_restaurant("Shawarma House", slug="r-other", email="", phone="")
 
 

@@ -28,7 +28,7 @@ urlpatterns = [
     path("modifiers/groups/<int:group_id>/options", menu_views.modifier_option_create),
     path("modifiers/groups/<int:group_id>/options/reorder", menu_views.modifier_options_reorder),
     path("modifiers/options/<int:option_id>", menu_views.modifier_option_edit_or_delete),
-    path("orders", orders_views.orders_list),
+    path("orders", orders_views.orders_collection),
     path("orders/create", orders_views.orders_create),
     path("orders/qr-create", orders_views.orders_create),  # alias for the customer channel
     path("heartbeat", tenant_views.heartbeat),

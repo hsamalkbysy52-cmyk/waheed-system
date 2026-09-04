@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from core import messages
 from core.money import amount_payload_field
 from core.timestamps import iso_utc
 from orders.models import Order
@@ -49,6 +50,28 @@ class OrderEditSerializer(serializers.Serializer):
     items = OrderLineSerializer(many=True, allow_empty=False)
     table_number = serializers.IntegerField(required=False, default=1)
     notes = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
+
+
+class QuantityLineSerializer(serializers.Serializer):
+    """A line of the Chat agent's Order proposal: a Menu item name and how many. The price the
+    client sends is ignored; the Restaurant's menu price is used (spec story 39)."""
+
+    name = serializers.CharField(max_length=100)
+    quantity = serializers.IntegerField(
+        min_value=1, error_messages={"min_value": messages.ORDER_LINE_QUANTITY_INVALID}
+    )
+    price = amount_payload_field(required=False, allow_null=True, default=None)
+
+
+class QuantityOrderSerializer(serializers.Serializer):
+    """``POST /orders``: ``{table_number, items: [{name, quantity, price?}], notes?}``."""
+
+    items = QuantityLineSerializer(many=True, allow_empty=False)
+    table_number = serializers.IntegerField(required=False, default=1)
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
+    client_id = serializers.CharField(
+        max_length=36, required=False, allow_blank=True, allow_null=True, default=None
+    )
 
 
 class PaymentSerializer(serializers.Serializer):
