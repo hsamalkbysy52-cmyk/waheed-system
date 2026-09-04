@@ -13,6 +13,7 @@ import pytest
 from django.db import connection
 
 from accounts.models import Role, User
+from messaging.senders import RecordingSender
 from tenants.services import provision_restaurant
 
 
@@ -22,6 +23,14 @@ def _public_schema():
     connection.set_schema_to_public()
     yield
     connection.set_schema_to_public()
+
+
+@pytest.fixture(autouse=True)
+def _no_messages_from_earlier_tests():
+    """The recording sender is process-wide; every test starts with an empty outbox."""
+    RecordingSender.reset()
+    yield
+    RecordingSender.reset()
 
 
 PASSWORD = "secret123"

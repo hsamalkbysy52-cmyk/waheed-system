@@ -78,3 +78,11 @@ ONLINE_ORDERING_UNAVAILABLE = "الطلب الإلكتروني غير متاح �
 # Quantity-based orders (new route POST /orders, spec)
 ORDER_LINE_QUANTITY_INVALID = "الكمية يجب أن تكون 1 أو أكثر"
 ORDER_ITEM_NOT_ON_MENU = "الصنف غير موجود في القائمة: {name}"
+
+# Fraud alert sent to the owner (legacy agents/fraud_agent.py), with the Restaurant's own name
+FRAUD_ALERT_MESSAGE = (
+    "🚨 تحذير احتيال - مطعم {restaurant}\n"
+    "الكاشير '{cashier}' ألغى {count} طلبات خلال ساعة واحدة.\n"
+    "آخر إلغاء: طلب #{order_id}\n"
+    "الوقت: {time}"
+)

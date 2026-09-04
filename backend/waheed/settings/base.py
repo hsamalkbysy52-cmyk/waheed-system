@@ -29,10 +29,9 @@ SHARED_APPS = (
     "rest_framework",
     "corsheaders",
 )
-# Per-Restaurant apps are added here by the tickets that create them
-# (ai, messaging). django-tenants requires contenttypes in
+# Per-Restaurant apps; the ai app arrives with ticket 11. django-tenants requires contenttypes in
 # both lists so every Restaurant schema carries its own content-types table.
-TENANT_APPS = ("django.contrib.contenttypes", "menu", "inventory", "layout", "orders")
+TENANT_APPS = ("django.contrib.contenttypes", "menu", "inventory", "layout", "orders", "messaging")
 # ``dict.fromkeys`` keeps each app's first occurrence: contenttypes is in both lists above.
 # django.contrib.admin leads so its own templates render the Super admin console — the tenancy
 # library ships admin template overrides that read ``request.tenant.schema_name`` unconditionally,
@@ -121,6 +120,10 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_IGNORE_RESULT = True  # results matter only under tests, where tasks run eagerly
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Outbound messages (Fraud alerts, WhatsApp replies): a dotted path to a messaging.senders class.
+# Log-only until the WhatsApp Cloud API sender ships (ticket 15); tests record instead.
+MESSAGING_SENDER = env("MESSAGING_SENDER", default="messaging.senders.LoggingSender")
 
 CACHES = {
     "default": {

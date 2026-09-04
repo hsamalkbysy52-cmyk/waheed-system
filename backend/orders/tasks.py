@@ -1,0 +1,40 @@
+"""Background work of the orders app: the Fraud alert (spec story 48; grilling Q21)."""
+
+import logging
+from zoneinfo import ZoneInfo
+
+from django.db import connection
+from django.utils import timezone
+
+from core import messages
+from core.tasks import tenant_task
+from messaging.senders import outbound_sender
+from orders.models import CancellationLog
+from orders.services import FRAUD_WINDOW
+from tenants.models import Restaurant
+
+logger = logging.getLogger("waheed.orders")
+
+
+@tenant_task
+def send_fraud_alert(order_id: int, cashier: str) -> str:
+    """Tell the owner that a Cashier tripped the rule. The text is the legacy alert with the
+    Restaurant's own name and local time; it goes through the configured sender to the
+    Restaurant's phone, or is only logged when no phone is known (ticket 15 adds the WhatsApp
+    account's owner phone)."""
+    restaurant = Restaurant.objects.get(schema_name=connection.schema_name)
+    since = timezone.now() - FRAUD_WINDOW
+    count = CancellationLog.objects.filter(cashier=cashier, cancelled_at__gte=since).count()
+    local_time = timezone.now().astimezone(ZoneInfo(restaurant.timezone))
+    text = messages.FRAUD_ALERT_MESSAGE.format(
+        restaurant=restaurant.name,
+        cashier=cashier,
+        count=count,
+        order_id=order_id,
+        time=local_time.strftime("%Y-%m-%d %H:%M"),
+    )
+    if not restaurant.phone:
+        logger.warning("fraud alert for %s has no owner phone; logged only: %s", restaurant, text)
+        return text
+    outbound_sender().send(restaurant.phone, text)
+    return text

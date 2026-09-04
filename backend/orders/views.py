@@ -25,6 +25,7 @@ from orders.serializers import (
     serialize_order,
     serialize_order_for_customer,
 )
+from orders.tasks import send_fraud_alert
 
 STAFF = [IsAuthenticated, IsCashierOrAdmin]
 
@@ -146,7 +147,7 @@ def order_edit_or_cancel(request, order_id: int):
         cancellation = services.cancel_order(
             order_id, cashier=request.user.username, not_found=messages.ORDER_NOT_FOUND
         )
-        return ok(_cancelled(messages.ORDER_DELETED, order_id, cancellation))
+        return ok(_cancelled(request, messages.ORDER_DELETED, order_id, cancellation))
     services.edit_order(order_id, **_validated(OrderEditSerializer, request))
     return ok({"message": messages.ORDER_EDITED, "order_id": order_id})
 
@@ -160,11 +161,14 @@ def order_cancel(request, order_id: int):
     cancellation = services.cancel_order(
         order_id, cashier=request.user.username, not_found=messages.ORDER_NOT_FOUND_ALT
     )
-    return ok(_cancelled(messages.ORDER_CANCELLED, order_id, cancellation))
+    return ok(_cancelled(request, messages.ORDER_CANCELLED, order_id, cancellation))
 
 
-def _cancelled(message: str, order_id: int, cancellation: services.Cancellation) -> dict:
+def _cancelled(request, message: str, order_id: int, cancellation: services.Cancellation) -> dict:
+    """The response of either cancel route; when the Fraud rule tripped, the owner is alerted in
+    the background, inside this Restaurant's schema (ADR-0003)."""
     body = {"message": message, "order_id": order_id}
-    if cancellation.fraud_alert:  # ticket 10 dispatches the alert from here
+    if cancellation.fraud_alert:
+        send_fraud_alert.delay(request.tenant.schema_name, order_id, cancellation.cashier)
         body["fraud_alert"] = messages.FRAUD_ALERT.format(cashier=cancellation.cashier)
     return body
