@@ -4,6 +4,7 @@ import { BillModal, OrderForBill } from "@/components/BillModal";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
 import { saveLocalOrder, updateOrderSyncStatus } from "@/src/services/db";
 import { authFetch } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 const MENU_CACHE_KEY   = "waheed_menu_v1";
 const TABLES_CACHE_KEY = "waheed_tables_v1";
@@ -584,7 +585,7 @@ export default function NewOrderDrawer({
                     <div style={{ color: soldOut ? "var(--muted)" : "var(--text)", fontSize: "12px", fontWeight: "700", lineHeight: "1.3" }}>{item.name}</div>
                     <div style={{ color: soldOut ? "var(--subtle)" : "var(--gold)", fontSize: "12px", fontWeight: "700" }}>
                       {hasVariants && <span style={{ fontSize: "9px", fontWeight: "400", color: "var(--muted)" }}>من </span>}
-                      {minPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+                      {formatMoney(minPrice)}
                     </div>
                   </button>
                 );
@@ -701,7 +702,7 @@ export default function NewOrderDrawer({
                             </div>
                           )}
                           <div style={{ color: "var(--gold)", fontSize: "11px", marginTop: "3px" }}>
-                            {(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span>
+                            {formatMoney(c.price * c.qty)}
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
@@ -739,8 +740,7 @@ export default function NewOrderDrawer({
                 }}>
                   <span style={{ color: "var(--text2)", fontSize: "13px" }}>الإجمالي</span>
                   <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "900" }}>
-                    {total.toLocaleString()}
-                    <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)", marginRight: "4px" }}>د.ع</span>
+                    {formatMoney(total)}
                   </span>
                 </div>
               )}
@@ -852,7 +852,7 @@ export default function NewOrderDrawer({
                     {v.name} {vSoldOut && <span style={{ color: "var(--red)", fontSize: "10px" }}>(نفد)</span>}
                   </span>
                   <span style={{ color: vSoldOut ? "var(--subtle)" : "var(--gold)", fontSize: "13px", fontWeight: "800" }}>
-                    {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+                    {formatMoney(v.price)}
                   </span>
                 </button>
               );

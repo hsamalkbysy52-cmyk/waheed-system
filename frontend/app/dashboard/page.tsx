@@ -13,13 +13,16 @@ export default function Dashboard() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer]     = useState("");
   const [loading, setLoading]   = useState(false);
-  const [apiKey, setApiKey]     = useState("");
 
   const ask = async () => {
-    if (!question || !apiKey) { alert("أكمل السؤال والـ API Key!"); return; }
+    if (!question) { alert("أكمل السؤال!"); return; }
     setLoading(true);
     setAnswer("");
-    const res  = await authFetch(`/agent/ask?question=${encodeURIComponent(question)}&api_key=${apiKey}`, { method: "POST" });
+    const res  = await authFetch(`/agent/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
     const data = await res.json();
     setAnswer(data.answer || data.error || "لا يوجد رد");
     setLoading(false);
@@ -38,23 +41,6 @@ export default function Dashboard() {
 
         {/* Sidebar */}
         <div>
-          {/* API Key */}
-          <div style={{ background: "var(--surface)", border: "1px solid #2a2a4a", borderRadius: "16px", padding: "20px", marginBottom: "20px" }}>
-            <p style={{ margin: "0 0 10px", color: "var(--gold)", fontSize: "13px", fontWeight: "700" }}>🔑 OpenAI API Key</p>
-            <input
-              type="password"
-              placeholder="sk-..."
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              style={{
-                width: "100%", padding: "11px 14px", background: "var(--bg)",
-                border: "1px solid #2a2a4a", borderRadius: "10px", color: "white",
-                fontSize: "13px", boxSizing: "border-box",
-              }}
-            />
-            <p style={{ margin: "8px 0 0", color: "var(--text2)", fontSize: "11px" }}>المفتاح لا يُحفظ في أي مكان</p>
-          </div>
-
           {/* Quick questions */}
           <div style={{ background: "var(--surface)", border: "1px solid #2a2a4a", borderRadius: "16px", padding: "20px" }}>
             <p style={{ margin: "0 0 14px", color: "white", fontSize: "13px", fontWeight: "700" }}>⚡ أسئلة سريعة</p>
@@ -124,7 +110,6 @@ export default function Dashboard() {
             }}>
               <div style={{ fontSize: "48px", marginBottom: "14px" }}>🤖</div>
               <p style={{ margin: 0, fontSize: "14px" }}>اختر سؤالاً أو اكتب سؤالك الخاص</p>
-              <p style={{ margin: "6px 0 0", fontSize: "12px" }}>أدخل OpenAI API Key أولاً</p>
             </div>
           )}
         </div>

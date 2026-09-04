@@ -25,6 +25,7 @@ export default function RegisterPage() {
       const data = await res.json();
       if (data.error) { setError(data.error); setLoading(false); return; }
       localStorage.setItem("token", data.token);
+      localStorage.setItem("refresh", data.refresh);
       localStorage.setItem("role", data.role);
       localStorage.setItem("username", data.username);
       router.push("/orders");

@@ -1,8 +1,10 @@
 "use client";
 import { use, useState, useEffect, useCallback } from "react";
 import ModifierSelector, { ModGroup, SelectedMod } from "@/components/ModifierSelector";
+import { formatMoney } from "@/lib/money";
 
 const MENU_API = "/api/menu";
+const OPEN_STATUSES = ["preparing", "ready", "served"];
 
 type RawItem = {
   id: number;
@@ -81,7 +83,7 @@ function SuccessScreen({ tableId, total, onReset }: {
       }}>
         <div style={{ color: "var(--muted)", fontSize: "12px", marginBottom: "4px" }}>المبلغ الإجمالي</div>
         <div style={{ color: "var(--green)", fontSize: "28px", fontWeight: "900" }}>
-          {total.toLocaleString()} <span style={{ fontSize: "14px", fontWeight: "400" }}>د.ع</span>
+          {formatMoney(total)}
         </div>
       </div>
       <p style={{ color: "var(--muted)", fontSize: "13px", margin: "0 0 28px", maxWidth: "280px", lineHeight: "1.6" }}>
@@ -159,7 +161,7 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
                   </div>
                 )}
                 <div style={{ color: "var(--gold)", fontSize: "12px", marginTop: "3px" }}>
-                  {(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span>
+                  {formatMoney(c.price * c.qty)}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
@@ -183,7 +185,7 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
           }}>
             <span style={{ color: "var(--text2)", fontSize: "14px" }}>الإجمالي</span>
             <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "900" }}>
-              {total.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+              {formatMoney(total)}
             </span>
           </div>
           {/* notes */}
@@ -225,8 +227,12 @@ function CartSheet({ cart, total, onClose, onChangeQty, onPlaceOrder, placing, n
 }
 
 /* ─── main page ──────────────────────────────────────────────── */
-export default function TablePage({ params }: { params: Promise<{ id: string }> }) {
+export default function TablePage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ r?: string }>;
+}) {
   const { id: tableId } = use(params);
+  const { r: restaurantSlug } = use(searchParams);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -243,19 +249,21 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [variantPick, setVariantPick] = useState<MenuItem | null>(null);
   const [tableOccupied, setTableOccupied] = useState(false);
 
-  /* check if table has active orders */
+  /* check if table has active orders — reads the redacted {id, table_number, status} rows */
   useEffect(() => {
-    fetch("/api/orders")
+    const headers: Record<string, string> = restaurantSlug ? { "X-Restaurant-Slug": restaurantSlug } : {};
+    const url = restaurantSlug ? `/api/orders?r=${encodeURIComponent(restaurantSlug)}` : "/api/orders";
+    fetch(url, { headers })
       .then(r => r.json())
       .then(d => {
         const active = (d.orders || []).filter(
           (o: { table_number: number; status: string }) =>
-            o.table_number === parseInt(tableId) && !["done", "paid"].includes(o.status)
+            o.table_number === parseInt(tableId) && OPEN_STATUSES.includes(o.status)
         );
         setTableOccupied(active.length > 0);
       })
       .catch(() => {});
-  }, [tableId]);
+  }, [tableId, restaurantSlug]);
 
   /* fetch menu */
   const loadMenu = useCallback(() => {
@@ -264,15 +272,22 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
-    const url = `${MENU_API}?t=${Date.now()}`;
+    const slugQuery = restaurantSlug ? `&r=${encodeURIComponent(restaurantSlug)}` : "";
+    const url = `${MENU_API}?t=${Date.now()}${slugQuery}`;
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (restaurantSlug) headers["X-Restaurant-Slug"] = restaurantSlug;
 
     fetch(url, {
       signal: controller.signal,
-      headers: { "Accept": "application/json" },
+      headers,
     })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} — ${url}`);
-        return r.json();
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          // The backend's own Arabic message (offline / suspended / unknown / missing restaurant)
+          throw new Error(d.detail || d.error || `HTTP ${r.status} — ${url}`);
+        }
+        return d;
       })
       .then((d) => {
         const raw: RawItem[] = d.menu || [];
@@ -295,7 +310,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         setFetchErr(msg);
       })
       .finally(() => { clearTimeout(timeout); setLoading(false); });
-  }, []);
+  }, [restaurantSlug]);
 
   useEffect(() => { loadMenu(); }, [loadMenu]);
 
@@ -394,14 +409,17 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           })),
         }))
       );
-      const r = await fetch("/api/orders/create", {
+      const createHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (restaurantSlug) createHeaders["X-Restaurant-Slug"] = restaurantSlug;
+      const createUrl = restaurantSlug ? `/api/orders/create?r=${encodeURIComponent(restaurantSlug)}` : "/api/orders/create";
+      const r = await fetch(createUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: createHeaders,
         body: JSON.stringify({ table_number: parseInt(tableId), items: expandedItems, notes: notes.trim() || "" }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        const detail = err.detail;
+        const detail = err.detail ?? err.error;
         const msg =
           typeof detail === "string" ? detail :
           Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(" ، ") :
@@ -637,7 +655,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                         )}
                         <div style={{ color: "var(--gold)", fontWeight: "800", fontSize: "14px" }}>
                           {hasVariants && <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>من </span>}
-                          {displayPrice.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+                          {formatMoney(displayPrice)}
                         </div>
                       </div>
 
@@ -716,7 +734,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             </span>
             <span>عرض الطلب 🛒</span>
             <span style={{ fontSize: "14px" }}>
-              {cartTotal.toLocaleString()} د.ع
+              {formatMoney(cartTotal)}
             </span>
           </button>
         </div>
@@ -794,7 +812,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       )}
                     </span>
                     <span style={{ color: soldOut ? "var(--text2)" : "var(--gold)", fontWeight: "800" }}>
-                      {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+                      {formatMoney(v.price)}
                     </span>
                   </button>
                 );

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { authFetch } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 type PayMethod = "cash" | "card" | "qr";
 type SplitMode = "none" | "equal" | "items";
@@ -114,7 +115,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
       <div style={{ background: "var(--surface)", border: "1px solid #252535", borderRadius: "20px", padding: "48px 32px", textAlign: "center", direction: "rtl", minWidth: "300px" }}>
         <div style={{ fontSize: "56px", marginBottom: "16px" }}>✅</div>
         <div style={{ color: "var(--green)", fontSize: "18px", fontWeight: "800", marginBottom: "6px" }}>تم الدفع بنجاح!</div>
-        <div style={{ color: "var(--muted)", fontSize: "13px", marginBottom: "24px" }}>{order.total_price.toLocaleString()} د.ع</div>
+        <div style={{ color: "var(--muted)", fontSize: "13px", marginBottom: "24px" }}>{formatMoney(order.total_price)}</div>
         <button onClick={() => { onPaid(); onClose(); }} style={{ padding: "12px 36px", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#000", border: "none", borderRadius: "12px", cursor: "pointer", fontSize: "14px", fontWeight: "800" }}>
           إغلاق
         </button>
@@ -165,7 +166,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                     {it.qty > 1 && <span style={{ color: "var(--gold)", fontSize: "11px", marginRight: "5px" }}>×{it.qty}</span>}
                   </span>
                   <span style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "700" }}>
-                    {(it.price * it.qty).toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400" }}>د.ع</span>
+                    {formatMoney(it.price * it.qty)}
                   </span>
                 </div>
               )) : (
@@ -180,7 +181,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
             <div style={{ padding: "12px 22px", background: "rgba(245,158,11,0.06)", borderTop: "1px solid #1c1c28" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ color: "var(--text2)", fontSize: "14px", fontWeight: "600" }}>الإجمالي</span>
-                <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "800" }}>{order.total_price.toLocaleString()} <span style={{ fontSize: "13px", fontWeight: "400" }}>د.ع</span></span>
+                <span style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "800" }}>{formatMoney(order.total_price)}</span>
               </div>
             </div>
             <div style={{ padding: "16px 22px" }}>
@@ -204,7 +205,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                 color: paying ? "var(--muted)" : "#000",
                 boxShadow: paying ? "none" : "0 6px 20px rgba(245,158,11,0.35)",
               }}>
-                {paying ? "⏳ جاري المعالجة..." : `✅ تأكيد الدفع — ${order.total_price.toLocaleString()} د.ع`}
+                {paying ? "⏳ جاري المعالجة..." : `✅ تأكيد الدفع — ${formatMoney(order.total_price)}`}
               </button>
             </div>
           </>)}
@@ -223,12 +224,12 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
               </div>
               <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "12px", padding: "12px 16px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ color: "var(--text2)", fontSize: "13px" }}>نصيب كل شخص</span>
-                <span style={{ color: "var(--gold)", fontSize: "18px", fontWeight: "800" }}>{share.toLocaleString()} <span style={{ fontSize: "11px", fontWeight: "400" }}>د.ع</span></span>
+                <span style={{ color: "var(--gold)", fontSize: "18px", fontWeight: "800" }}>{formatMoney(share)}</span>
               </div>
               {partiallyPaid && (
                 <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "10px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "var(--gold)", fontSize: "12px", fontWeight: "600" }}>⏳ مدفوع جزئياً — {paidCount}/{numPeople}</span>
-                  <span style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "800" }}>متبقي {remaining.toLocaleString()} د.ع</span>
+                  <span style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "800" }}>متبقي {formatMoney(remaining)}</span>
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -237,7 +238,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ color: equalPaid[i] ? "var(--green)" : "var(--text)", fontWeight: "700", fontSize: "13px" }}>{equalPaid[i] ? "✅" : "👤"} زبون {i + 1}</div>
-                        <div style={{ color: "var(--muted)", fontSize: "11px", marginTop: "2px" }}>{share.toLocaleString()} د.ع</div>
+                        <div style={{ color: "var(--muted)", fontSize: "11px", marginTop: "2px" }}>{formatMoney(share)}</div>
                       </div>
                       {equalPaid[i] ? (
                         <span style={{ color: "var(--green)", fontSize: "12px", fontWeight: "600" }}>مدفوع ✓</span>
@@ -278,7 +279,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < items.length - 1 ? "1px solid #252535" : "none" }}>
                       <div style={{ flex: 1, minWidth: 0, marginLeft: "10px" }}>
                         <div style={{ color: "var(--text)", fontSize: "13px" }}>{catEmoji(it.category)} {it.name}{it.qty > 1 ? ` ×${it.qty}` : ""}</div>
-                        <div style={{ color: "var(--muted)", fontSize: "11px" }}>{(it.price * it.qty).toLocaleString()} د.ع</div>
+                        <div style={{ color: "var(--muted)", fontSize: "11px" }}>{formatMoney(it.price * it.qty)}</div>
                       </div>
                       <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end", maxWidth: "160px" }}>
                         {guestLabels.map((g, gi) => {
@@ -294,14 +295,14 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                 </div>
                 {unassigned > 0 && (
                   <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "14px" }}>
-                    <span style={{ color: "var(--red)", fontSize: "12px" }}>⚠️ غير موزع: {unassigned.toLocaleString()} د.ع — وزّع جميع الأصناف أولاً</span>
+                    <span style={{ color: "var(--red)", fontSize: "12px" }}>⚠️ غير موزع: {formatMoney(unassigned)} — وزّع جميع الأصناف أولاً</span>
                   </div>
                 )}
                 {someGuestPaid && !done && (
                   <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "14px", display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "var(--gold)", fontSize: "12px", fontWeight: "600" }}>⏳ مدفوع جزئياً</span>
                     <span style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "800" }}>
-                      متبقي {guestLabels.filter(g => !guestPaid[g] && Object.values(assign).includes(g)).reduce((s, g) => s + guestTotal(g), 0).toLocaleString()} د.ع
+                      متبقي {formatMoney(guestLabels.filter(g => !guestPaid[g] && Object.values(assign).includes(g)).reduce((s, g) => s + guestTotal(g), 0))}
                     </span>
                   </div>
                 )}
@@ -318,7 +319,7 @@ export function BillModal({ order, onClose, onPaid, payOnly }: {
                               <div style={{ color: paid ? "var(--green)" : color, fontWeight: "700", fontSize: "13px" }}>{paid ? "✅" : "👤"} زبون {g}</div>
                               <div style={{ color: "var(--muted)", fontSize: "11px", marginTop: "3px" }}>{guestItems(g).map(it => `${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`).join("، ")}</div>
                             </div>
-                            <div style={{ color, fontSize: "16px", fontWeight: "800" }}>{total.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400" }}>د.ع</span></div>
+                            <div style={{ color, fontSize: "16px", fontWeight: "800" }}>{formatMoney(total)}</div>
                           </div>
                           {!paid && (
                             <div style={{ display: "flex", gap: "6px" }}>

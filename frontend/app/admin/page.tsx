@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { authFetch } from "@/lib/apiFetch";
+import { authFetch, clearSession } from "@/lib/apiFetch";
 
 type RestaurantRow = {
   id: number;
@@ -73,7 +73,7 @@ export default function SuperAdminPage() {
     }
   };
 
-  const logout = () => { localStorage.clear(); router.push("/login"); };
+  const logout = () => { clearSession(); router.push("/login"); };
 
   if (!ready) return null;
 

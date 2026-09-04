@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import QRCode from "react-qr-code";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
-import { authFetch } from "@/lib/apiFetch";
+import { authFetch, loadSession } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 const GRID = 30;
 const snap = (v: number) => Math.round(v / GRID) * GRID;
@@ -277,6 +278,7 @@ export default function TablesPage() {
   const [orders, setOrders]           = useState<Order[]>([]);
   const [loading, setLoad]            = useState(true);
   const [qrBase, setQrBase]           = useState("");
+  const [restaurantSlug, setRestaurantSlug] = useState("");
   const [activeTable, setActiveTable] = useState<number | null>(null);
   const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
@@ -329,6 +331,7 @@ export default function TablesPage() {
     fetchLayout();
     fetchOrders();
     fetch("/api/site-url").then(r => r.json()).then(d => setQrBase(d.url as string)).catch(() => {});
+    loadSession().then(s => setRestaurantSlug(s?.restaurant?.slug ?? ""));
     const id = setInterval(fetchOrders, 20000);
     return () => clearInterval(id);
   }, [fetchLayout, fetchOrders]);
@@ -604,7 +607,7 @@ export default function TablesPage() {
           {[
             { label: "مشغولة",            value: occupiedCount,                                                          color: "#f59e0b", icon: "🟠" },
             { label: "متاحة",             value: tableEls.length - occupiedCount,                                        color: "#22c55e", icon: "🟢" },
-            { label: "الإيرادات الحالية", value: `${orders.reduce((s, o) => s + o.total_price, 0).toLocaleString()} د.ع`, color: "#f59e0b", icon: "💰" },
+            { label: "الإيرادات الحالية", value: formatMoney(orders.reduce((s, o) => s + o.total_price, 0)), color: "#f59e0b", icon: "💰" },
           ].map(s => (
             <div key={s.label} style={{ background: "var(--surface)", border: `1px solid ${s.color}20`, borderRadius: 14, padding: "14px 18px" }}>
               <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
@@ -866,7 +869,7 @@ export default function TablesPage() {
                           <div style={{ color: "var(--subtle)", fontSize: 11, marginTop: 2 }}>+{(o.items ?? []).length - 4} أصناف أخرى</div>
                         )}
                         <div style={{ color: "var(--gold)", fontWeight: 800, fontSize: 15, marginTop: 8 }}>
-                          {o.total_price.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
+                          {formatMoney(o.total_price)}
                         </div>
                       </div>
                     ))}
@@ -875,7 +878,7 @@ export default function TablesPage() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                         <span style={{ color: "var(--text2)", fontSize: 12 }}>المجموع الكلي</span>
                         <span style={{ color: "var(--gold)", fontSize: 18, fontWeight: 800 }}>
-                          {activeTableOrders.reduce((s, o) => s + o.total_price, 0).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400 }}>د.ع</span>
+                          {formatMoney(activeTableOrders.reduce((s, o) => s + o.total_price, 0))}
                         </span>
                       </div>
                       <button
@@ -888,16 +891,19 @@ export default function TablesPage() {
                   <div style={{ background: "var(--surface)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 18, padding: 24, textAlign: "center", borderTop: "4px solid #22c55e" }}>
                     <div style={{ color: "var(--green)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>QR Code</div>
                     <div style={{ color: "var(--text)", fontSize: 18, fontWeight: 800, marginBottom: 16 }}>طاولة {activeTable}</div>
-                    {qrBase ? (<>
+                    {qrBase ? (() => {
+                      const tableUrl = `${qrBase}/table/${activeTable}${restaurantSlug ? `?r=${encodeURIComponent(restaurantSlug)}` : ""}`;
+                      return (<>
                       <div style={{ background: "white", padding: 14, borderRadius: 14, display: "inline-block", marginBottom: 12, boxShadow: "0 8px 28px rgba(34,197,94,0.15)" }}>
-                        <QRCode value={`${qrBase}/table/${activeTable}`} size={160} />
+                        <QRCode value={tableUrl} size={160} />
                       </div>
                       <div style={{ background: "var(--bg)", border: "1px solid #252535", borderRadius: 10, padding: "8px 10px", marginBottom: 12, cursor: "pointer" }}
-                        onClick={() => navigator.clipboard.writeText(`${qrBase}/table/${activeTable}`).catch(() => {})}>
+                        onClick={() => navigator.clipboard.writeText(tableUrl).catch(() => {})}>
                         <div style={{ color: "var(--muted)", fontSize: 9, marginBottom: 3, textAlign: "right" }}>الرابط (اضغط للنسخ)</div>
-                        <div style={{ color: "var(--text2)", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{`${qrBase}/table/${activeTable}`}</div>
+                        <div style={{ color: "var(--text2)", fontSize: 10, wordBreak: "break-all", textAlign: "left", direction: "ltr" }}>{tableUrl}</div>
                       </div>
-                    </>) : (
+                      </>);
+                    })() : (
                       <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>⏳</div>
                     )}
                     <button onClick={() => window.print()} style={{ width: "100%", padding: 11, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>

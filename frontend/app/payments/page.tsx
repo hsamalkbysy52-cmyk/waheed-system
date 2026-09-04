@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { BillModal } from "@/components/BillModal";
 import { authFetch } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 type RawItem = { name: string; price: number; category: string };
 type AggItem = { name: string; price: number; category: string; qty: number };
@@ -65,7 +66,7 @@ export default function PaymentsPage() {
         {[
           { label: "بانتظار الدفع", value: pending.length,                    color: "var(--gold)", icon: "⏳" },
           { label: "مدفوعة",        value: done.length,                        color: "var(--green)", icon: "✅" },
-          { label: "إجمالي اليوم",  value: `${revenue.toLocaleString()} د.ع`, color: "var(--gold)", icon: "💰" },
+          { label: "إجمالي اليوم",  value: `${formatMoney(revenue)}`, color: "var(--gold)", icon: "💰" },
         ].map(s => (
           <div key={s.label} style={{ background: "var(--surface)", border: `1px solid ${s.color}20`, borderRadius: "14px", padding: "14px 18px" }}>
             <div style={{ fontSize: "20px", marginBottom: "4px" }}>{s.icon}</div>
@@ -132,7 +133,7 @@ export default function PaymentsPage() {
                           {catEmoji(it.category)} {it.name}{it.qty > 1 ? ` ×${it.qty}` : ""}
                         </span>
                         <span style={{ color: "var(--gold)", fontSize: "12px", fontWeight: "600" }}>
-                          {(it.price * it.qty).toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400" }}>د.ع</span>
+                          {formatMoney(it.price * it.qty)}
                         </span>
                       </div>
                     ))}
@@ -149,7 +150,7 @@ export default function PaymentsPage() {
                 )}
 
                 <div style={{ color: "var(--gold)", fontSize: "20px", fontWeight: "800", marginBottom: "10px" }}>
-                  {order.total_price.toLocaleString()} <span style={{ fontSize: "12px", fontWeight: "400" }}>د.ع</span>
+                  {formatMoney(order.total_price)}
                 </div>
 
                 <div style={{ color: "var(--muted)", fontSize: "11px", marginBottom: tab === "pending" ? "14px" : "0" }}>

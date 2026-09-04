@@ -5,6 +5,7 @@ import "./globals.css";
 import ChatBot from "@/components/ChatBot";
 import { useSyncEngine } from "@/src/services/useSyncEngine";
 import { useHeartbeat } from "@/src/services/useHeartbeat";
+import { clearSession, loadSession } from "@/lib/apiFetch";
 
 const NAV = [
   { href: "/kanban",    icon: "📋", label: "لوحة الطلبات" },
@@ -57,6 +58,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setUser(localStorage.getItem("username") || "");
+  }, [pathname]);
+
+  useEffect(() => {
+    // Sets the money formatter's currency from /me — skip when there is no session
+    // (login/register pages, or the customer /table QR flow, which is never authenticated).
+    if (localStorage.getItem("token")) loadSession();
   }, [pathname]);
 
   return (
@@ -142,7 +149,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span>{isDark ? "☀️" : "🌙"}</span>
                 <span>{isDark ? "وضع النهار" : "وضع الليل"}</span>
               </button>
-              <button onClick={() => { localStorage.clear(); router.push("/login"); }} style={{
+              <button onClick={() => { clearSession(); router.push("/login"); }} style={{
                 width: "100%", padding: "10px 14px", borderRadius: "12px",
                 background: "rgba(239,68,68,0.1)", color: "var(--red)",
                 border: "1px solid rgba(239,68,68,0.25)",

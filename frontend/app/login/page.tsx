@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { API } from "@/lib/apiFetch";
 
 export default function LoginPage() {
   const [email, setEmail]       = useState("");
@@ -24,6 +23,7 @@ export default function LoginPage() {
       const data = await res.json();
       if (data.error) { setError(data.error); setLoading(false); return; }
       localStorage.setItem("token",    data.token);
+      localStorage.setItem("refresh",  data.refresh);
       localStorage.setItem("role",     data.role);
       localStorage.setItem("username", data.username);
       router.push(data.role === "super_admin" ? "/admin" : data.role === "admin" ? "/orders" : "/");

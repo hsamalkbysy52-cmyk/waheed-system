@@ -7,6 +7,7 @@ import { BillModal } from "@/components/BillModal";
 import { CombinedBillModal } from "@/components/CombinedBillModal";
 import { getPendingSyncOrders } from "@/src/services/db";
 import { authFetch } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 async function fetchWithRetry(path: string, retries = 4, delayMs = 3000): Promise<Response> {
   for (let i = 0; i < retries; i++) {
@@ -179,7 +180,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
                 )}
               </span>
               <span style={{ color: "var(--text2)", fontSize: "11px", flexShrink: 0, marginRight: "8px" }}>
-                {(item.price * item.qty).toLocaleString()} <span style={{ fontSize: "10px" }}>د.ع</span>
+                {formatMoney(item.price * item.qty)}
               </span>
             </div>
             {item.mods.length > 0 && (
@@ -204,8 +205,7 @@ function Card({ order, stage, now, onNext, onPrev, onEdit, onDelete, isDeleting,
         fontWeight: "800",
         marginBottom: "10px",
       }}>
-        {order.total_price.toLocaleString()}
-        <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--muted)", marginRight: "4px" }}>د.ع</span>
+        {formatMoney(order.total_price)}
       </div>
 
       {/* 5. Extra notes */}
@@ -762,7 +762,7 @@ export default function KanbanPage() {
                           <div style={{ fontSize: "18px", flexShrink: 0 }}>{catEmoji(c.category)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: "var(--text)", fontSize: "12px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                            <div style={{ color: "var(--gold)", fontSize: "11px" }}>{(c.price * c.qty).toLocaleString()} <span style={{ color: "var(--muted)" }}>د.ع</span></div>
+                            <div style={{ color: "var(--gold)", fontSize: "11px" }}>{formatMoney(c.price * c.qty)}</div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
                             <button onClick={() => setEditQty(c.name, -1)} style={{ width: "26px", height: "26px", borderRadius: "7px", background: c.qty === 1 ? "rgba(239,68,68,0.12)" : "var(--border)", border: "none", color: c.qty === 1 ? "var(--red)" : "var(--text2)", cursor: "pointer", fontSize: c.qty === 1 ? "12px" : "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>{c.qty === 1 ? "🗑" : "−"}</button>
@@ -778,7 +778,7 @@ export default function KanbanPage() {
                     {editCart.length > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: "10px" }}>
                         <span style={{ color: "var(--text2)", fontSize: "12px" }}>الإجمالي</span>
-                        <span style={{ color: "var(--gold)", fontSize: "18px", fontWeight: "900" }}>{editTotal.toLocaleString()} <span style={{ fontSize: "11px", color: "var(--muted)", fontWeight: "400" }}>د.ع</span></span>
+                        <span style={{ color: "var(--gold)", fontSize: "18px", fontWeight: "900" }}>{formatMoney(editTotal)}</span>
                       </div>
                     )}
                     <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="ملاحظات..." rows={2}

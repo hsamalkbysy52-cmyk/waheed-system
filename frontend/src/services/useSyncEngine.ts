@@ -33,6 +33,11 @@ async function uploadOrder(order: LocalOrder): Promise<'synced' | 'failed_perman
     return 'synced';
   }
 
+  if (response.status === 401) {
+    // Session expired/missing — keep the order queued and retry after the user logs back in
+    return 'failed_retry';
+  }
+
   if (response.status >= 400 && response.status < 500) {
     // Server rejected permanently (bad request, conflict, etc.) — don't retry
     await updateOrderSyncStatus(order.localId!, 'SyncFailed');

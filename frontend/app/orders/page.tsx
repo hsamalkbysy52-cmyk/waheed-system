@@ -1,8 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { authFetch } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
-type Order = { id: number; table_number: number; total_price: number; status: string; created_at: string; };
+const OPEN_STATUSES = ["preparing", "ready", "served"];
+
+type Order = { id: number; table_number: number; total_price: number; status: string; created_at: string; payment_method?: string | null; };
 
 function StatCard({ label, value, color, icon }: { label: string; value: number | string; color: string; icon: string }) {
   return (
@@ -42,9 +45,11 @@ export default function OrdersPage() {
     fetchOrders();
   };
 
-  const pending  = orders.filter(o => o.status === "pending");
+  const pending  = orders.filter(o => OPEN_STATUSES.includes(o.status));
   const done     = orders.filter(o => o.status === "done");
-  const revenue  = done.reduce((s, o) => s + o.total_price, 0);
+  const revenue  = orders
+    .filter(o => !!o.payment_method && o.status !== "cancelled")
+    .reduce((s, o) => s + o.total_price, 0);
 
   return (
     <div style={{ padding: "24px", direction: "rtl", background: "var(--bg)", minHeight: "100%", fontFamily: "'Segoe UI', Arial, sans-serif" }}>
@@ -68,7 +73,7 @@ export default function OrdersPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "28px" }}>
         <StatCard icon="🔴" label="طلبات معلقة"  value={pending.length}               color="var(--red)" />
         <StatCard icon="✅" label="طلبات منجزة"  value={done.length}                  color="var(--green)" />
-        <StatCard icon="💰" label="إجمالي الإيرادات" value={`${revenue.toLocaleString()} د.ع`} color="var(--gold)" />
+        <StatCard icon="💰" label="إجمالي الإيرادات" value={formatMoney(revenue)} color="var(--gold)" />
       </div>
 
       {/* Pending orders */}
@@ -109,7 +114,7 @@ export default function OrdersPage() {
                   }}>معلق</span>
                 </div>
                 <div style={{ color: "var(--gold)", fontSize: "22px", fontWeight: "800", marginBottom: "4px" }}>
-                  {order.total_price.toLocaleString()} <span style={{ fontSize: "13px" }}>د.ع</span>
+                  {formatMoney(order.total_price)}
                 </div>
                 <div style={{ color: "var(--text2)", fontSize: "11px", marginBottom: "16px" }}>
                   🕐 {new Date(order.created_at).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}
@@ -153,7 +158,7 @@ export default function OrdersPage() {
             }}>
               <div style={{ color: "white", fontSize: "14px", fontWeight: "700" }}>طلب #{order.id}</div>
               <div style={{ color: "var(--text2)", fontSize: "12px", margin: "4px 0" }}>طاولة {order.table_number}</div>
-              <div style={{ color: "var(--green)", fontSize: "15px", fontWeight: "700" }}>{order.total_price.toLocaleString()} د.ع</div>
+              <div style={{ color: "var(--green)", fontSize: "15px", fontWeight: "700" }}>{formatMoney(order.total_price)}</div>
             </div>
           ))}
         </div>

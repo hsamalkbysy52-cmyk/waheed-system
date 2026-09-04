@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
-
-const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { API } from "@/lib/apiFetch";
+import { formatMoney } from "@/lib/money";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type OrderProposal = { table: number; items: { name: string; quantity: number; price?: number }[] };
@@ -42,7 +42,7 @@ export default function ChatBot() {
 
   const menuText = menu
     .filter((i) => i.available)
-    .map((i) => `${i.name}: ${i.price.toLocaleString()} د.ع (${i.category})`)
+    .map((i) => `${i.name}: ${formatMoney(i.price)} (${i.category})`)
     .join("\n");
 
   const send = async (text?: string) => {
@@ -69,7 +69,7 @@ export default function ChatBot() {
   const confirmOrder = async (proposal: OrderProposal) => {
     setPlacing(true);
     try {
-      const r = await fetch(`${RAILWAY}/orders`, {
+      const r = await fetch(`${API}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

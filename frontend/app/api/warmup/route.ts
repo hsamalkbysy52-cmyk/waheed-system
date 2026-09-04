@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-
-const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { API } from "@/lib/apiFetch";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const r = await fetch(`${RAILWAY}/health`, {
+    const r = await fetch(`${API}/health`, {
       signal: AbortSignal.timeout(8000),
     });
     return NextResponse.json({ ok: r.ok, status: r.status });

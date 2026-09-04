@@ -1,6 +1,5 @@
 import { create } from "zustand";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
+import { API } from "@/lib/apiFetch";
 
 export type MenuItem = {
   id: number;
@@ -28,9 +27,6 @@ type Store = {
   menuLoading: boolean;
   ordersLoading: boolean;
   fetchMenu: () => Promise<void>;
-  fetchOrders: () => Promise<void>;
-  setMenuItemAvailability: (id: number, available: boolean) => void;
-  removeMenuItem: (id: number) => void;
 };
 
 export const useStore = create<Store>((set) => ({
@@ -54,21 +50,4 @@ export const useStore = create<Store>((set) => ({
       set({ menuLoading: false });
     }
   },
-
-  fetchOrders: async () => {
-    set({ ordersLoading: true });
-    try {
-      const r = await fetch(`${API}/orders`);
-      const d = await r.json();
-      set({ orders: d.orders || [] });
-    } finally {
-      set({ ordersLoading: false });
-    }
-  },
-
-  setMenuItemAvailability: (id, available) =>
-    set((s) => ({ menu: s.menu.map((m) => (m.id === id ? { ...m, available } : m)) })),
-
-  removeMenuItem: (id) =>
-    set((s) => ({ menu: s.menu.filter((m) => m.id !== id) })),
 }));

@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { API } from "@/lib/apiFetch";
 
-const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://waheed-system-production.up.railway.app";
-
-/** Proxy POST /orders/create to Railway — avoids CORS issues on mobile browsers. */
+/** Proxy POST /orders/create to Railway — avoids CORS issues on mobile browsers.
+ *  Forwards the Restaurant slug so the QR order lands on the right tenant; the
+ *  backend's Arabic {error, detail} body (offline/suspended/unknown/missing
+ *  restaurant) is passed through untouched for the customer page to display. */
 export async function POST(req: NextRequest) {
+  const slug = req.headers.get("x-restaurant-slug") || req.nextUrl.searchParams.get("r") || "";
   try {
     const body = await req.json();
-    const r = await fetch(`${RAILWAY}/orders/create`, {
+    const url = new URL(`${API}/orders/create`);
+    if (slug) url.searchParams.set("r", slug);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (slug) headers["X-Restaurant-Slug"] = slug;
+    const r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     const data = await r.json();

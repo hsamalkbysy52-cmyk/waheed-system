@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { formatMoney } from "@/lib/money";
 
 export type SelectedMod = {
   option_id: number;
@@ -74,7 +75,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
   const formatDelta = (delta: number) => {
     if (delta === 0) return "";
     const sign = delta > 0 ? "+" : "";
-    return ` (${sign}${delta.toLocaleString()} د.ع)`;
+    return ` (${sign}${formatMoney(delta)})`;
   };
 
   return (
@@ -105,7 +106,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
               🎛️ خيارات: {item.name}
             </div>
             <div style={{ color: "var(--muted)", fontSize: "12px", marginTop: "3px" }}>
-              السعر الأساسي: {item.price.toLocaleString()} د.ع
+              السعر الأساسي: {formatMoney(item.price)}
             </div>
           </div>
           <button
@@ -206,7 +207,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
                 color: totalDelta > 0 ? "var(--gold)" : "var(--green)",
                 fontSize: "14px", fontWeight: "700",
               }}>
-                {totalDelta > 0 ? "+" : ""}{totalDelta.toLocaleString()} د.ع
+                {totalDelta > 0 ? "+" : ""}{formatMoney(totalDelta)}
               </span>
             </div>
           )}
@@ -220,7 +221,7 @@ export default function ModifierSelector({ item, groups, onConfirm, onClose }: P
               boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
             }}
           >
-            ✅ إضافة للسلة — {finalPrice.toLocaleString()} د.ع
+            ✅ إضافة للسلة — {formatMoney(finalPrice)}
           </button>
         </div>
       </div>

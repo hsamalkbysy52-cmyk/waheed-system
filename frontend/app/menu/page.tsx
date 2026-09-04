@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { authFetch } from "@/lib/apiFetch";
+import { currencyLabel, formatMoney } from "@/lib/money";
 
 type Item    = { id: number; name: string; price: number; category: string; available: boolean; is_available?: boolean; description?: string; modifiers?: ModGroup[]; parent_id?: number | null; variants?: Item[] };
 type InvItem = { id: number; name: string; unit: string };
@@ -471,7 +472,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                                     <div style={{ color: "var(--muted)", fontSize: "10px", marginTop: "2px", display: "flex", gap: "8px" }}>
                                       {opt.price_delta !== 0 && (
                                         <span style={{ color: opt.price_delta > 0 ? "var(--gold)" : "var(--green)" }}>
-                                          {opt.price_delta > 0 ? "+" : ""}{opt.price_delta.toLocaleString()} د.ع
+                                          {opt.price_delta > 0 ? "+" : ""}{formatMoney(opt.price_delta)}
                                         </span>
                                       )}
                                       {opt.inventory_item_id && (
@@ -552,7 +553,7 @@ function ModifierModal({ menuItem, onClose }: { menuItem: Item; onClose: () => v
                               value={optForm.price_delta}
                               onChange={e => setOptForms(p => ({ ...p, [group.id]: { ...p[group.id], price_delta: e.target.value } }))}
                               placeholder="فرق السعر (0)"
-                              title="فرق السعر بالدينار"
+                              title={`فرق السعر (${currencyLabel()})`}
                               style={{ ...inputStyle, width: "100%", marginBottom: "8px" }}
                             />
                           </>)}
@@ -731,7 +732,7 @@ function VariantsModal({ menuItem, onClose, onChanged, onOpenRecipe, onOpenModif
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                         <div style={{ color: "var(--text)", fontSize: "13px", fontWeight: "700" }}>{v.name}</div>
                         <div style={{ color: "var(--gold)", fontSize: "13px", fontWeight: "800" }}>
-                          {v.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--muted)" }}>د.ع</span>
+                          {formatMoney(v.price)}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: "6px" }}>
@@ -894,7 +895,7 @@ export default function MenuPage() {
               />
             </div>
             <div>
-              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>السعر (د.ع) *</label>
+              <label style={{ color: "var(--text2)", fontSize: "12px", display: "block", marginBottom: "6px" }}>{`السعر (${currencyLabel()}) *`}</label>
               <input
                 type="number" value={form.price}
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
@@ -971,7 +972,7 @@ export default function MenuPage() {
                   <div style={{ color: "var(--muted)", fontSize: "11px" }}>{item.category}</div>
                 </div>
                 <div style={{ background: "rgba(245,158,11,0.12)", color: "var(--gold)", borderRadius: "8px", padding: "4px 10px", fontSize: "13px", fontWeight: "800", flexShrink: 0, marginRight: "8px" }}>
-                  {item.price.toLocaleString()} <span style={{ fontSize: "10px", fontWeight: "400" }}>د.ع</span>
+                  {formatMoney(item.price)}
                 </div>
               </div>
               {item.description && (

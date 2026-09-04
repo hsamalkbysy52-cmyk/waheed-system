@@ -14,6 +14,7 @@ Everything postponed or deferred, in one place. Add an item the moment something
 - **WhatsApp production token** — the wizard uses the Meta test number's 24-hour token; production needs a permanent System User token and business verification (ADR-0004 consequences). Noticed in ticket 15 (2026-09-04).
 - **WhatsApp extras** — media messages, order-status notifications to customers (business-initiated templates cost money), payments, non-Arabic replies. Text ordering only in the first version (plan §6.4).
 - **Order-status notifications / real-time updates** — WebSocket or SSE instead of the 10–30 s polling (plan §13).
+- **Currency on the customer menu** — the anonymous `GET /menu` carries no currency, so the customer table page formats prices as JOD by default; add `currency` (or a small `GET /restaurant/info?r=`) when Iraq goes live. Noticed in ticket 13 (2026-09-05).
 - **Category table** — ordering and icons for menu categories; Category stays free text (grilling Q17).
 - **Retire the frontend super-admin page** — decide whether the Django admin replaces `/admin` and `/admin/restaurants*` permanently (kept for parity now).
 - **Fraud alert channels** — email or push in addition to WhatsApp.
