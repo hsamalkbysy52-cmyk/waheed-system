@@ -7,7 +7,7 @@ a Super admin who scopes the request to one Restaurant (isolation matrix item 5)
 
 import pytest
 
-from tests.conftest import set_status
+from tests.conftest import set_status_via_console
 from tests.golden import assert_matches_golden, golden_error, legacy_golden, refusal
 
 pytestmark = pytest.mark.django_db
@@ -119,9 +119,9 @@ def test_suspending_a_restaurant_matches_the_golden(client, restaurant, super_ad
 
 def test_a_suspended_restaurant_can_be_reactivated(client, restaurant, super_admin, login):
     auth = login(super_admin)
-    set_status(client, auth, restaurant, "suspended")
+    set_status_via_console(client, auth, restaurant, "suspended")
 
-    assert set_status(client, auth, restaurant, "active")["status"] == "active"
+    assert set_status_via_console(client, auth, restaurant, "active")["status"] == "active"
 
 
 def test_an_unknown_status_is_refused(client, restaurant, super_admin, login):

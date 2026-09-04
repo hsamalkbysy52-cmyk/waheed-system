@@ -8,7 +8,7 @@ deploy, and a Restaurant can be suspended here as well as through ``POST /admin/
 from django.contrib import admin
 
 from tenants.models import Domain, Restaurant
-from tenants.services import provision
+from tenants.services import create_with_schema, set_primary_domain
 
 
 @admin.register(Restaurant)
@@ -36,8 +36,9 @@ class RestaurantAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change) -> None:
         if change:
             super().save_model(request, obj, form, change)
+            set_primary_domain(obj)  # an edited Slug takes the Domain row with it
         else:
-            provision(obj)  # names the schema, creates it and adds the Domain row
+            create_with_schema(obj)  # names the schema, creates it and adds the Domain row
 
     def has_delete_permission(self, request, obj=None) -> bool:
         """A Restaurant's schema and its data outlive the row: suspend it instead of deleting."""

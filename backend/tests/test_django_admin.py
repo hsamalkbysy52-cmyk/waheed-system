@@ -203,6 +203,20 @@ def test_editing_a_restaurant_changes_what_its_staff_see(client, super_admin, ad
     }
 
 
+def test_editing_the_slug_takes_the_domain_record_with_it(client, super_admin, restaurant):
+    """Nothing routes by hostname (ADR-0001), but the mandatory row must not contradict the Slug."""
+    console_login(client, super_admin)
+
+    submit(
+        client,
+        f"/django-admin/tenants/restaurant/{restaurant.pk}/change/",
+        restaurant_form(restaurant, slug="waheed-amman"),
+    )
+
+    moved = Domain.objects.get(tenant=restaurant)
+    assert moved.is_primary and moved.domain.startswith("waheed-amman.")
+
+
 def test_suspending_a_restaurant_in_the_console_refuses_its_staff(
     client, super_admin, admin, login
 ):

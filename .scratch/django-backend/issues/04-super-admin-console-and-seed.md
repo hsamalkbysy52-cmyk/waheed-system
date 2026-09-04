@@ -63,3 +63,23 @@
   console end to end; isolation item 5 is re-asserted on `GET /admin/restaurants` and item 8's seed
   leg on the real routes. The customer half of suspension still runs against the customer probe
   until `GET /menu` exists (ticket 05).
+- 2026-09-04 — `/code-review` (fixed point 8af5616). **Applied:** `tenants.services.provision` was
+  a name that did not distinguish it from `provision_restaurant` — it is now `create_with_schema`,
+  and it refuses a Restaurant that already has a primary key, so a live schema can never be renamed
+  out from under its data. The Domain row now follows an edited Slug (`set_primary_domain`, called
+  by both the creation path and the console's change path, with a test); the console view is
+  `set_restaurant_status`, not `restaurant_status`, since it sets rather than reads;
+  `serialize_restaurant` converts to UTC before stamping the `Z` instead of relying on
+  `TIME_ZONE`; the console test helper is `set_status_via_console`, which no longer shadows
+  `platform_admin.services.set_status`; the demo accounts are a `DemoAccount` record in the command
+  and an `Account` record in its tests, so no field is read positionally, and the seed tests build
+  their `Authorization` headers through one helper. **Not applied, deliberately:** `ISO_UTC` stays
+  in `platform_admin/serializers.py` until a second serializer needs it (ticket 05 handoff), rather
+  than adding a `core` module with one constant for a caller that does not exist yet; the demo
+  credentials stay written out in the tests instead of imported from the command, so a typo in the
+  command's constants cannot make the tests pass. **Flagged for the user, not decided here:** this
+  ticket annotated the approved plan (§3.1's `INSTALLED_APPS` line and §7's seed paragraph) to
+  match what shipped, following the `# dropped in ticket 01` note already in §3.1 — revert those
+  two annotations if plan edits should be a separate approval. `RestaurantAdmin` forbids deletion,
+  which nothing asked for; suspension is the mechanism the spec describes and an orphaned schema is
+  the alternative (`backlog.md`).

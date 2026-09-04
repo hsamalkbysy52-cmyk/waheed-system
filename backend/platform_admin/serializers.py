@@ -1,5 +1,7 @@
 """Input validation and output shaping for the Super admin console routes."""
 
+from datetime import timezone as datetime_timezone
+
 from rest_framework import serializers
 
 from core import messages
@@ -29,5 +31,5 @@ def serialize_restaurant(restaurant: Restaurant) -> dict:
         "email": restaurant.email,
         "phone": restaurant.phone,
         "status": restaurant.status,
-        "created_at": restaurant.created_at.strftime(ISO_UTC),
+        "created_at": restaurant.created_at.astimezone(datetime_timezone.utc).strftime(ISO_UTC),
     }

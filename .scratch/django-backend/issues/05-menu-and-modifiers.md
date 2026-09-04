@@ -24,3 +24,7 @@
   `schema_context(restaurant.schema_name)`, keep the command idempotent, and add the assertion to
   `tests/test_bootstrap_dev.py`. When `GET /menu` lands, move the customer half of suspension
   (`tests/test_suspension.py::test_suspension_refuses_the_restaurants_customers`) off the probe.
+
+- 2026-09-04 (from ticket 04) — `ISO_UTC = "%Y-%m-%dT%H:%M:%SZ"` currently lives in
+  `platform_admin/serializers.py`. Plan §4 makes that the format for every serializer, so lift it
+  into `core/` when the menu's timestamps need it, and point this ticket's serializers at it.

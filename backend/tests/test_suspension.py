@@ -8,7 +8,7 @@ ticket 05; the refusal itself comes from the middleware, so the route only has t
 
 import pytest
 
-from tests.conftest import set_status, sign_in
+from tests.conftest import set_status_via_console, sign_in
 from tests.golden import golden_error, legacy_golden, refusal
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("tests.probe_urls")]
@@ -27,7 +27,7 @@ def test_suspension_signs_the_staff_out_on_their_next_request(client, console, a
     headers = login(admin)
     assert client.get("/me", headers=headers).status_code == 200
 
-    set_status(client, console, admin.restaurant, "suspended")
+    set_status_via_console(client, console, admin.restaurant, "suspended")
 
     refused = client.get("/me", headers=headers)
     assert refused.status_code == 403
@@ -37,7 +37,7 @@ def test_suspension_signs_the_staff_out_on_their_next_request(client, console, a
 def test_suspension_refuses_the_restaurants_customers(client, console, restaurant):
     assert client.get("/_probe/customer?r=waheed").status_code == 200
 
-    set_status(client, console, restaurant, "suspended")
+    set_status_via_console(client, console, restaurant, "suspended")
 
     refused = client.get("/_probe/customer?r=waheed")
     assert refused.status_code == 403
@@ -46,7 +46,7 @@ def test_suspension_refuses_the_restaurants_customers(client, console, restauran
 
 def test_suspension_refuses_sign_in_with_the_legacy_message(client, console, admin):
     golden = legacy_golden("POST /login", "failure:restaurant-suspended")
-    set_status(client, console, admin.restaurant, "suspended")
+    set_status_via_console(client, console, admin.restaurant, "suspended")
 
     response = client.post(
         "/login",
@@ -59,16 +59,16 @@ def test_suspension_refuses_sign_in_with_the_legacy_message(client, console, adm
 
 
 def test_suspension_leaves_other_restaurants_alone(client, console, restaurant, other_admin):
-    set_status(client, console, restaurant, "suspended")
+    set_status_via_console(client, console, restaurant, "suspended")
 
     assert sign_in(client, other_admin.email, other_admin.plain_password)["role"] == "admin"
     assert client.get("/_probe/customer?r=r-other").status_code == 200
 
 
 def test_reactivation_restores_staff_customers_and_sign_in(client, console, admin):
-    set_status(client, console, admin.restaurant, "suspended")
+    set_status_via_console(client, console, admin.restaurant, "suspended")
 
-    set_status(client, console, admin.restaurant, "active")
+    set_status_via_console(client, console, admin.restaurant, "active")
 
     session = sign_in(client, admin.email, admin.plain_password)
     signed_in = client.get("/me", headers={"Authorization": f"Bearer {session['token']}"})

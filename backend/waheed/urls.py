@@ -14,6 +14,6 @@ urlpatterns = [
     path("auth/refresh", account_views.refresh),
     path("me", account_views.me),
     path("admin/restaurants", platform_views.restaurant_list),
-    path("admin/restaurants/<int:restaurant_id>/status", platform_views.restaurant_status),
+    path("admin/restaurants/<int:restaurant_id>/status", platform_views.set_restaurant_status),
     path("django-admin/", admin.site.urls),
 ]

@@ -17,23 +17,35 @@ def provision_restaurant(
     is ``waheed``). Call inside ``transaction.atomic()`` together with whatever must exist
     alongside the Restaurant, so a failure leaves nothing behind.
     """
-    return provision(
+    return create_with_schema(
         Restaurant(name=name, slug=slug or f"r-{uuid4().hex[:8]}", email=email, phone=phone)
     )
 
 
-def provision(restaurant: Restaurant) -> Restaurant:
-    """Save a new Restaurant with its own schema and the mandatory Domain row.
+def create_with_schema(restaurant: Restaurant) -> Restaurant:
+    """Save a Restaurant that does not exist yet, with its own schema and its Domain row.
 
     The schema name is ``r_`` plus twelve hex characters; it is random, and its unique constraint
     is the collision guard. Registration, the demo seed and the Super admin console all create
-    Restaurants through here, so none of them can produce one without a schema.
+    Restaurants through here, so none of them can produce one without a schema. A Restaurant that
+    has been saved before is refused: renaming a live schema would orphan everything in it.
     """
+    if restaurant.pk is not None:
+        raise ValueError(f"{restaurant} exists already; its schema cannot be created twice")
     restaurant.schema_name = f"r_{uuid4().hex[:12]}"
     restaurant.save()  # auto_create_schema: django-tenants creates the schema and migrates it
-    Domain.objects.create(
-        tenant=restaurant,
-        domain=f"{restaurant.slug}.{settings.TENANT_BASE_DOMAIN}",
-        is_primary=True,
-    )
+    set_primary_domain(restaurant)
     return restaurant
+
+
+def set_primary_domain(restaurant: Restaurant) -> None:
+    """Point the Restaurant's mandatory Domain row at its current Slug.
+
+    Nothing routes by hostname (ADR-0001), but the row must exist, and it stays consistent with
+    the Slug, which the Super admin console may change.
+    """
+    Domain.objects.update_or_create(
+        tenant=restaurant,
+        is_primary=True,
+        defaults={"domain": f"{restaurant.slug}.{settings.TENANT_BASE_DOMAIN}"},
+    )

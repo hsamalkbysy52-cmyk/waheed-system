@@ -111,7 +111,7 @@ def login(client):
     return _login
 
 
-def set_status(client, auth: dict, restaurant, status: str) -> dict:
+def set_status_via_console(client, auth: dict, restaurant, status: str) -> dict:
     """Set a Restaurant's status through the Super admin console route, and return its body."""
     response = client.post(
         f"/admin/restaurants/{restaurant.pk}/status",
@@ -128,6 +128,6 @@ def suspend(client, super_admin, login):
     """``suspend(restaurant)``: suspended the way the Super admin does it, through the console."""
 
     def _suspend(restaurant) -> None:
-        set_status(client, login(super_admin), restaurant, "suspended")
+        set_status_via_console(client, login(super_admin), restaurant, "suspended")
 
     return _suspend

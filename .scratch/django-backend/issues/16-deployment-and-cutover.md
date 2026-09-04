@@ -21,3 +21,9 @@
   Super admin account on the deployed database (`bootstrap_dev`, or `createsuperuser`) and static
   files (already in `backlog.md`: gunicorn serves none). `INSTALLED_APPS` is now built with
   `django.contrib.admin` first; keep that order when adding apps.
+
+- 2026-09-04 (from ticket 04) — isolation matrix item 8 has no automated `migrate_schemas`-from-
+  zero test: the test database is built by pytest-django, and `bootstrap_dev` plus `POST /register`
+  are asserted on top of it (`tests/test_bootstrap_dev.py`, `tests/test_sessions.py`). The
+  migration leg was verified by hand on a dropped and recreated local database (2026-09-04);
+  cover it in this ticket's staging checklist against the deployed URL.

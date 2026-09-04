@@ -26,7 +26,7 @@ def restaurant_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsSuperAdmin])
 @public_only
-def restaurant_status(request, restaurant_id: int):
+def set_restaurant_status(request, restaurant_id: int):
     serializer = RestaurantStatusSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     restaurant = services.set_status(restaurant_id, serializer.validated_data["status"])
