@@ -103,3 +103,32 @@ def test_the_seed_leaves_registered_restaurants_alone(client, db):
         "Waheed Restaurant",
         "Shawarma House",
     }
+
+
+def test_the_seed_creates_the_demo_menu_with_its_modifier_group(client, seeded):
+    menu = client.get("/menu", headers=signed_in(client, ADMIN)).json()["menu"]
+
+    assert [dish["name"] for dish in menu] == ["برجر", "بيتزا", "باستا", "كولا", "عصير", "شاي"]
+    burger = menu[0]
+    assert burger["price"] == 5
+    assert [group["name"] for group in burger["modifiers"]] == ["الإضافات"]
+    assert [option["name"] for option in burger["modifiers"][0]["options"]] == [
+        "بدون خبز",
+        "جبن إضافي",
+    ]
+
+
+def test_a_customer_reads_the_seeded_menu_by_slug(client, seeded):
+    """A fresh machine can serve the table QR flow straight after the seed."""
+    response = client.get("/menu?r=waheed")
+
+    assert response.status_code == 200
+    assert len(response.json()["menu"]) == 6
+
+
+def test_seeding_twice_leaves_one_menu(client, seeded):
+    bootstrap()
+
+    menu = client.get("/menu", headers=signed_in(client, ADMIN)).json()["menu"]
+    assert len(menu) == 6
+    assert len(menu[0]["modifiers"]) == 1

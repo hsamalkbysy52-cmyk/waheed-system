@@ -16,3 +16,8 @@
 ## Comments
 
 - 2026-09-04 (from ticket 03) — handoffs: `POST /auth/refresh` takes `{refresh}` and answers `{token, refresh}`; call it, and `POST /login`, **without** an `Authorization` header: the tenant middleware refuses an expired access token with 401 `توكن غير صالح` before any view runs, and a valid one makes `/login` and `/register` answer 400 `هذا المسار للمنصة فقط`. `GET /me` answers `{username, role, restaurant_id, restaurant: {name, slug, currency, timezone}}`, with `restaurant_id` and `restaurant` null for a Super admin; derive decimals from `currency` (JOD → 3). Every refusal is `{error, detail}` with the same Arabic message and a real status code (400/401/403/404).
+
+- 2026-09-04 (from ticket 05) — menu prices are now `Decimal(12, 3)` serialized as JSON numbers
+  (JOD has three decimals), so F9's money formatter should render three decimals for JOD. The menu
+  response is otherwise unchanged, and `GET /menu` accepts `?r=<slug>` and `X-Restaurant-Slug`
+  already, which F1 needs.

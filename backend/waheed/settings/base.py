@@ -32,7 +32,7 @@ SHARED_APPS = (
 # Per-Restaurant apps are added here by the tickets that create them
 # (menu, inventory, orders, layout, ai, messaging). django-tenants requires contenttypes in
 # both lists so every Restaurant schema carries its own content-types table.
-TENANT_APPS = ("django.contrib.contenttypes",)
+TENANT_APPS = ("django.contrib.contenttypes", "menu")
 # ``dict.fromkeys`` keeps each app's first occurrence: contenttypes is in both lists above.
 # django.contrib.admin leads so its own templates render the Super admin console — the tenancy
 # library ships admin template overrides that read ``request.tenant.schema_name`` unconditionally,

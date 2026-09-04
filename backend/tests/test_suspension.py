@@ -1,9 +1,6 @@
 """Suspension end to end (spec story 3; isolation matrix item 6): the Super admin suspends a
 Restaurant through the console route, and staff, customers and sign-in are refused from the next
 request on. Reactivation puts all three back.
-
-The customer leg uses the customer probe (tests/probe_urls.py) until ``GET /menu`` arrives with
-ticket 05; the refusal itself comes from the middleware, so the route only has to accept a Slug.
 """
 
 import pytest
@@ -11,7 +8,7 @@ import pytest
 from tests.conftest import set_status_via_console, sign_in
 from tests.golden import golden_error, legacy_golden, refusal
 
-pytestmark = [pytest.mark.django_db, pytest.mark.urls("tests.probe_urls")]
+pytestmark = pytest.mark.django_db
 
 SUSPENDED = refusal("هذا المطعم موقوف حالياً")
 UNAVAILABLE = refusal("المطعم غير متاح حالياً")
@@ -35,11 +32,11 @@ def test_suspension_signs_the_staff_out_on_their_next_request(client, console, a
 
 
 def test_suspension_refuses_the_restaurants_customers(client, console, restaurant):
-    assert client.get("/_probe/customer?r=waheed").status_code == 200
+    assert client.get("/menu?r=waheed").status_code == 200
 
     set_status_via_console(client, console, restaurant, "suspended")
 
-    refused = client.get("/_probe/customer?r=waheed")
+    refused = client.get("/menu?r=waheed")
     assert refused.status_code == 403
     assert refused.json() == UNAVAILABLE
 
@@ -62,7 +59,7 @@ def test_suspension_leaves_other_restaurants_alone(client, console, restaurant, 
     set_status_via_console(client, console, restaurant, "suspended")
 
     assert sign_in(client, other_admin.email, other_admin.plain_password)["role"] == "admin"
-    assert client.get("/_probe/customer?r=r-other").status_code == 200
+    assert client.get("/menu?r=r-other").status_code == 200
 
 
 def test_reactivation_restores_staff_customers_and_sign_in(client, console, admin):
@@ -75,4 +72,4 @@ def test_reactivation_restores_staff_customers_and_sign_in(client, console, admi
 
     assert signed_in.status_code == 200
     assert signed_in.json()["restaurant"]["slug"] == "waheed"
-    assert client.get("/_probe/customer?r=waheed").status_code == 200
+    assert client.get("/menu?r=waheed").status_code == 200

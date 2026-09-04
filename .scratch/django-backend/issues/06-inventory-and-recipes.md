@@ -19,3 +19,17 @@
   Recipes for the demo menu, so the frontend's inventory and menu pages have data on a fresh
   machine (plan §7). Idempotent like the rest of the command; assert it in
   `tests/test_bootstrap_dev.py`.
+
+- 2026-09-04 (from ticket 05) — the menu is in place:
+  - `menu.models.ModifierOption.inventory_item_id` is a plain nullable integer. Replace it with
+    `FK(inventory.InventoryItem, on_delete=SET_NULL)` and make `POST /modifiers/groups/{id}/options`
+    answer 404 `مادة المخزون غير موجودة` for an id this Restaurant does not own — golden
+    `09-post-modifiers-groups-group_id-options--inventory-item-not-found.json` is still unasserted,
+    and it is this ticket's to cover.
+  - `menu/serializers.py::serialize_item` hard-codes `out_of_stock=False` and `max_qty=None`.
+    Compute both from Recipes there, with a Variant falling back to its parent's Recipe the way it
+    already falls back to the parent's Modifier groups (`_groups_of`).
+  - `tests/test_menu.py::test_the_menu_is_read_without_an_n_plus_one` caps `GET /menu` at five
+    queries; prefetch the recipes rather than querying per item (plan §4).
+  - Extend `bootstrap_dev` with Inventory items and the Recipes for the demo menu, and link the two
+    `الإضافات` options to Inventory items.

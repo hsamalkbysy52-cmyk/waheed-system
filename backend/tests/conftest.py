@@ -131,3 +131,82 @@ def suspend(client, super_admin, login):
         set_status_via_console(client, login(super_admin), restaurant, "suspended")
 
     return _suspend
+
+
+# --- menu setup, built through the API so a fixture never creates what a route could not ------
+
+DEMO_ITEMS = (
+    ("برجر", 5, "وجبات"),
+    ("بيتزا", 8, "وجبات"),
+    ("باستا", 6, "وجبات"),
+    ("كولا", 1.5, "مشروبات"),
+    ("عصير", 2, "مشروبات"),
+    ("شاي", 1, "مشروبات"),
+)
+
+
+def add_menu_item(client, auth: dict, name: str, price, category: str, **fields) -> int:
+    """``POST /menu/add``; returns the new Menu item's id."""
+    body = {"name": name, "price": price, "category": category, **fields}
+    response = client.post("/menu/add", body, content_type="application/json", headers=auth)
+    assert response.status_code == 200, response.content
+    return response.json()["id"]
+
+
+def add_modifier_group(client, auth: dict, item_id: int, name: str, max_selections: int) -> int:
+    response = client.post(
+        f"/menu/{item_id}/modifiers/groups",
+        {"name": name, "max_selections": max_selections},
+        content_type="application/json",
+        headers=auth,
+    )
+    assert response.status_code == 200, response.content
+    return response.json()["id"]
+
+
+def add_modifier_option(client, auth: dict, group_id: int, **option) -> int:
+    response = client.post(
+        f"/modifiers/groups/{group_id}/options",
+        option,
+        content_type="application/json",
+        headers=auth,
+    )
+    assert response.status_code == 200, response.content
+    return response.json()["id"]
+
+
+@pytest.fixture
+def demo_menu(client, admin, login):
+    """The menu the goldens were recorded with: six items, a Variant, a Modifier group, شاي off.
+
+    Returns the ids by name, so tests name what they act on instead of counting rows.
+    """
+    auth = login(admin)
+    ids = {
+        name: add_menu_item(client, auth, name, price, category)
+        for name, price, category in DEMO_ITEMS
+    }
+    ids["برجر دبل"] = add_menu_item(
+        client, auth, "برجر دبل", 7.5, "وجبات", description="قطعتين لحم", parent_id=ids["برجر"]
+    )
+    ids["الإضافات"] = add_modifier_group(client, auth, ids["برجر"], "الإضافات", 3)
+    ids["بدون خبز"] = add_modifier_option(
+        client,
+        auth,
+        ids["الإضافات"],
+        name="بدون خبز",
+        price_delta=0,
+        inventory_item_id=2,
+        quantity_delta=-1,
+    )
+    ids["جبن إضافي"] = add_modifier_option(
+        client,
+        auth,
+        ids["الإضافات"],
+        name="جبن إضافي",
+        price_delta=0.75,
+        inventory_item_id=3,
+        quantity_delta=1,
+    )
+    client.put(f"/menu/{ids['شاي']}/toggle", headers=auth)
+    return ids

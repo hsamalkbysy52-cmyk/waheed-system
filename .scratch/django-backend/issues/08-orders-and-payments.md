@@ -15,3 +15,7 @@
 ## Comments
 
 - 2026-09-04 (from ticket 02): the legacy `PUT /orders/{order_id}` rewrote the Order lines without their `modifiers` (see order 9 in fixture `16-get-orders.json`), while `POST /orders/create` stored them. Decide whether edited lines keep their Modifier options; the golden for route 23 only fixes the `{message, order_id}` response shape.
+
+- 2026-09-04 (from ticket 05) — `tests/probe_urls.py` is down to a single `/_probe/staff` route
+  standing in for `IsCashierOrAdmin`, exercised by `tests/test_view_guards.py`. Once the order and
+  heartbeat routes carry that permission, re-assert those four cases on them and delete both files.
