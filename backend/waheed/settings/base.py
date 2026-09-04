@@ -29,9 +29,17 @@ SHARED_APPS = (
     "rest_framework",
     "corsheaders",
 )
-# Per-Restaurant apps; the ai app arrives with ticket 11. django-tenants requires contenttypes in
-# both lists so every Restaurant schema carries its own content-types table.
-TENANT_APPS = ("django.contrib.contenttypes", "menu", "inventory", "layout", "orders", "messaging")
+# Per-Restaurant apps. django-tenants requires contenttypes in both lists so every Restaurant
+# schema carries its own content-types table.
+TENANT_APPS = (
+    "django.contrib.contenttypes",
+    "menu",
+    "inventory",
+    "layout",
+    "orders",
+    "messaging",
+    "ai",
+)
 # ``dict.fromkeys`` keeps each app's first occurrence: contenttypes is in both lists above.
 # django.contrib.admin leads so its own templates render the Super admin console — the tenancy
 # library ships admin template overrides that read ``request.tenant.schema_name`` unconditionally,
@@ -104,6 +112,8 @@ REST_FRAMEWORK = {
     # Secure by default; public routes opt in with @permission_classes([AllowAny]).
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
+    # The agent routes are the only throttled ones for now (backlog: the public routes).
+    "DEFAULT_THROTTLE_RATES": {"agent": env("AGENT_THROTTLE_RATE", default="20/minute")},
 }
 
 # Sessions last a working day and refresh silently for a month (plan §14 Q5).
@@ -143,3 +153,21 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# --- AI Providers (plan §6.1; grilling Q14) -------------------------------------------------
+
+# Gemini's free tier is the default; OpenAI is the automatic fallback when its key exists. A
+# Provider is available only when its key is set. Keys never reach the browser (spec story 22).
+AI_DEFAULT_PROVIDER = env("AI_DEFAULT_PROVIDER", default="gemini")
+AI_PROVIDER_KEYS = {
+    "gemini": env("GEMINI_API_KEY", default=""),
+    "openai": env("OPENAI_API_KEY", default=""),
+}
+AI_PROVIDER_MODELS = {
+    "gemini": env("GEMINI_MODEL", default="gemini-2.5-flash"),
+    "openai": env("OPENAI_MODEL", default="gpt-4o-mini"),
+}
+AI_PROVIDER_CLASSES = {
+    "gemini": "ai.providers.gemini.GeminiProvider",
+    "openai": "ai.providers.openai_provider.OpenAIProvider",
+}

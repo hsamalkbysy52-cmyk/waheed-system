@@ -9,7 +9,12 @@ whose user is gone or deactivated, all become the legacy "invalid token" message
 
 from typing import Any, Optional
 
-from rest_framework.exceptions import APIException, AuthenticationFailed, NotAuthenticated
+from rest_framework.exceptions import (
+    APIException,
+    AuthenticationFailed,
+    NotAuthenticated,
+    Throttled,
+)
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 from rest_framework_simplejwt import exceptions as jwt_exceptions
@@ -37,6 +42,8 @@ def exception_handler(exc: Exception, context: dict) -> Optional[Response]:
 def _message(exc: Exception) -> str:
     if isinstance(exc, NotAuthenticated):
         return messages.MISSING_TOKEN
+    if isinstance(exc, Throttled):
+        return messages.TOO_MANY_REQUESTS
     if _is_token_failure(exc):
         return messages.INVALID_TOKEN
     return _first_text(exc.detail)

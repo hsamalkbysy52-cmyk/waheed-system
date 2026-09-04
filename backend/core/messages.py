@@ -86,3 +86,9 @@ FRAUD_ALERT_MESSAGE = (
     "آخر إلغاء: طلب #{order_id}\n"
     "الوقت: {time}"
 )
+
+# AI assistant (plan §14 Q14; new with the rebuild)
+ASSISTANT_BUSY = "المساعد مشغول، حاول بعد قليل"
+QUESTION_REQUIRED = "السؤال مطلوب"
+UNKNOWN_PROVIDER = "مزوّد الذكاء الاصطناعي غير معروف"
+TOO_MANY_REQUESTS = "طلبات كثيرة، حاول بعد قليل"  # throttled

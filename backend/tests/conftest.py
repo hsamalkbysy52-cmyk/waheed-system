@@ -13,6 +13,7 @@ import pytest
 from django.db import connection
 
 from accounts.models import Role, User
+from ai.providers.fake import FakeProvider
 from messaging.senders import RecordingSender
 from tenants.services import provision_restaurant
 
@@ -27,10 +28,12 @@ def _public_schema():
 
 @pytest.fixture(autouse=True)
 def _no_messages_from_earlier_tests():
-    """The recording sender is process-wide; every test starts with an empty outbox."""
+    """The recording sender and the scripted Provider are process-wide; every test starts clean."""
     RecordingSender.reset()
+    FakeProvider.reset()
     yield
     RecordingSender.reset()
+    FakeProvider.reset()
 
 
 PASSWORD = "secret123"

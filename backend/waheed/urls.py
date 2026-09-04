@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from accounts import views as account_views
+from ai import views as ai_views
 from core import views as core_views
 from inventory import views as inventory_views
 from layout import views as layout_views
@@ -47,6 +48,7 @@ urlpatterns = [
     path("inventory/recipe/<int:menu_item_id>", inventory_views.menu_item_recipe),
     path("table-layout", layout_views.table_layout),
     path("table-layout/save", layout_views.table_layout_save),
+    path("agent/ask", ai_views.ask),
     path("admin/restaurants", platform_views.restaurant_list),
     path("admin/restaurants/<int:restaurant_id>/status", platform_views.set_restaurant_status),
     path("django-admin/", admin.site.urls),
