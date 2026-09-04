@@ -1,6 +1,13 @@
-"""What the AI Providers did for one Restaurant (spec story 53); lives in its schema."""
+"""AI bookkeeping of one Restaurant, in its own schema: what the Providers did (spec story 53) and
+the Conversations the Chat agent remembers (spec story 46)."""
+
+from datetime import timedelta
 
 from django.db import models
+from django.utils import timezone
+
+CONVERSATION_TTL = timedelta(hours=2)  # a Conversation is forgotten two hours after its last turn
+CONVERSATION_TURNS_KEPT = 20
 
 
 class AIUsageLog(models.Model):
@@ -24,3 +31,40 @@ class AIUsageLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.purpose} via {self.provider}/{self.model}: {self.outcome}"
+
+
+class ConversationState(models.Model):
+    """The recent turns of one Conversation, keyed by who is talking (a WhatsApp number, or the
+    web chat's conversation id), so the Chat agent remembers context for two hours."""
+
+    key = models.CharField(max_length=100, unique=True)
+    table_number = models.IntegerField(null=True, blank=True)
+    messages = models.JSONField(default=list)  # [{role, content}], newest last
+    expires_at = models.DateTimeField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self) -> str:
+        return f"conversation {self.key}"
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at <= timezone.now()
+
+    @classmethod
+    def load(cls, key: str) -> "ConversationState":
+        """The live Conversation for a key, or a fresh one; an expired one is forgotten."""
+        state = cls.objects.filter(key=key).first()
+        if state is not None and state.is_expired:
+            state.delete()
+            state = None
+        return state or cls(key=key, messages=[], expires_at=timezone.now() + CONVERSATION_TTL)
+
+    def remember(self, turns: list, table_number=None) -> None:
+        self.messages = (self.messages + turns)[-CONVERSATION_TURNS_KEPT:]
+        if table_number is not None:
+            self.table_number = table_number
+        self.expires_at = timezone.now() + CONVERSATION_TTL
+        self.save()

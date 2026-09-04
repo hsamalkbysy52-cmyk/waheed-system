@@ -49,6 +49,7 @@ urlpatterns = [
     path("table-layout", layout_views.table_layout),
     path("table-layout/save", layout_views.table_layout_save),
     path("agent/ask", ai_views.ask),
+    path("agent/chat", ai_views.chat),
     path("admin/restaurants", platform_views.restaurant_list),
     path("admin/restaurants/<int:restaurant_id>/status", platform_views.set_restaurant_status),
     path("django-admin/", admin.site.urls),
