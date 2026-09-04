@@ -26,6 +26,7 @@ Everything postponed or deferred, in one place. Add an item the moment something
 - **Arabic messages for payload validation** — a malformed menu, modifier or inventory payload answers 400 with DRF's English text (the legacy API answered FastAPI's English 422). Needs product copy before it is worth translating. Noticed in ticket 05 (2026-09-04).
 - **Async long reports** — "submit then poll" for `/agent/ask` if reports outgrow the 20 s request budget (grilling Q13).
 - **Gemini Tier 1** — link a billing account when free-tier rate limits are hit in practice (plan §6.1).
+- **`GET /orders` returns every Order ever** — the legacy did too and the pages filter client-side; add a date window or pagination when a Restaurant's history grows (the kanban polls it every 10 to 30 s). Noticed in ticket 08 (2026-09-04).
 - **`OrderLine` table** — normalise the `items` JSON into rows when reporting needs joins (plan §3.7).
 - **Async tenant provisioning** — create the schema in a Celery task with a `provisioning` status, or enable `TENANT_CREATION_FAKES_MIGRATIONS`, if registration gets slow (plan §3.6).
 - **`django-tenant-users`** — revisit if one user must belong to several Restaurants (ADR-0001).

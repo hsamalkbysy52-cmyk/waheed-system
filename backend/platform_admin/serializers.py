@@ -1,14 +1,12 @@
 """Input validation and output shaping for the Super admin console routes."""
 
-from datetime import timezone as datetime_timezone
-
 from rest_framework import serializers
 
 from core import messages
+from core.timestamps import iso_utc
 from tenants.models import Restaurant
 
 # Timestamps are ISO-8601 in UTC with a trailing Z (spec, API contract).
-ISO_UTC = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class RestaurantStatusSerializer(serializers.Serializer):
@@ -31,5 +29,5 @@ def serialize_restaurant(restaurant: Restaurant) -> dict:
         "email": restaurant.email,
         "phone": restaurant.phone,
         "status": restaurant.status,
-        "created_at": restaurant.created_at.astimezone(datetime_timezone.utc).strftime(ISO_UTC),
+        "created_at": iso_utc(restaurant.created_at),
     }

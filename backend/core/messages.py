@@ -55,3 +55,22 @@ RECIPE_DUPLICATE_INGREDIENT = "مادة المخزون مكررة في الوص�
 
 # Table layout (legacy main.py, route 37)
 LAYOUT_SAVED = "تم حفظ المخطط"
+
+# Orders and payments (legacy main.py, routes 16, 17, 20 to 28)
+ORDER_SAVED = "تم حفظ الطلب!"
+INSUFFICIENT_STOCK = "مخزون غير كافٍ: {names}"
+ORDER_NOT_FOUND = "الطلب غير موجود"
+ORDER_NOT_FOUND_ALT = "الطلب مو موجود"  # the legacy spelling on the ready, done and cancel routes
+ORDER_READY = "الطلب جاهز للتقديم!"
+ORDER_BACK_TO_PREPARING = "تم إرجاع الطلب لقيد التحضير"
+ORDER_EDITED = "تم تعديل الطلب"
+ORDER_NOT_EDITABLE = "لا يمكن تعديل الطلب بعد إعداده"
+ORDER_DELETED = "تم حذف الطلب"
+ORDER_SERVED = "تم تقديم الطلب للطاولة"
+PAYMENT_RECORDED = "تم تسجيل الدفع"
+ORDER_DONE = "تم الدفع وإنجاز الطلب!"
+ORDER_CANCELLED = "تم إلغاء الطلب!"
+ORDER_ALREADY_CANCELLED = "الطلب ملغي مسبقاً"
+ORDER_CLOSED = "الطلب مغلق ولا يمكن تغييره"  # new: done and cancelled are final
+FRAUD_ALERT = "⚠️ {cashier} ألغى 3 طلبات أو أكثر خلال ساعة — تم إبلاغ المالك."
+ONLINE_ORDERING_UNAVAILABLE = "الطلب الإلكتروني غير متاح حالياً، الرجاء الطلب من الكاشير مباشرة."

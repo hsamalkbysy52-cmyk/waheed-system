@@ -2,6 +2,7 @@
 by DRF before these run. Super admins look at a Restaurant's data by naming it (spec story 7) but
 do not act as its staff, so the two Restaurant permissions exclude them."""
 
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from accounts.models import Role
@@ -31,3 +32,13 @@ class IsCashierOrAdmin(BasePermission):
 
     def has_permission(self, request, view) -> bool:
         return _role(request) in (Role.ADMIN, Role.CASHIER)
+
+
+def require_staff(request) -> None:
+    """For the routes that serve customers by Slug and staff by token (``GET /orders``,
+    ``POST /orders/create``): a token caller must be the Restaurant's Cashier or Admin."""
+    if not request.user.is_authenticated:
+        raise NotAuthenticated(messages.MISSING_TOKEN)
+    permission = IsCashierOrAdmin()
+    if not permission.has_permission(request, None):
+        raise PermissionDenied(permission.message)

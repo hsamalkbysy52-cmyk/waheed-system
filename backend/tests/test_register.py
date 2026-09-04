@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.golden import assert_matches_golden, golden_error, legacy_golden
+from tests.golden import assert_matches_golden, golden_error, legacy_golden, refusal
 
 
 @pytest.mark.django_db
@@ -47,3 +47,14 @@ def test_register_reports_the_first_failed_check_in_the_legacy_order(client):
 
     assert response.status_code == 400
     assert response.json()["error"] == "البريد الإلكتروني غير صالح"
+
+
+def test_register_is_a_platform_route(client, admin, login):
+    """A signed-in staff member's token scopes the connection to their Restaurant, where a new
+    Restaurant cannot be created; the platform routes refuse the call instead of failing inside."""
+    body = {"restaurant_name": "X", "phone": "", "email": "x@example.com", "password": "secret123"}
+
+    response = client.post("/register", body, content_type="application/json", headers=login(admin))
+
+    assert response.status_code == 400
+    assert response.json() == refusal("هذا المسار للمنصة فقط")

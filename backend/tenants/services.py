@@ -49,3 +49,13 @@ def set_primary_domain(restaurant: Restaurant) -> None:
         is_primary=True,
         defaults={"domain": f"{restaurant.slug}.{settings.TENANT_BASE_DOMAIN}"},
     )
+
+
+def record_heartbeat(restaurant: Restaurant):
+    """A staff device is alive: stamp the Restaurant (public schema) and return the moment."""
+    from django.utils import timezone
+
+    now = timezone.now()
+    Restaurant.objects.filter(pk=restaurant.pk).update(last_heartbeat_at=now)
+    restaurant.last_heartbeat_at = now
+    return now

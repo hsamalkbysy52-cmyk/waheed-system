@@ -9,13 +9,21 @@ whose user is gone or deactivated, all become the legacy "invalid token" message
 
 from typing import Any, Optional
 
-from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated
+from rest_framework.exceptions import APIException, AuthenticationFailed, NotAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 from rest_framework_simplejwt import exceptions as jwt_exceptions
 
 from core import messages
 from core.responses import error_body
+
+
+class ServiceUnavailable(APIException):
+    """503: the Restaurant is offline for Customer orders (plan §4: 5xx means "retry later")."""
+
+    status_code = 503
+    default_detail = messages.ONLINE_ORDERING_UNAVAILABLE
+    default_code = "service_unavailable"
 
 
 def exception_handler(exc: Exception, context: dict) -> Optional[Response]:

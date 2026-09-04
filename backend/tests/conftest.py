@@ -249,3 +249,47 @@ def demo_menu(client, admin, login):
     save_recipe(client, auth, ids["باستا"], [(ids["طماطم"], 2)])
     client.put(f"/menu/{ids['شاي']}/toggle", headers=auth)
     return ids
+
+
+# --- orders, built through the API -----------------------------------------------------------
+
+
+def order_line(name: str, price, category: str = "", modifiers: tuple = ()) -> dict:
+    """One Order line as the order drawer sends it: one entry per unit, price with the chosen
+    options' deltas folded in, and the options themselves for the kitchen and the stock."""
+    return {"name": name, "price": price, "category": category, "modifiers": list(modifiers)}
+
+
+def modifier_line(name: str, price_delta, inventory_item_id, quantity_delta) -> dict:
+    return {
+        "name": name,
+        "price_delta": price_delta,
+        "inventory_item_id": inventory_item_id,
+        "quantity_delta": quantity_delta,
+    }
+
+
+def create_order(client, auth: dict, items: list, **fields) -> dict:
+    """``POST /orders/create``; returns the response body (``message``, ``total``, ``order_id``)."""
+    response = client.post(
+        "/orders/create", {"items": items, **fields}, content_type="application/json", headers=auth
+    )
+    assert response.status_code == 200, response.content
+    return response.json()
+
+
+def orders_of(client, auth: dict) -> list:
+    response = client.get("/orders", headers=auth)
+    assert response.status_code == 200, response.content
+    return response.json()["orders"]
+
+
+def order_by_id(client, auth: dict, order_id: int) -> dict:
+    return next(order for order in orders_of(client, auth) if order["id"] == order_id)
+
+
+def stock_of(client, auth: dict) -> dict:
+    """Inventory quantities by name, for asserting what an Order took or gave back."""
+    response = client.get("/inventory", headers=auth)
+    assert response.status_code == 200, response.content
+    return {item["name"]: item["quantity"] for item in response.json()["items"]}

@@ -1,5 +1,10 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 from django_tenants.models import DomainMixin, TenantMixin
+
+ONLINE_WINDOW = timedelta(seconds=90)  # a Heartbeat this recent means Online (grilling Q18)
 
 
 class Restaurant(TenantMixin):
@@ -39,6 +44,13 @@ class Restaurant(TenantMixin):
     @property
     def is_suspended(self) -> bool:
         return self.status == self.Status.SUSPENDED
+
+    @property
+    def is_online(self) -> bool:
+        """A signed-in staff device sent a Heartbeat within the window (spec story 38)."""
+        if self.last_heartbeat_at is None:
+            return False
+        return self.last_heartbeat_at >= timezone.now() - ONLINE_WINDOW
 
 
 class Domain(DomainMixin):
