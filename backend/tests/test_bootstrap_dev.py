@@ -161,3 +161,19 @@ def test_seeding_twice_leaves_one_inventory_and_one_recipe(client, seeded):
     assert len(items) == 4
     recipe = client.get(f"/inventory/recipe/{menu[0]['id']}", headers=auth).json()["recipe"]
     assert len(recipe) == 3
+
+
+def test_the_seed_creates_a_small_table_layout(client, seeded):
+    elements = client.get("/table-layout", headers=signed_in(client, ADMIN)).json()["elements"]
+
+    tables = [el for el in elements if el["element_type"] == "table"]
+    assert [table["table_number"] for table in tables] == [1, 2, 3]
+    assert {table["label"] for table in tables} == {"الصالة", "الحديقة"}
+    assert {el["element_type"] for el in elements} == {"table", "wall", "door"}
+
+
+def test_seeding_twice_leaves_one_table_layout(client, seeded):
+    bootstrap()
+
+    elements = client.get("/table-layout", headers=signed_in(client, ADMIN)).json()["elements"]
+    assert len(elements) == 5

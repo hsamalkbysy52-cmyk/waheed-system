@@ -52,3 +52,6 @@ INVENTORY_ITEM_NOT_FOUND = "المادة غير موجودة"
 LINKED_INVENTORY_ITEM_NOT_FOUND = "مادة المخزون غير موجودة"  # named by a Recipe or an option
 RECIPE_SAVED = "تم حفظ الوصفة"
 RECIPE_DUPLICATE_INGREDIENT = "مادة المخزون مكررة في الوصفة"  # new: the database keeps one line
+
+# Table layout (legacy main.py, route 37)
+LAYOUT_SAVED = "تم حفظ المخطط"

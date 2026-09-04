@@ -2,8 +2,8 @@
 
 Idempotent, so a developer can run it after every migration without thinking about it. It brings
 up the Restaurant, the three accounts the frontend's login screen is demonstrated with, the demo
-menu with a Modifier group, and the Inventory items with the Recipes behind the menu. The Table
-layout is seeded here too once its app exists (ticket 07).
+menu with a Modifier group, the Inventory items with the Recipes behind the menu, and a small
+Table layout so the tables page and the QR flow have something to show.
 """
 
 from decimal import Decimal
@@ -15,6 +15,7 @@ from django_tenants.utils import schema_context
 
 from accounts.models import Role, User
 from inventory.models import InventoryItem, RecipeIngredient
+from layout.models import TableLayoutElement
 from menu.models import MenuItem, ModifierGroup, ModifierOption
 from tenants.models import Restaurant
 from tenants.services import provision_restaurant
@@ -71,6 +72,46 @@ DEMO_RECIPES = {
 }
 
 
+# The plan the goldens were recorded with: three Tables in two Zones, a wall and a door.
+DEMO_LAYOUT = (
+    {
+        "element_id": "t-1",
+        "element_type": "table",
+        "x": 40,
+        "y": 60,
+        "w": 90,
+        "h": 90,
+        "table_number": 1,
+        "capacity": 4,
+        "label": "الصالة",
+    },
+    {
+        "element_id": "t-2",
+        "element_type": "table",
+        "x": 160,
+        "y": 60,
+        "w": 90,
+        "h": 90,
+        "table_number": 2,
+        "capacity": 2,
+        "label": "الصالة",
+    },
+    {
+        "element_id": "t-3",
+        "element_type": "table",
+        "x": 40,
+        "y": 220,
+        "w": 120,
+        "h": 90,
+        "table_number": 3,
+        "capacity": 6,
+        "label": "الحديقة",
+    },
+    {"element_id": "w-1", "element_type": "wall", "x": 0, "y": 170, "w": 300, "h": 10},
+    {"element_id": "d-1", "element_type": "door", "x": 300, "y": 0, "w": 40, "h": 10},
+)
+
+
 class Command(BaseCommand):
     help = "Seed the demo Restaurant and the demo accounts for local development (idempotent)."
 
@@ -83,6 +124,7 @@ class Command(BaseCommand):
             self.demo_inventory()
             self.demo_menu()
             self.demo_recipes()
+            self.demo_layout()
 
     def demo_restaurant(self) -> Restaurant:
         seeded = Restaurant.objects.filter(slug=DEMO_SLUG).first()
@@ -153,6 +195,13 @@ class Command(BaseCommand):
             for name, amount in lines
         )
         self.report(f"Recipes created for {len(DEMO_RECIPES)} dishes")
+
+    def demo_layout(self) -> None:
+        if TableLayoutElement.objects.exists():
+            self.report("Table layout already seeded", created=False)
+            return
+        TableLayoutElement.objects.bulk_create(TableLayoutElement(**el) for el in DEMO_LAYOUT)
+        self.report(f"Table layout created: {len(DEMO_LAYOUT)} elements")
 
     def report(self, line: str, created: bool = True) -> None:
         self.stdout.write(self.style.SUCCESS(line) if created else line)
