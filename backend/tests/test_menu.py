@@ -49,12 +49,17 @@ def test_the_menu_nests_variants_under_their_parent(client, admin, login, demo_m
 
 
 def test_the_menu_carries_prices_as_numbers_and_the_stock_fields(client, admin, login, demo_menu):
-    burger = item_named(menu_of(client, login(admin)), "برجر")
+    """Stock comes from the Recipes: برجر has 50 servings, باستا none, كولا has no Recipe
+    (tests/test_inventory.py covers the arithmetic)."""
+    menu = menu_of(client, login(admin))
 
+    burger = item_named(menu, "برجر")
     assert burger["price"] == 5
     assert burger["is_available"] is True
     assert burger["out_of_stock"] is False
-    assert burger["max_qty"] is None  # Recipes arrive with ticket 06
+    assert burger["max_qty"] == 50
+    assert item_named(menu, "باستا")["out_of_stock"] is True
+    assert item_named(menu, "كولا")["max_qty"] is None
 
 
 def test_a_variant_inherits_its_parents_modifier_groups(client, admin, login, demo_menu):
@@ -86,10 +91,12 @@ def test_the_menu_shows_unavailable_items_so_the_pages_can_filter_them(
 
 
 def test_the_menu_is_read_without_an_n_plus_one(client, admin, login, demo_menu):
-    """Plan §4: at most five queries for the whole menu, however many items and options it holds.
+    """Plan §4: a handful of queries for the whole menu, however many items, options and Recipe
+    lines it holds.
 
-    Two of the five belong to every authenticated request (the Restaurant and the caller); the
-    menu itself costs three: items, their Modifier groups, the groups' options.
+    Two of the six belong to every authenticated request (the Restaurant and the caller); the
+    menu itself costs four: items, their Modifier groups, the groups' options, and the Recipe lines
+    joined with their Inventory items.
     """
     auth = login(admin)
 
@@ -97,7 +104,7 @@ def test_the_menu_is_read_without_an_n_plus_one(client, admin, login, demo_menu)
         menu_of(client, auth)
 
     selects = [query for query in captured.captured_queries if query["sql"].startswith("SELECT")]
-    assert len(selects) <= 5, [query["sql"] for query in selects]
+    assert len(selects) <= 6, [query["sql"] for query in selects]
 
 
 # --- POST /menu/add -------------------------------------------------------------------------

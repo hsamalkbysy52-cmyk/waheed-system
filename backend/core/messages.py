@@ -43,3 +43,12 @@ MODIFIER_OPTION_ADDED = "تم إضافة الخيار"
 MODIFIER_OPTION_EDITED = "تم تعديل الخيار"
 MODIFIER_OPTION_DELETED = "تم حذف الخيار"
 MODIFIER_OPTIONS_REORDERED = "تم ترتيب الخيارات"
+
+# Inventory and Recipes (legacy main.py, routes 29 to 34)
+INVENTORY_ITEM_ADDED = "تم إضافة {name}"
+INVENTORY_ITEM_EDITED = "تم تعديل المادة"
+INVENTORY_ITEM_DELETED = "تم حذف المادة"
+INVENTORY_ITEM_NOT_FOUND = "المادة غير موجودة"
+LINKED_INVENTORY_ITEM_NOT_FOUND = "مادة المخزون غير موجودة"  # named by a Recipe or an option
+RECIPE_SAVED = "تم حفظ الوصفة"
+RECIPE_DUPLICATE_INGREDIENT = "مادة المخزون مكررة في الوصفة"  # new: the database keeps one line

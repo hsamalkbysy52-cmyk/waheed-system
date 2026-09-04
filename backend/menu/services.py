@@ -8,12 +8,15 @@ from typing import Optional
 from rest_framework.exceptions import NotFound
 
 from core import messages
+from inventory import services as inventory_services  # module import: the two import each other
 from menu.models import MenuItem, ModifierGroup, ModifierOption
 
 
 def menu_items():
-    """Every Menu item with its groups and options, in three queries (plan §4)."""
-    return MenuItem.objects.prefetch_related("modifier_groups__options")
+    """Every Menu item with its groups, options and Recipe lines, in four queries (plan §4)."""
+    return MenuItem.objects.prefetch_related(
+        "modifier_groups__options", inventory_services.recipe_prefetch()
+    )
 
 
 def item_or_404(item_id: int) -> MenuItem:
@@ -100,11 +103,18 @@ def create_option(
     inventory_item_id: Optional[int],
     quantity_delta: Decimal,
 ) -> ModifierOption:
+    """Add an option; its Inventory item, when named, must be this Restaurant's (404 otherwise)."""
+    group = group_or_404(group_id)
+    inventory_item = (
+        inventory_services.linked_inventory_item_or_404(inventory_item_id)
+        if inventory_item_id is not None
+        else None
+    )
     return ModifierOption.objects.create(
-        group=group_or_404(group_id),
+        group=group,
         name=name,
         price_delta=price_delta,
-        inventory_item_id=inventory_item_id,
+        inventory_item=inventory_item,
         quantity_delta=quantity_delta,
     )
 

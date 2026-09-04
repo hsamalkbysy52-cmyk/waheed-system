@@ -90,7 +90,7 @@ Legend — **Tenant**: runs inside a restaurant schema. **Public**: runs in the 
 | 32 | DELETE | `/inventory/{id}` | Bearer | Tenant | also deletes recipe rows |
 | 33 | GET | `/inventory/recipe/{menu_item_id}` | Bearer | Tenant | `{recipe:[{id,inventory_item_id,amount,inventory_name,unit}]}` |
 | 34 | POST | `/inventory/recipe/{menu_item_id}` | Bearer | Tenant | `{ingredients:[{inventory_item_id,amount}]}` full replace |
-| 35 | POST | `/inventory/deduct/{order_id}` | — (not called by FE) | Tenant | **Dropped** (grilling Q12): unused by any UI and would double-deduct stock already taken at order creation |
+| 35 | POST | `/inventory/deduct/{order_id}` | — (not called by FE) | Tenant | **Dropped** (grilling Q12): unused by any UI and would double-deduct stock already taken at order creation. Removed in ticket 06 (2026-09-04): the path answers 404 |
 | 36 | GET | `/table-layout` | Bearer | Tenant | `{elements:[{element_id,element_type,x,y,w,h,table_number,capacity,label}]}` (`label` = zone name) |
 | 37 | POST | `/table-layout/save` | Bearer | Tenant | full replace; empty array clears |
 | 38 | POST | `/login` | none | Public | `{email,password}` → `{token,role,username,message}` or `{error}` |

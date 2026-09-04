@@ -158,10 +158,11 @@ def test_deleting_an_unknown_group_is_not_found(client, admin, login):
 def test_creating_an_option_matches_the_golden(client, admin, login, demo_menu):
     golden = legacy_golden("POST /modifiers/groups/{group_id}/options")
     auth = login(admin)
+    body = {**golden.body, "inventory_item_id": demo_menu["جبن"]}
 
     response = client.post(
         f"/modifiers/groups/{demo_menu['الإضافات']}/options",
-        golden.body,
+        body,
         content_type="application/json",
         headers=auth,
     )
@@ -171,8 +172,56 @@ def test_creating_an_option_matches_the_golden(client, admin, login, demo_menu):
     created = groups_of(client, auth, demo_menu["برجر"])[0]["options"][-1]
     assert created["name"] == "جبن إضافي"
     assert created["price_delta"] == golden.body["price_delta"]
-    assert created["inventory_item_id"] == golden.body["inventory_item_id"]
+    assert created["inventory_item_id"] == demo_menu["جبن"]
     assert created["quantity_delta"] == golden.body["quantity_delta"]
+
+
+def test_an_option_may_leave_the_inventory_link_empty(client, admin, login, demo_menu):
+    auth = login(admin)
+
+    add_modifier_option(client, auth, demo_menu["الإضافات"], name="حار", price_delta=0)
+
+    created = groups_of(client, auth, demo_menu["برجر"])[0]["options"][-1]
+    assert created["inventory_item_id"] is None
+    assert created["quantity_delta"] == 0
+
+
+def test_an_option_naming_an_unknown_inventory_item_is_not_found(client, admin, login, demo_menu):
+    golden = legacy_golden(
+        "POST /modifiers/groups/{group_id}/options", "failure:inventory-item-not-found"
+    )
+
+    response = client.post(
+        f"/modifiers/groups/{demo_menu['الإضافات']}/options",
+        golden.body,  # inventory_item_id 9999
+        content_type="application/json",
+        headers=login(admin),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == golden_error(golden)
+
+
+def test_an_option_cannot_consume_another_restaurants_inventory(client, admin, other_admin, login):
+    """Isolation matrix item 7: the other Restaurant's Inventory item is not there. This
+    Restaurant holds no Inventory, so the foreign id cannot collide with one of its own."""
+    from tests.conftest import add_inventory_item
+
+    foreign_id = add_inventory_item(client, login(other_admin), "سماق", "كغم", 5, 1)
+    auth = login(admin)
+    group = add_modifier_group(
+        client, auth, add_menu_item(client, auth, "برجر", 5, "وجبات"), "إضافات", 1
+    )
+
+    response = client.post(
+        f"/modifiers/groups/{group}/options",
+        {"name": "سماق", "price_delta": 0, "inventory_item_id": foreign_id, "quantity_delta": 1},
+        content_type="application/json",
+        headers=auth,
+    )
+
+    assert response.status_code == 404
+    assert response.json() == refusal("مادة المخزون غير موجودة")
 
 
 def test_creating_an_option_in_an_unknown_group_is_not_found(client, admin, login):

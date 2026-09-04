@@ -15,7 +15,7 @@ Multi-restaurant (multi-tenant) SaaS for restaurants: cashier POS and kanban, ki
 - Every existing feature keeps working after every change; the API contract table in the plan (§1.3) is the checklist.
 - Python **3.10** only: `models.TextChoices` for enums, `typing.Optional`/`Union`, `typing_extensions.Self`. Skip `StrEnum`, `tomllib`, `except*`, PEP 695 generics.
 - DRF views are **function-based**: `@api_view` plus decorators. Validation in serializers, business logic in `services.py`, views stay thin.
-- Money is `Decimal` (`DecimalField(max_digits=12, decimal_places=2)`), serialized as JSON numbers.
+- Money is `Decimal` (`DecimalField(max_digits=12, decimal_places=3)`, JOD has three decimals; use `core.money.amount_field`), serialized as JSON numbers.
 - Tenant safety: tenant models live in `TENANT_APPS` and are only reached with a tenant on the connection. Celery tasks take `schema_name` and run inside `schema_context`. Migrations run with `migrate_schemas`, never `migrate`.
 - One responsibility per function. When a better practice improves the system, apply it and say what changed.
 - The moment something is postponed, deferred or marked "later", add it to `backlog.md` with a one-line reason and where it was decided; remove it when it ships.

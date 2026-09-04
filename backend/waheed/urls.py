@@ -3,6 +3,7 @@ from django.urls import path
 
 from accounts import views as account_views
 from core import views as core_views
+from inventory import views as inventory_views
 from menu import views as menu_views
 from platform_admin import views as platform_views
 
@@ -24,6 +25,11 @@ urlpatterns = [
     path("modifiers/groups/<int:group_id>/options", menu_views.modifier_option_create),
     path("modifiers/groups/<int:group_id>/options/reorder", menu_views.modifier_options_reorder),
     path("modifiers/options/<int:option_id>", menu_views.modifier_option_edit_or_delete),
+    path("inventory", inventory_views.inventory_list),
+    path("inventory/add", inventory_views.inventory_add),
+    path("inventory/<int:item_id>", inventory_views.inventory_edit_or_delete),
+    # Route 35, POST /inventory/deduct/{order_id}, is dropped on purpose (grilling Q12).
+    path("inventory/recipe/<int:menu_item_id>", inventory_views.menu_item_recipe),
     path("admin/restaurants", platform_views.restaurant_list),
     path("admin/restaurants/<int:restaurant_id>/status", platform_views.set_restaurant_status),
     path("django-admin/", admin.site.urls),

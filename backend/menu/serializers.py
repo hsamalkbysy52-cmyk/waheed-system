@@ -8,6 +8,7 @@ sends ``parent_id`` without a description.
 from rest_framework import serializers
 
 from core.money import amount_payload_field
+from inventory.services import stock_status
 from menu.models import MenuItem, ModifierGroup, ModifierOption
 
 
@@ -55,8 +56,8 @@ class ReorderSerializer(serializers.Serializer):
 def serialize_menu(items) -> list:
     """The whole menu: dishes in id order, each with its Variants nested (plan §1.3, route 2).
 
-    A Variant shows its parent's Modifier groups when it defines none of its own (spec story 13),
-    so the frontend renders the same choices without repeating the setup.
+    A Variant shows its parent's Modifier groups and Recipe when it defines none of its own (spec
+    story 13), so the frontend renders the same choices and stock without repeating the setup.
     """
     variants_by_parent: dict = {}
     dishes = []
@@ -67,9 +68,9 @@ def serialize_menu(items) -> list:
             variants_by_parent.setdefault(item.parent_id, []).append(item)
     return [
         {
-            **serialize_item(dish, dish.modifier_groups.all()),
+            **serialize_item(dish, dish.modifier_groups.all(), dish.recipe.all()),
             "variants": [
-                serialize_item(variant, _groups_of(variant, dish))
+                serialize_item(variant, _groups_of(variant, dish), _recipe_of(variant, dish))
                 for variant in variants_by_parent.get(dish.id, [])
             ],
         }
@@ -77,7 +78,8 @@ def serialize_menu(items) -> list:
     ]
 
 
-def serialize_item(item: MenuItem, groups) -> dict:
+def serialize_item(item: MenuItem, groups, recipe) -> dict:
+    stock = stock_status(recipe)
     return {
         "id": item.id,
         "name": item.name,
@@ -86,9 +88,8 @@ def serialize_item(item: MenuItem, groups) -> dict:
         "is_available": item.is_available,
         "description": item.description,
         "parent_id": item.parent_id,
-        # Both are computed from Recipes, which arrive with ticket 06.
-        "out_of_stock": False,
-        "max_qty": None,
+        "out_of_stock": stock.out_of_stock,
+        "max_qty": stock.max_qty,
         "modifiers": [serialize_group(group) for group in groups],
     }
 
@@ -115,3 +116,8 @@ def serialize_option(option: ModifierOption) -> dict:
 def _groups_of(variant: MenuItem, dish: MenuItem):
     own = variant.modifier_groups.all()
     return own if own else dish.modifier_groups.all()
+
+
+def _recipe_of(variant: MenuItem, dish: MenuItem):
+    own = variant.recipe.all()
+    return own if own else dish.recipe.all()

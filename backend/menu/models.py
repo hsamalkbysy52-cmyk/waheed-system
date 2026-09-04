@@ -52,9 +52,15 @@ class ModifierOption(models.Model):
     group = models.ForeignKey(ModifierGroup, on_delete=models.CASCADE, related_name="options")
     name = models.CharField(max_length=100)
     price_delta = amount_field(default=0)
-    # Ticket 06 replaces this with a FK to inventory.InventoryItem (SET_NULL) and refuses an id
-    # that belongs to no Inventory item; the Inventory app does not exist yet (plan §3.7).
-    inventory_item_id = models.IntegerField(null=True, blank=True)
+    # An option may consume (or, with a negative delta, spare) stock; losing the Inventory item
+    # keeps the option and drops the stock effect (plan §3.7).
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="modifier_options",
+    )
     quantity_delta = amount_field(default=0)
     sort_order = models.PositiveIntegerField(default=0)
 

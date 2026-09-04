@@ -132,3 +132,32 @@ def test_seeding_twice_leaves_one_menu(client, seeded):
     menu = client.get("/menu", headers=signed_in(client, ADMIN)).json()["menu"]
     assert len(menu) == 6
     assert len(menu[0]["modifiers"]) == 1
+
+
+def test_the_seed_creates_inventory_with_recipes_behind_the_menu(client, seeded):
+    auth = signed_in(client, ADMIN)
+
+    items = client.get("/inventory", headers=auth).json()["items"]
+    menu = client.get("/menu", headers=auth).json()["menu"]
+
+    assert [item["name"] for item in items] == ["لحم بقري", "خبز", "جبن", "طماطم"]
+    cheese = next(item for item in items if item["name"] == "جبن")
+    assert cheese["quantity"] <= cheese["min_quantity"]  # one Low stock item to demonstrate
+    burger = menu[0]
+    assert burger["out_of_stock"] is False and burger["max_qty"] == 8  # limited by جبن
+    recipe = client.get(f"/inventory/recipe/{burger['id']}", headers=auth).json()["recipe"]
+    assert [line["inventory_name"] for line in recipe] == ["لحم بقري", "خبز", "جبن"]
+    options = burger["modifiers"][0]["options"]
+    assert [option["inventory_item_id"] for option in options] == [items[1]["id"], items[2]["id"]]
+
+
+def test_seeding_twice_leaves_one_inventory_and_one_recipe(client, seeded):
+    bootstrap()
+    auth = signed_in(client, ADMIN)
+
+    items = client.get("/inventory", headers=auth).json()["items"]
+    menu = client.get("/menu", headers=auth).json()["menu"]
+
+    assert len(items) == 4
+    recipe = client.get(f"/inventory/recipe/{menu[0]['id']}", headers=auth).json()["recipe"]
+    assert len(recipe) == 3

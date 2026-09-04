@@ -175,17 +175,54 @@ def add_modifier_option(client, auth: dict, group_id: int, **option) -> int:
     return response.json()["id"]
 
 
+# The Inventory the goldens were recorded with: جبن is Low stock, طماطم makes باستا Out of stock.
+DEMO_INVENTORY = (
+    ("لحم بقري", "كغم", 20, 5),
+    ("خبز", "قطعة", 50, 10),
+    ("جبن", "شريحة", 3, 10),
+    ("طماطم", "كغم", 1, 2),
+)
+
+
+def add_inventory_item(client, auth: dict, name: str, unit: str, quantity, min_quantity) -> int:
+    """``POST /inventory/add``; returns the new Inventory item's id."""
+    body = {"name": name, "unit": unit, "quantity": quantity, "min_quantity": min_quantity}
+    response = client.post("/inventory/add", body, content_type="application/json", headers=auth)
+    assert response.status_code == 200, response.content
+    return response.json()["id"]
+
+
+def save_recipe(client, auth: dict, menu_item_id: int, ingredients: list) -> None:
+    """``POST /inventory/recipe/{menu_item_id}``; ``ingredients`` is ``[(inventory_id, amount)]``
+    and replaces the whole Recipe."""
+    body = {
+        "ingredients": [
+            {"inventory_item_id": inventory_id, "amount": amount}
+            for inventory_id, amount in ingredients
+        ]
+    }
+    response = client.post(
+        f"/inventory/recipe/{menu_item_id}", body, content_type="application/json", headers=auth
+    )
+    assert response.status_code == 200, response.content
+
+
 @pytest.fixture
 def demo_menu(client, admin, login):
-    """The menu the goldens were recorded with: six items, a Variant, a Modifier group, شاي off.
+    """The menu the goldens were recorded with: six items, a Variant, a Modifier group, شاي off,
+    four Inventory items, and Recipes for برجر (50 servings) and باستا (Out of stock).
 
     Returns the ids by name, so tests name what they act on instead of counting rows.
     """
     auth = login(admin)
     ids = {
-        name: add_menu_item(client, auth, name, price, category)
-        for name, price, category in DEMO_ITEMS
+        name: add_inventory_item(client, auth, name, unit, quantity, minimum)
+        for name, unit, quantity, minimum in DEMO_INVENTORY
     }
+    ids.update(
+        (name, add_menu_item(client, auth, name, price, category))
+        for name, price, category in DEMO_ITEMS
+    )
     ids["برجر دبل"] = add_menu_item(
         client, auth, "برجر دبل", 7.5, "وجبات", description="قطعتين لحم", parent_id=ids["برجر"]
     )
@@ -196,7 +233,7 @@ def demo_menu(client, admin, login):
         ids["الإضافات"],
         name="بدون خبز",
         price_delta=0,
-        inventory_item_id=2,
+        inventory_item_id=ids["خبز"],
         quantity_delta=-1,
     )
     ids["جبن إضافي"] = add_modifier_option(
@@ -205,8 +242,10 @@ def demo_menu(client, admin, login):
         ids["الإضافات"],
         name="جبن إضافي",
         price_delta=0.75,
-        inventory_item_id=3,
+        inventory_item_id=ids["جبن"],
         quantity_delta=1,
     )
+    save_recipe(client, auth, ids["برجر"], [(ids["لحم بقري"], 0.2), (ids["خبز"], 1)])
+    save_recipe(client, auth, ids["باستا"], [(ids["طماطم"], 2)])
     client.put(f"/menu/{ids['شاي']}/toggle", headers=auth)
     return ids
