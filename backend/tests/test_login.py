@@ -3,7 +3,6 @@ legacy messages with real status codes (tests/goldens/README.md)."""
 
 import pytest
 
-from tests.conftest import suspend
 from tests.golden import assert_matches_golden, golden_error, legacy_golden
 
 
@@ -48,7 +47,7 @@ def test_login_matches_the_email_case_insensitively(client, admin):
 
 
 @pytest.mark.django_db
-def test_login_to_a_suspended_restaurant_is_refused(client, other_admin):
+def test_login_to_a_suspended_restaurant_is_refused(client, other_admin, suspend):
     """Isolation matrix item 6, first half."""
     suspend(other_admin.restaurant)
     golden = legacy_golden("POST /login", "failure:restaurant-suspended")

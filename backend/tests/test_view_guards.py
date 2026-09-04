@@ -3,7 +3,6 @@ permission classes (plan §3.3, §3.4; isolation matrix items 3 and 5)."""
 
 import pytest
 
-from tests.conftest import suspend
 from tests.golden import golden_error, legacy_golden, refusal
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("tests.probe_urls")]
@@ -98,7 +97,7 @@ def test_an_unknown_slug_is_not_found(client, restaurant):
     assert response.json() == refusal("المطعم غير موجود")
 
 
-def test_a_suspended_restaurant_is_unavailable_to_customers(client, other_restaurant):
+def test_a_suspended_restaurant_is_unavailable_to_customers(client, other_restaurant, suspend):
     suspend(other_restaurant)
 
     response = client.get("/_probe/customer?r=r-other")

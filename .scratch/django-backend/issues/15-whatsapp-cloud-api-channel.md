@@ -12,3 +12,11 @@
 - [ ] Fraud alerts use the `fraud_alert` utility template when configured and are logged otherwise
 - [ ] A wizard script (produced with the wizard skill) walks a human through creating the Meta app, obtaining the test number and pointing the webhook at a local tunnel
 - [ ] Tests: a signed inbound message creates an Order in the right schema; a bad signature answers 403; an unknown number answers 200 and is ignored
+
+## Comments
+
+
+- 2026-09-04 (from ticket 04) — the Super admin console is live: register the WhatsApp account
+  model in `tenants/admin.py` next to `RestaurantAdmin` (spec story 6). Only `super_admin` users
+  reach `/django-admin/`; `has_perm`/`has_module_perms` answer from the role, so no permission
+  rows are needed.

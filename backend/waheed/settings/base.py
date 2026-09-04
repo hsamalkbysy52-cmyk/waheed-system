@@ -19,6 +19,7 @@ SHARED_APPS = (
     "django_tenants",  # must come first
     "tenants",
     "accounts",
+    "platform_admin",
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.admin",  # Super admin console
@@ -32,7 +33,11 @@ SHARED_APPS = (
 # (menu, inventory, orders, layout, ai, messaging). django-tenants requires contenttypes in
 # both lists so every Restaurant schema carries its own content-types table.
 TENANT_APPS = ("django.contrib.contenttypes",)
-INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
+# ``dict.fromkeys`` keeps each app's first occurrence: contenttypes is in both lists above.
+# django.contrib.admin leads so its own templates render the Super admin console — the tenancy
+# library ships admin template overrides that read ``request.tenant.schema_name`` unconditionally,
+# and a platform-scope request has no Restaurant (plan §3.2).
+INSTALLED_APPS = list(dict.fromkeys(["django.contrib.admin", *SHARED_APPS, *TENANT_APPS]))
 
 TENANT_MODEL = "tenants.Restaurant"
 TENANT_DOMAIN_MODEL = "tenants.Domain"

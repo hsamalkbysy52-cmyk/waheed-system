@@ -7,7 +7,6 @@ from datetime import timedelta
 import pytest
 from rest_framework_simplejwt.tokens import AccessToken
 
-from tests.conftest import suspend
 from tests.golden import golden_error, legacy_golden, refusal
 
 ORIGIN = {"Origin": "http://localhost:3000"}
@@ -87,7 +86,9 @@ def test_naming_your_own_restaurant_in_the_header_is_fine(client, admin, login):
 
 
 @pytest.mark.django_db
-def test_a_suspended_restaurant_signs_its_staff_out_on_the_next_request(client, admin, login):
+def test_a_suspended_restaurant_signs_its_staff_out_on_the_next_request(
+    client, admin, login, suspend
+):
     """Isolation matrix item 6, second half: an existing token stops working at once."""
     golden = legacy_golden("GET /menu", "failure:restaurant-suspended")
     headers = login(admin)
@@ -115,7 +116,7 @@ def test_middleware_refusals_carry_cors_headers(client, admin, other_restaurant,
 
 @pytest.mark.django_db
 def test_a_super_admin_may_name_a_restaurant_even_a_suspended_one(
-    client, super_admin, other_restaurant, login
+    client, super_admin, other_restaurant, login, suspend
 ):
     suspend(other_restaurant)
     headers = {**login(super_admin), "X-Restaurant-Id": str(other_restaurant.pk)}

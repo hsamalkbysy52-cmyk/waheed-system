@@ -13,7 +13,6 @@ import pytest
 from django.db import connection
 
 from accounts.models import Role, User
-from tenants.models import Restaurant
 from tenants.services import provision_restaurant
 
 
@@ -112,6 +111,23 @@ def login(client):
     return _login
 
 
-def suspend(restaurant):
-    """Suspension through the API is the Super admin console's job (ticket 04); tests set it up."""
-    Restaurant.objects.filter(pk=restaurant.pk).update(status=Restaurant.Status.SUSPENDED)
+def set_status(client, auth: dict, restaurant, status: str) -> dict:
+    """Set a Restaurant's status through the Super admin console route, and return its body."""
+    response = client.post(
+        f"/admin/restaurants/{restaurant.pk}/status",
+        {"status": status},
+        content_type="application/json",
+        headers=auth,
+    )
+    assert response.status_code == 200, response.content
+    return response.json()
+
+
+@pytest.fixture
+def suspend(client, super_admin, login):
+    """``suspend(restaurant)``: suspended the way the Super admin does it, through the console."""
+
+    def _suspend(restaurant) -> None:
+        set_status(client, login(super_admin), restaurant, "suspended")
+
+    return _suspend

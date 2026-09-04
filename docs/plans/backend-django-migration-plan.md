@@ -173,7 +173,9 @@ SHARED_APPS = (
     "rest_framework", "corsheaders",
 )
 TENANT_APPS = ("django.contrib.contenttypes", "menu", "inventory", "orders", "layout", "ai")  # contenttypes in both lists: django-tenants requires it
-INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
+INSTALLED_APPS = list(dict.fromkeys(["django.contrib.admin", *SHARED_APPS, *TENANT_APPS]))
+# django.contrib.admin leads (ticket 04): django-tenants ships admin templates whose
+# {% is_public_schema %} reads request.tenant.schema_name, and platform scope has no tenant.
 
 MIDDLEWARE = (
     "corsheaders.middleware.CorsMiddleware",      # first: CORS headers must reach the browser even on the
@@ -436,7 +438,7 @@ Fake provider for unit tests; Gemini adapter tests against recorded fixtures (no
 
 ## 7. Seed data (`manage.py bootstrap_dev`)
 
-Idempotent: creates restaurant "Waheed Restaurant" (slug `waheed`) with its schema, the three accounts with today's credentials (`admin@restaurant1.local.placeholder`/`admin123`, `cashier@…`/`cashier123`, `superadmin@platform.local.placeholder`/`superadmin123`), the six-item demo menu, a few inventory items with recipes, and a small table layout so every frontend page has data. Production restaurants register through the UI. No legacy import.
+Idempotent: creates restaurant "Waheed Restaurant" (slug `waheed`) with its schema, the three accounts with today's credentials (`admin@restaurant1.local.placeholder`/`admin123`, `cashier@…`/`cashier123`, `superadmin@platform.local.placeholder`/`superadmin123`), the six-item demo menu, a few inventory items with recipes, and a small table layout so every frontend page has data. Production restaurants register through the UI. No legacy import. (Ticket 04 delivered the Restaurant and the accounts; the menu, inventory, Modifier group and table layout are added by tickets 05 to 07, whose apps hold those models.)
 
 ---
 

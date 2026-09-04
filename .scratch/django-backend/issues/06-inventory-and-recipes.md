@@ -11,3 +11,11 @@
 - [ ] `out_of_stock` and `max_qty` are computed from Recipes with Variant inheritance; Low stock is derivable (quantity at or below minimum)
 - [ ] A Modifier option's inventory link must belong to the same Restaurant (404 otherwise)
 - [ ] HTTP tests including inheritance and cross-Restaurant inventory ids
+
+## Comments
+
+
+- 2026-09-04 (from ticket 04) — extend `manage.py bootstrap_dev` with a few Inventory items and the
+  Recipes for the demo menu, so the frontend's inventory and menu pages have data on a fresh
+  machine (plan §7). Idempotent like the rest of the command; assert it in
+  `tests/test_bootstrap_dev.py`.

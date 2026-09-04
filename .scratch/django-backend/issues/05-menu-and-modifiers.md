@@ -16,3 +16,11 @@
 ## Comments
 
 - 2026-09-04 (from ticket 03) — handoffs: decorate views exactly as plan §4 shows (`@api_view` → `@permission_classes` → `@public_tenant_allowed` → `@tenant_required`); the guards raise `TypeError` at import if applied above `@api_view`. `request.tenant` and `request.tenant_source` (`core.middleware.TenantSource`: `jwt`, `super_admin`, `slug`) are set on every request. Re-assert on `GET /menu` what `tests/test_view_guards.py` asserts on the probe routes: Slug header or `?r=` → that Restaurant's menu; no Slug and no token → 400 `المطعم غير محدد`; Super admin without header → 400, with `X-Restaurant-Id` → that Restaurant (isolation items 3, 4 and 5); `POST /menu/add?r=B` → 401 `توكن غير موجود`. Delete `tests/probe_urls.py` once real routes cover every guard.
+
+- 2026-09-04 (from ticket 04) — extend `manage.py bootstrap_dev`
+  (`tenants/management/commands/bootstrap_dev.py`) with the six-item demo menu and a Modifier
+  group: the legacy seed is `backend_legacy/database/models.py::seed_menu` (برجر 5000, بيتزا 8000,
+  باستا 6000, كولا 1500, عصير 2000, شاي 1000), repriced as JOD Decimals. Seed inside
+  `schema_context(restaurant.schema_name)`, keep the command idempotent, and add the assertion to
+  `tests/test_bootstrap_dev.py`. When `GET /menu` lands, move the customer half of suspension
+  (`tests/test_suspension.py::test_suspension_refuses_the_restaurants_customers`) off the probe.

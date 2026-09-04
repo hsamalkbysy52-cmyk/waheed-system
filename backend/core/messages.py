@@ -16,6 +16,10 @@ PLATFORM_ROUTE_ONLY = "هذا المسار للمنصة فقط"  # platform rout
 RESTAURANT_ADMIN_ONLY = "هذه العملية لمدير المطعم فقط"
 STAFF_ONLY = "هذه العملية لموظفي المطعم فقط"
 
+# Super admin console (legacy main.py, routes 40 and 41)
+INVALID_RESTAURANT_STATUS = "قيمة status غير صالحة — active أو suspended فقط"
+RESTAURANT_STATUS_UPDATED = "تم تحديث حالة المطعم"
+
 # Accounts (legacy main.py)
 WRONG_CREDENTIALS = "البريد الإلكتروني أو كلمة السر غلط"
 RESTAURANT_NAME_REQUIRED = "اسم المطعم مطلوب"
