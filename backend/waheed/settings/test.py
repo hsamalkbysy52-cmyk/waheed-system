@@ -18,3 +18,7 @@ AI_PROVIDER_CLASSES = {
     "gemini": "ai.providers.fake.FakeProvider",
     "openai": "ai.providers.fake.FakeProvider",
 }
+
+# The webhook tests sign their deliveries with this secret and verify with this token.
+WHATSAPP_APP_SECRET = "test-app-secret"
+WHATSAPP_VERIFY_TOKEN = "test-verify-token"

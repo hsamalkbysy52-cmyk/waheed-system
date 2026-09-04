@@ -11,6 +11,7 @@ Everything postponed or deferred, in one place. Add an item the moment something
 - **`kitchen` role** — separate login for the kitchen board; kitchen staff use cashier accounts today (grilling Q3).
 - **Multi-branch brands** — one owner with several Restaurants and cross-branch reporting; each branch is its own Restaurant today (grilling Q1).
 - **Customer-facing web chat** — the Chat agent is staff-only in the web UI; customers get it over WhatsApp (grilling Q15).
+- **WhatsApp production token** — the wizard uses the Meta test number's 24-hour token; production needs a permanent System User token and business verification (ADR-0004 consequences). Noticed in ticket 15 (2026-09-04).
 - **WhatsApp extras** — media messages, order-status notifications to customers (business-initiated templates cost money), payments, non-Arabic replies. Text ordering only in the first version (plan §6.4).
 - **Order-status notifications / real-time updates** — WebSocket or SSE instead of the 10–30 s polling (plan §13).
 - **Category table** — ordering and icons for menu categories; Category stays free text (grilling Q17).

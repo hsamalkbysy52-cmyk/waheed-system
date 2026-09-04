@@ -40,6 +40,8 @@ class ConversationState(models.Model):
     key = models.CharField(max_length=100, unique=True)
     table_number = models.IntegerField(null=True, blank=True)
     messages = models.JSONField(default=list)  # [{role, content}], newest last
+    # An Order proposal waiting for the customer's "yes" (WhatsApp); the web confirms via a button.
+    pending_proposal = models.JSONField(null=True, blank=True)
     expires_at = models.DateTimeField()
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -21,6 +21,8 @@ dependencies = [
   "google-genai==2.22.0",
   "openai==3.8.0",
   "gunicorn==26.2.0",
+  # Already pulled in by the AI SDKs; named here because messaging/whatsapp.py imports it directly.
+  "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]

@@ -1,7 +1,8 @@
 """Outbound messages to people (plan §6.4): one interface, chosen by settings.
 
-The WhatsApp Cloud API sender arrives with ticket 15. Until then production logs what it would have
-sent, and tests record it so a Fraud alert can be asserted without any network.
+``messaging.whatsapp.WhatsAppSender`` is the production sender (it logs for a Restaurant without a
+connected number); ``LoggingSender`` never sends, and tests use ``RecordingSender`` so a Fraud
+alert or a reply can be asserted without any network.
 """
 
 import logging
@@ -16,6 +17,9 @@ logger = logging.getLogger("waheed.messaging")
 class OutboundSender(Protocol):
     def send(self, to: str, text: str) -> None: ...
 
+    def send_alert(self, to: str, text: str, parameters: list) -> None:
+        """An owner alert: the WhatsApp sender uses the approved template, others the text."""
+
 
 class LoggingSender:
     """Log-only fallback: nothing leaves the process (spec: alerts are logged until WhatsApp
@@ -23,6 +27,9 @@ class LoggingSender:
 
     def send(self, to: str, text: str) -> None:
         logger.info("outbound message to %s: %s", to, text)
+
+    def send_alert(self, to: str, text: str, parameters: list) -> None:
+        self.send(to, text)
 
 
 class SentMessage(NamedTuple):
@@ -37,6 +44,9 @@ class RecordingSender:
 
     def send(self, to: str, text: str) -> None:
         self.sent.append(SentMessage(to, text))
+
+    def send_alert(self, to: str, text: str, parameters: list) -> None:
+        self.send(to, text)
 
     @classmethod
     def reset(cls) -> None:

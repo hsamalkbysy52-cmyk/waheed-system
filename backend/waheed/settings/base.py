@@ -131,9 +131,18 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_IGNORE_RESULT = True  # results matter only under tests, where tasks run eagerly
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-# Outbound messages (Fraud alerts, WhatsApp replies): a dotted path to a messaging.senders class.
-# Log-only until the WhatsApp Cloud API sender ships (ticket 15); tests record instead.
-MESSAGING_SENDER = env("MESSAGING_SENDER", default="messaging.senders.LoggingSender")
+# Outbound messages (Fraud alerts, WhatsApp replies): a dotted path to a sender class. The Cloud
+# API sender logs for a Restaurant without a connected number; tests record instead.
+MESSAGING_SENDER = env("MESSAGING_SENDER", default="messaging.whatsapp.WhatsAppSender")
+
+# --- WhatsApp Cloud API (ADR-0004; plan §6.4) -----------------------------------------------
+
+WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", default="v21.0")
+WHATSAPP_VERIFY_TOKEN = env("WHATSAPP_VERIFY_TOKEN", default="")  # Meta's webhook verification
+WHATSAPP_APP_SECRET = env("WHATSAPP_APP_SECRET", default="")  # signs every webhook delivery
+# The approved utility template for owner alerts; empty means "log only" (grilling Q21).
+WHATSAPP_FRAUD_ALERT_TEMPLATE = env("WHATSAPP_FRAUD_ALERT_TEMPLATE", default="")
+WHATSAPP_TEMPLATE_LANGUAGE = env("WHATSAPP_TEMPLATE_LANGUAGE", default="ar")
 
 CACHES = {
     "default": {

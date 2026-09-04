@@ -7,6 +7,7 @@ from core import views as core_views
 from inventory import views as inventory_views
 from layout import views as layout_views
 from menu import views as menu_views
+from messaging import views as messaging_views
 from orders import views as orders_views
 from platform_admin import views as platform_views
 from tenants import views as tenant_views
@@ -52,5 +53,6 @@ urlpatterns = [
     path("agent/chat", ai_views.chat),
     path("admin/restaurants", platform_views.restaurant_list),
     path("admin/restaurants/<int:restaurant_id>/status", platform_views.set_restaurant_status),
+    path("webhooks/whatsapp", messaging_views.whatsapp_webhook),
     path("django-admin/", admin.site.urls),
 ]

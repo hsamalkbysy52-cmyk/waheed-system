@@ -7,7 +7,7 @@ deploy, and a Restaurant can be suspended here as well as through ``POST /admin/
 
 from django.contrib import admin
 
-from tenants.models import Domain, Restaurant
+from tenants.models import Domain, Restaurant, WhatsAppAccount
 from tenants.services import create_with_schema, set_primary_domain
 
 
@@ -51,3 +51,14 @@ class DomainAdmin(admin.ModelAdmin):
 
     list_display = ("domain", "tenant", "is_primary")
     search_fields = ("domain",)
+
+
+@admin.register(WhatsAppAccount)
+class WhatsAppAccountAdmin(admin.ModelAdmin):
+    """One business number per Restaurant (ADR-0004); the Super admin connects it here."""
+
+    list_display = ("restaurant", "display_phone", "phone_number_id", "owner_phone", "enabled")
+    list_filter = ("enabled",)
+    search_fields = ("restaurant__name", "display_phone", "phone_number_id")
+    autocomplete_fields = ("restaurant",)
+    readonly_fields = ("created_at",)

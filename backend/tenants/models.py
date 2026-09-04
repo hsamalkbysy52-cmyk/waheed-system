@@ -55,3 +55,25 @@ class Restaurant(TenantMixin):
 
 class Domain(DomainMixin):
     """The tenancy library's mandatory hostname row; unused for routing (ADR-0001)."""
+
+
+class WhatsAppAccount(models.Model):
+    """A Restaurant's WhatsApp business number on Meta's Cloud API (ADR-0004; spec story 6).
+
+    Entered by the Super admin in the Django admin. ``phone_number_id`` is what Meta's webhook
+    names, so it resolves the Restaurant for an inbound message; ``owner_phone`` receives Fraud
+    alerts. Lives in the public schema next to the Restaurant.
+    """
+
+    restaurant = models.OneToOneField(
+        Restaurant, on_delete=models.CASCADE, related_name="whatsapp_account"
+    )
+    phone_number_id = models.CharField(max_length=40, unique=True)
+    display_phone = models.CharField(max_length=30, blank=True)  # the number customers message
+    access_token = models.CharField(max_length=512)
+    owner_phone = models.CharField(max_length=30, blank=True)  # E.164 digits, no plus sign
+    enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"WhatsApp {self.display_phone or self.phone_number_id} ({self.restaurant})"

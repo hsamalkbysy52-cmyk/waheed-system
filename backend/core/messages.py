@@ -92,3 +92,9 @@ ASSISTANT_BUSY = "المساعد مشغول، حاول بعد قليل"
 QUESTION_REQUIRED = "السؤال مطلوب"
 UNKNOWN_PROVIDER = "مزوّد الذكاء الاصطناعي غير معروف"
 TOO_MANY_REQUESTS = "طلبات كثيرة، حاول بعد قليل"  # throttled
+
+# WhatsApp ordering (new with the rebuild, ADR-0004)
+WHATSAPP_CONFIRM_PROMPT = "أرسل «نعم» لتأكيد الطلب أو عدّل طلبك."
+WHATSAPP_ORDER_CONFIRMED = "تم تأكيد طلبك رقم #{order_id} وسيصلك قريباً. بالعافية!"
+WHATSAPP_ORDER_TOTAL = "الإجمالي: {total} {currency}"
+WHATSAPP_ORDER_NOTE = "طلب واتساب من {sender}"
