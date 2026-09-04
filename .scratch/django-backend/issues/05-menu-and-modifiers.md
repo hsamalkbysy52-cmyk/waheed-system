@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** implemented — awaiting review (2026-09-04). One documented failure is not asserted: route 9's `failure:inventory-item-not-found` needs the Inventory app (ticket 06).
+**Status:** implemented — awaiting review (2026-09-04). Route 9's `failure:inventory-item-not-found` is neither implemented nor asserted: the check needs the Inventory app (ticket 06, handoff recorded there).
 
 - [x] Models: Menu item with parent link (deleting a parent removes its Variants), Modifier group and option with sort order, prices as Decimal(12,3)
-- [x] Routes 2 to 15 match the goldens (shapes and Arabic messages); mutations are admin only; `GET /menu` accepts Slug-resolved callers
+- [~] Routes 2 to 15 match the goldens (shapes and Arabic messages); mutations are admin only; `GET /menu` accepts Slug-resolved callers — every golden but route 9's inventory-item refusal, which ticket 06 owns
 - [x] A Variant inherits its parent's Modifier groups when it has none and the response materialises the inheritance
 - [x] `out_of_stock` is false and `max_qty` is null until recipes exist (ticket 06), with the field names present
 - [x] `GET /menu` for the seeded menu uses at most five queries (asserted with a query counter)
@@ -61,3 +61,21 @@
   The code follows the plan; `CLAUDE.md`'s line is stale and worth correcting.
 - 2026-09-04 — tests: 249 → 304. `tests/test_menu.py` (22), `tests/test_modifiers.py` (25),
   `tests/test_menu_access.py` (18), plus three in `tests/test_bootstrap_dev.py`.
+
+- 2026-09-04 — `/code-review` (fixed point 608b052). **Applied:** `core/money.py` now holds the
+  three-decimal amount fields the plan's §2 layout asked for, so the model and payload fields stop
+  repeating `max_digits=12, decimal_places=3`; `PUT /menu/{id}` takes its own
+  `MenuItemEditSerializer` instead of the view popping `parent_id` out of the payload; the
+  Admin-only half of `/menu/{id}/modifiers/groups` is a `core.decorators.admin_only_for("POST")`
+  guard rather than a permission class called by hand inside the view; the fetch-or-404 lookups are
+  `item_or_404`, `group_or_404`, `option_or_404`; the option payload serializer extends the edit
+  one; money parameters are annotated `Decimal`; the super-admin menu response is compared to the
+  golden like every other route, and the cross-Restaurant Variant test uses the other Restaurant's
+  real id rather than an invented one. **Two further deviations, now recorded:** `max_selections`
+  must be at least 1, where the legacy accepted anything (the frontend already sends `|| 1`); and
+  deleting a Menu item takes its Modifier groups with it, which plan §3.7's cascade prescribes but
+  the legacy API did not do (it orphaned the rows). **Noted, not changed:** plan §4's `menu_add`
+  snippet answers 201, golden 03 records 200 and the frontend reads the body either way — the code
+  follows the golden, and the plan snippet is stale. Throttling `GET /menu` is still open in
+  `backlog.md`; this ticket ships the first live Slug-resolved route, which is what that entry was
+  waiting for.

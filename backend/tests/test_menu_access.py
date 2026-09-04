@@ -7,7 +7,7 @@ proved on the probe routes are asserted here on a route the frontend actually ca
 import pytest
 
 from tests.conftest import add_menu_item
-from tests.golden import golden_error, legacy_golden, refusal
+from tests.golden import assert_matches_golden, golden_error, legacy_golden, refusal
 
 pytestmark = pytest.mark.django_db
 
@@ -149,6 +149,7 @@ def test_a_super_admin_sees_the_menu_of_the_restaurant_they_name(
     response = client.get(golden.path, headers=headers)
 
     assert response.status_code == golden.status
+    assert_matches_golden(response.json(), legacy_golden("GET /menu").response)
     assert names_in(response) == ["شاورما"]
 
 
@@ -187,7 +188,7 @@ def test_an_id_that_exists_in_both_restaurants_only_ever_reaches_the_callers_own
 
 def test_a_variant_cannot_be_hung_on_another_restaurants_dish(client, admin, other_admin, login):
     theirs = add_menu_item(client, login(other_admin), "شاورما", 3, "وجبات")
-    body = {"name": "شاورما دبل", "price": 4, "category": "وجبات", "parent_id": theirs + 100}
+    body = {"name": "شاورما دبل", "price": 4, "category": "وجبات", "parent_id": theirs}
 
     response = client.post("/menu/add", body, content_type="application/json", headers=login(admin))
 

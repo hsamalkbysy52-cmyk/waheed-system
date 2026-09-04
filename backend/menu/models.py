@@ -3,6 +3,8 @@ Restaurant marker — isolation is the schema itself (ADR-0001, plan §3.7)."""
 
 from django.db import models
 
+from core.money import amount_field
+
 
 class MenuItem(models.Model):
     """A dish, or a Variant of one when ``parent`` is set (CONTEXT.md).
@@ -12,7 +14,7 @@ class MenuItem(models.Model):
     """
 
     name = models.CharField(max_length=100)
-    price = models.DecimalField(max_digits=12, decimal_places=3)
+    price = amount_field()
     category = models.CharField(max_length=50)
     is_available = models.BooleanField(default=True)
     description = models.TextField(blank=True, default="")
@@ -49,11 +51,11 @@ class ModifierOption(models.Model):
 
     group = models.ForeignKey(ModifierGroup, on_delete=models.CASCADE, related_name="options")
     name = models.CharField(max_length=100)
-    price_delta = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    price_delta = amount_field(default=0)
     # Ticket 06 replaces this with a FK to inventory.InventoryItem (SET_NULL) and refuses an id
     # that belongs to no Inventory item; the Inventory app does not exist yet (plan §3.7).
     inventory_item_id = models.IntegerField(null=True, blank=True)
-    quantity_delta = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    quantity_delta = amount_field(default=0)
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:

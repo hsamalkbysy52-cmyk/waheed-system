@@ -21,7 +21,7 @@ Everything postponed or deferred, in one place. Add an item the moment something
 
 - **Subdomain per Restaurant** — `Domain` rows already exist; needs wildcard DNS and frontend routing (ADR-0001).
 - **Server-side logout / refresh-token blacklist** — logout is client-side only (grilling Q5).
-- **Request throttling** — `AnonRateThrottle` on `/login`, `/register` and the Slug-resolved customer routes (plan §4); the agent routes are throttled by tickets 11 and 12, nothing owns the rest. Noticed in ticket 03's code review (2026-09-04).
+- **Request throttling** — `AnonRateThrottle` on `/login`, `/register` and the Slug-resolved customer routes (plan §4); the agent routes are throttled by tickets 11 and 12, nothing owns the rest. Noticed in ticket 03's code review (2026-09-04); ticket 05 shipped the first live Slug-resolved route, `GET /menu`, so this is now real exposure rather than a future one.
 - **Demo Restaurant data in `bootstrap_dev`** — the seed creates the demo Restaurant and its three accounts; the six-item menu, Inventory with Recipes, a Modifier group and the Table layout wait for the apps that hold them (tickets 05 to 07, handoffs recorded there). Decided in ticket 04 (2026-09-04).
 - **Deleting a Restaurant** — the Super admin console refuses deletion: the PostgreSQL schema and its data would outlive the row. Needs a decision about dropping the schema (django-tenants' `auto_drop_schema`) before it is offered. Noticed in ticket 04 (2026-09-04).
 - **Arabic messages for payload validation** — a malformed menu, modifier or inventory payload answers 400 with DRF's English text (the legacy API answered FastAPI's English 422). Needs product copy before it is worth translating. Noticed in ticket 05 (2026-09-04).

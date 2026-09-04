@@ -7,10 +7,11 @@ customer routes accept a Restaurant that a Slug, rather than a token, selected.
 
 from functools import wraps
 
-from rest_framework.exceptions import NotAuthenticated, ValidationError
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied, ValidationError
 
 from core import messages
 from core.middleware import TenantSource
+from core.permissions import IsRestaurantAdmin
 
 
 def tenant_required(view):
@@ -49,6 +50,29 @@ def public_only(view):
         return view(request, *args, **kwargs)
 
     return guarded
+
+
+def admin_only_for(*methods: str):
+    """Narrow some methods of a path to the Restaurant's Admin (plan §3.4).
+
+    Permission classes apply to a whole view, and the legacy paths carry two methods each in
+    places: reading a Menu item's Modifier groups and creating one share one path, and only the
+    creation is an Admin's to make.
+    """
+
+    def decorate(view):
+        _below_api_view(view)
+
+        @wraps(view)
+        def guarded(request, *args, **kwargs):
+            permission = IsRestaurantAdmin()
+            if request.method in methods and not permission.has_permission(request, view):
+                raise PermissionDenied(permission.message)
+            return view(request, *args, **kwargs)
+
+        return guarded
+
+    return decorate
 
 
 def _below_api_view(view) -> None:

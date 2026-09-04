@@ -1,47 +1,51 @@
 """Input validation and output shaping for the menu routes.
 
 The payloads are the legacy ones, field for field, because the frontend still sends them: the edit
-form omits ``description`` when it is empty and omits ``parent_id`` entirely, and the variant form
+form omits ``description`` when it is empty and never sends ``parent_id``, and the variant form
 sends ``parent_id`` without a description.
 """
 
 from rest_framework import serializers
 
+from core.money import amount_payload_field
 from menu.models import MenuItem, ModifierGroup, ModifierOption
 
 
-class MenuItemPayloadSerializer(serializers.Serializer):
+class MenuItemEditSerializer(serializers.Serializer):
+    """What ``PUT /menu/{id}`` changes. A Variant keeps its parent: the legacy API ignored
+    ``parent_id`` here, and the frontend's edit form does not send it."""
+
     name = serializers.CharField(max_length=100)
-    price = serializers.DecimalField(max_digits=12, decimal_places=3)
+    price = amount_payload_field()
     category = serializers.CharField(max_length=50)
     # Omitted means empty, as in the legacy API: the edit form drops the field when it is cleared.
     description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class MenuItemPayloadSerializer(MenuItemEditSerializer):
+    """``POST /menu/add``: the same, plus the dish a Variant hangs under."""
+
     parent_id = serializers.IntegerField(required=False, allow_null=True, default=None)
 
 
 class ModifierGroupPayloadSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
+    # The legacy default; one selection is the smallest group that means anything.
     max_selections = serializers.IntegerField(required=False, min_value=1, default=1)
-
-
-class ModifierOptionPayloadSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=100)
-    price_delta = serializers.DecimalField(
-        max_digits=12, decimal_places=3, required=False, default=0
-    )
-    inventory_item_id = serializers.IntegerField(required=False, allow_null=True, default=None)
-    quantity_delta = serializers.DecimalField(
-        max_digits=12, decimal_places=3, required=False, default=0
-    )
 
 
 class ModifierOptionEditSerializer(serializers.Serializer):
     """The legacy edit payload: name and price only, never the inventory link."""
 
     name = serializers.CharField(max_length=100)
-    price_delta = serializers.DecimalField(
-        max_digits=12, decimal_places=3, required=False, default=0
-    )
+    price_delta = amount_payload_field(required=False, default=0)
+
+
+class ModifierOptionPayloadSerializer(ModifierOptionEditSerializer):
+    """Creating an option adds what it does to stock (ticket 06 checks the Inventory item)."""
+
+    inventory_item_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+    quantity_delta = amount_payload_field(required=False, default=0)
 
 
 class ReorderSerializer(serializers.Serializer):
