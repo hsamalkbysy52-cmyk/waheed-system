@@ -1,6 +1,6 @@
 # Spec: Rebuild the Waheed backend on Django with one schema per Restaurant
 
-Status: ready-for-agent
+Status: implemented on branch faysal (tickets 01 to 16, 2026-09-04/05); the Railway staging run and cutover (ticket 16) await the human
 Date: 2026-09-03
 Sources: `docs/plans/backend-django-migration-plan.md` (approved, §14 grilling resolutions), ADR-0001…0004, `CONTEXT.md`, `docs/research/whatsapp-cloud-api-costs-iraq.md`, `backlog.md`.
 
